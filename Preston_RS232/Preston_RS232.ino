@@ -1,5 +1,5 @@
 #include "SoftwareSerial.h"
-#include "PrestonCommand.h"
+#include "PrestonPacket.h"
 
 SoftwareSerial prestonSerial(2, 3); //2 is RX, 3 is TX
 
@@ -19,7 +19,7 @@ void setup() {
   byte buf[] = {02,30,31,30,32,30,30,31,43,39,39,03};
   prestonSerial.write(buf, sizeof(buf)+1);*/
 
-  String command = buildPrestonCommand(2);
+  String command = buildPrestonPacket(2);
 
   Serial.println(command);
   
@@ -49,7 +49,7 @@ void string2hexString(char* input, char* output)
     output[i++] = '\0';
 }
 
-String buildPrestonCommand(char decmode) {
+String buildPrestonPacket(char decmode) {
 
   char hexmode[strlen(decmode)*2+1];
 

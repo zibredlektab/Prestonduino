@@ -1,3 +1,5 @@
+char sprintfoutput[100];
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -37,10 +39,8 @@ int checksum(char* input) {
   int sum = 0;
   
   while (input[i] != '\0') {
-    Serial.print("char at index ");
-    Serial.print(i);
-    Serial.print(" is ");
-    Serial.println(input[i]);
+    sprintf(sprintfoutput, "char at index %d is %c", i, input[i]);
+    Serial.println(sprintfoutput);
     currentchar = atoi(input[i]);
     Serial.print("interpreted that as ");
     Serial.println(currentchar);

@@ -1,25 +1,25 @@
-#ifndef PrestonCommand_h
-#define PrestonCommand_h
+#ifndef PrestonPacket_h
+#define PrestonPacket_h
 
 #include "Arduino.h"
 
-class PrestonCommand {
+class PrestonPacket {
   private:
     byte mode;
     byte* data;
     int checksum;
-    byte* command;
+    byte* packet;
     
     int computeSum();
-    byte* compileCommand();
+    byte* compilePacket();
 
   public:
-    PrestonCommand(byte cmd_mode, byte* cmd_data);
+    PrestonPacket(byte cmd_mode, byte* cmd_data);
     byte getMode();
     int setMode(byte cmd_mode);
     byte* getData();
     int setData(byte* cmd_data);
-    byte* getCommand();
+    byte* getPacket();
 };
 
 #endif
