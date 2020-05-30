@@ -1,5 +1,5 @@
-#include Arduino.h
-#include PrestonCommand.h
+#include "Arduino.h"
+#include "PrestonCommand.h"
 
 PrestonCommand::PrestonCommand(byte cmd_mode, byte* cmd_data) {
   this->mode = cmd_mode;

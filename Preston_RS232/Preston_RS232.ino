@@ -1,5 +1,5 @@
-#include <SoftwareSerial.h>
-#include <PrestonCommand.h>
+#include "SoftwareSerial.h"
+#include "PrestonCommand.h"
 
 SoftwareSerial prestonSerial(2, 3); //2 is RX, 3 is TX
 
