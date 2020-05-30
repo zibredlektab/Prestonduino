@@ -8,7 +8,14 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
   }
+  Serial.println();
   Serial.println("Hello!");
+
+  byte data[9] = {02, 30, 31, 30, 32, 30, 30, 31, 43};
+  byte mode = 0x1C;
+  PrestonPacket foo = PrestonPacket(mode, data);
+
+  Serial.println(foo.getSum(), HEX);
 
   /*prestonSerial.begin(115200);
   while (!prestonSerial) {
@@ -19,9 +26,6 @@ void setup() {
   byte buf[] = {02,30,31,30,32,30,30,31,43,39,39,03};
   prestonSerial.write(buf, sizeof(buf)+1);*/
 
-  String command = buildPrestonPacket(2);
-
-  Serial.println(command);
   
   Serial.println("----");
 }

@@ -4,6 +4,9 @@
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data) {
   this->mode = cmd_mode;
   this->data = cmd_data;
+  char output[100];
+  sprintf(output, "size of data is %d", sizeof(data));
+  Serial.println(output);
   this->checksum = computeSum();
   this->packet = compilePacket();
 }
@@ -27,13 +30,23 @@ byte* PrestonPacket::getData() {
 
 int PrestonPacket::setData(byte* cmd_data) {
   this->data = cmd_data;
+  
   return 1;
 }
 
 
 int PrestonPacket::computeSum() {
   // compile that sum
-  this->checksum = 0;
+  int sum = 0;
+  for (int i = 0; i < sizeof(data); i++) {
+    Serial.println(data[i], HEX);
+    sum += data[i];
+  }
+  return sum;
+}
+
+int PrestonPacket::getSum() {
+  return checksum;
 }
 
 byte* PrestonPacket::compilePacket() {

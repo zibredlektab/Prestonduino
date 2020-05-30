@@ -12,6 +12,7 @@ class PrestonPacket {
     
     int computeSum();
     byte* compilePacket();
+    
 
   public:
     PrestonPacket(byte cmd_mode, byte* cmd_data);
@@ -20,6 +21,7 @@ class PrestonPacket {
     byte* getData();
     int setData(byte* cmd_data);
     byte* getPacket();
+    int getSum();
 };
 
 #endif
