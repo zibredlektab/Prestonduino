@@ -11,11 +11,15 @@ void setup() {
   Serial.println();
   Serial.println("Hello!");
 
-  byte data[9] = {02, 30, 31, 30, 32, 30, 30, 31, 43};
-  byte mode = 0x1C;
-  PrestonPacket foo = PrestonPacket(mode, data);
-
-  Serial.println(foo.getSum(), HEX);
+  byte data[] = {0x00, 0x1c};
+  int datalen = 2;
+  byte mode = 0x01;
+  PrestonPacket foo = PrestonPacket(mode, data, datalen);
+  
+  for (int i = 0; i < foo.getPacketLength(); i++) {
+ //   Serial.println(foo.getPacket()[i]);
+  }
+ // Serial.println();
 
   /*prestonSerial.begin(115200);
   while (!prestonSerial) {
