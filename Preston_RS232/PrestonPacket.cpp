@@ -48,20 +48,22 @@ void PrestonPacket::compilePacket() {
   // Encode the core
   int coreasciilen = (this->corelen * 2); // Every byte in core becomes 2 bytes, as we 0-pad everything
   byte coreascii[coreasciilen];
-  this->asciiEncode(core, coreascii);
-  Serial.println("Encoded core is as follows:");
+  this->asciiEncode(core, this->corelen, coreascii);
+  delay(5000);
+  Serial.print("Encoded core is: ");
   for (int i=0; i<coreasciilen; i++) {
-    Serial.println(coreascii[i], HEX);
+    Serial.print(coreascii[i], HEX);
   }
+  Serial.println();
   
   // Finished encoding core
 
   // Compute sum, encode sum
-  int coresum = this->computeSum(core, coreasciilen);
+  int coresum = this->computeSum(coreascii, coreasciilen);
   Serial.print("Sum is ");
-  Serial.println(coresum);
-  byte sumascii[4]; // this will always be 4 bytes (2 hex bytes)
- // this->asciiEncode(coresum, sumascii);
+  Serial.println(coresum, HEX);
+  byte sumascii[2]; // this will always be 4 bytes (2 hex bytes)
+  this->asciiEncode(coresum, 2, sumascii);
   // Finished with sum
 
 /*
@@ -83,41 +85,35 @@ void PrestonPacket::compilePacket() {
 
 
 int PrestonPacket::computeSum(byte* input, int len) {
+  // byte* input is an ascii-encoded array
+
+  
   Serial.println("Computing sum");
   int sum = 2; // STX is included in sum
   for (int i = 0; i < len; i++) {
-    // iterate through the core
-
-    char holder[2];
-    sprintf(holder, "%02X", input[i]); // Attempt at getting the 2-digit hex 
-    char out[100];
-    sprintf(out, "%d: Digit 0 is: %02X, Digit 1 is : %02X", i, holder[0], holder[1]);
-
-    Serial.println(out);
-    //char out[100];
-    //sprintf(out, "%d: %d + %s = ", i, sum, holder);
-    //Serial.print(out);
-    
-    sum += holder[0] + holder[1]; // add the values from the intermediary to the sum
-}
+    // iterate through the ascii core
+    sum += input[i];
+  }
   
-  this->checksum = sum;// % 0x100;
+  this->checksum = sum % 0x100;
   return this->checksum;
 }
 
 
-void PrestonPacket::asciiEncode(byte* input, byte* output) {
+void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
   /*  duplicate input array, but 0-pad every byte to get double-digit values
    * 
    * 
    */
   
-  for (int i = 0; i < corelen ; i++) {     
-    byte holder[2];
+  for (int i = 0; i < len ; i++) {     
+    byte holder[2]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte)
     
     sprintf(holder, "%02X", input[i]);
+    
     Serial.println(holder[0]);
     Serial.println(holder[1]);
+    
     output[i*2] = holder[0]; // populate output, two bytes to represent what was previously one hex byte
     output[(i*2)+1] = holder[1];
   }

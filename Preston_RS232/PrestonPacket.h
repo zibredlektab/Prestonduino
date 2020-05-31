@@ -11,7 +11,7 @@ class PrestonPacket {
     byte* packet_hex;
     byte* packet_ascii; // ascii encoded
     int computeSum(byte* input, int len);
-    void asciiEncode(byte* input, byte* output);
+    void asciiEncode(byte* input, int len, byte* output);
     void compilePacket();
 
     
