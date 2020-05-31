@@ -51,13 +51,14 @@ void PrestonPacket::compilePacket() {
   this->asciiEncode(core, coreascii);
   Serial.println("Encoded core is as follows:");
   for (int i=0; i<coreasciilen; i++) {
-    Serial.println(coreascii[i]);
+    Serial.println(coreascii[i], HEX);
   }
   
   // Finished encoding core
-/*
+
   // Compute sum, encode sum
   int coresum = this->computeSum(core, coreasciilen);
+  Serial.print("Sum is ");
   Serial.println(coresum);
   byte sumascii[4]; // this will always be 4 bytes (2 hex bytes)
  // this->asciiEncode(coresum, sumascii);
@@ -88,19 +89,19 @@ int PrestonPacket::computeSum(byte* input, int len) {
     // iterate through the core
 
     char holder[2];
-    sprintf(holder, "%02X", input[i]);
-    String holderstring = holder;
-    Serial.println(holderstring);
-    
+    sprintf(holder, "%02X", input[i]); // Attempt at getting the 2-digit hex 
     char out[100];
-    sprintf(out, "%d: %d + %s = ", i, sum, holderstring);
-    Serial.print(out);
+    sprintf(out, "%d: Digit 0 is: %02X, Digit 1 is : %02X", i, holder[0], holder[1]);
+
+    Serial.println(out);
+    //char out[100];
+    //sprintf(out, "%d: %d + %s = ", i, sum, holder);
+    //Serial.print(out);
     
-    sum += holderstring.toInt(); // add the value of core to the sum
-    Serial.println(sum);
-  }
+    sum += holder[0] + holder[1]; // add the values from the intermediary to the sum
+}
   
-  this->checksum = sum % 0x100;
+  this->checksum = sum;// % 0x100;
   return this->checksum;
 }
 
