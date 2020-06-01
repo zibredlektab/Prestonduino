@@ -3,6 +3,9 @@
 
 SoftwareSerial prestonSerial(2, 3); //2 is RX, 3 is TX
 
+bool newdata = false; // flag for whether there is data available to be processed
+char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
+
 void setup() {
   Serial.begin(9600); //open communication with computer
   while (!Serial) {
@@ -42,41 +45,61 @@ void loop() {
 
 }
 
-void string2hexString(char* input, char* output)
-{
-    int loop;
-    int i; 
-    
-    i=0;
-    loop=0;
-    
-    while(input[loop] != '\0')
-    {
-        sprintf((char*)(output+i),"%02X", input[loop]);
-        loop+=1;
-        i+=2;
-    }
-    //insert NULL at the end of the output string
-    output[i++] = '\0';
-}
-
-String buildPrestonPacket(char decmode) {
-
-  char hexmode[strlen(decmode)*2+1];
-
-  string2hexString(decmode, hexmode);
-
-  return hexmode;
-
-}
-
-bool sendCommandToPreston(String command) {
-  Serial.print("Sending " + command + " to Preston");
-  prestonSerial.print(command);
-  while (!prestonSerial.available()) {
-    ;
+bool sendPacketToPreston(byte* packet, int packetlen) {
+  for (int i = 0; i < packetlen; i++) {
+    prestonSerial.print(packet[i]);
   }
-  byte response = prestonSerial.read();
+}
+
+int rcvData() {
+  /* returns 1 if there is a new packet
+   * returns 0 if NAK was received
+   * returns -1 if anything else was received 
+   */
+  
+  int i = 0;
+  bool rcving = false;
+  char currentchar;
+  char stx = 0x02;
+  char etx = 0x03;
+  char nak = 0x15;
+  
+  while (prestonSerial.available() > 0 && !newdata) { //only receive if there is something to be received and no data in our buffer
+    currentchar = Serial.read();
+
+    if (rcving) {
+      rcvbuffer[i] = currentchar;
+      if (currentchar != etx) { // received byte is not etx, there is more to read
+        i++;
+      } else { // We have received etx, stop reading
+        rcving = false;
+        i = 0;
+        newdata = true;
+      }
+      
+    } else if (currentchar == stx) {
+      rcvbuffer[i] = currentchar;
+      rcving = true;
+      
+    } else if (currentchar == nak) {
+      // NAK received from MDR
+      return 0;
+      
+    } else {
+      // something inexplicable was received from MDR
+      return -1;
+    }
+  }
+
+  return true;
+
+
+/*
+  byte response[
+  if (prestonSerial.available()) {
+    byte response[100] = prestonSerial.readBytes();
+  }
+  
   if (response == char(06)) {
     Serial.println("ACK recieved from Preston");
     return true;
@@ -87,5 +110,5 @@ bool sendCommandToPreston(String command) {
     Serial.print(response);
     Serial.println(" recieved from Preston");
     return false;
-  }
+  }*/
 }
