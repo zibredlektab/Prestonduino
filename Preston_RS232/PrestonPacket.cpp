@@ -49,21 +49,26 @@ void PrestonPacket::compilePacket() {
   int coreasciilen = (this->corelen * 2); // Every byte in core becomes 2 bytes, as we 0-pad everything
   byte coreascii[coreasciilen];
   this->asciiEncode(core, this->corelen, coreascii);
-  delay(5000);
   Serial.print("Encoded core is: ");
   for (int i=0; i<coreasciilen; i++) {
     Serial.print(coreascii[i], HEX);
   }
   Serial.println();
-  
+
   // Finished encoding core
 
   // Compute sum, encode sum
   int coresum = this->computeSum(coreascii, coreasciilen);
   Serial.print("Sum is ");
   Serial.println(coresum, HEX);
-  byte sumascii[2]; // this will always be 4 bytes (2 hex bytes)
-  this->asciiEncode(coresum, 2, sumascii);
+  byte sumascii[2];
+  sprintf(sumascii, "%02X", coresum);
+
+  Serial.print("Encoded sum is: ");
+  for (int i=0; i<2; i++) {
+    Serial.print(sumascii[i], HEX);
+  }
+  Serial.println();
   // Finished with sum
 
 /*
@@ -86,9 +91,7 @@ void PrestonPacket::compilePacket() {
 
 int PrestonPacket::computeSum(byte* input, int len) {
   // byte* input is an ascii-encoded array
-
   
-  Serial.println("Computing sum");
   int sum = 2; // STX is included in sum
   for (int i = 0; i < len; i++) {
     // iterate through the ascii core
@@ -106,7 +109,7 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
    * 
    */
   
-  for (int i = 0; i < len ; i++) {     
+  for (int i = 0; i < len ; i++) {
     byte holder[2]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte)
     
     sprintf(holder, "%02X", input[i]);
