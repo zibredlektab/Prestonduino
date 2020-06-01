@@ -71,7 +71,7 @@ void PrestonPacket::compilePacket() {
   Serial.println();
   // Finished with sum
 
-/*
+
   // Put it all together
   byte output[this->packetlen];
   output[0] = 0x02; // STX
@@ -80,12 +80,12 @@ void PrestonPacket::compilePacket() {
     // Iterate through coreascii
     output[i+1] = coreascii[i]; // Don't overwrite STX
   }
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 2; i++) {
     // Iterate through sumascii
     output[coreasciilen + 1 + i] = coreascii[i]; // Don't overwrite core
   }
   
-  this->packet_ascii = output;*/
+  this->packet_ascii = output;
 }
 
 
