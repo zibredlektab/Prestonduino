@@ -65,7 +65,7 @@ void PrestonPacket::compilePacket() {
   sprintf(sumascii, "%02X", coresum);
 
   Serial.print("Encoded sum is: ");
-  for (int i=0; i<2; i++) {
+  for (int i = 0; i < 2; i++) {
     Serial.print(sumascii[i], HEX);
   }
   Serial.println();
@@ -75,14 +75,15 @@ void PrestonPacket::compilePacket() {
   // Put it all together
   byte output[this->packetlen];
   output[0] = 0x02; // STX
-  output[packetlen-1] = 0x03; // ETX
+  output[this->packetlen-1] = 0x03; // ETX
   for (int i = 0; i < coreasciilen; i++) {
     // Iterate through coreascii
     output[i+1] = coreascii[i]; // Don't overwrite STX
   }
+
   for (int i = 0; i < 2; i++) {
     // Iterate through sumascii
-    output[coreasciilen + i + 1] = sumascii[i]; // Don't overwrite core
+    output[coreasciilen+i+1] = sumascii[i]; // Don't overwrite core
   }
   
   this->packet_ascii = output;
@@ -162,5 +163,7 @@ byte* PrestonPacket::getPacket() {
 
 
 int PrestonPacket::getPacketLength() {
-  return packetlen;
+//  Serial.print("packetlen is ");
+//  Serial.println(this->packetlen);
+  return this->packetlen;
 }

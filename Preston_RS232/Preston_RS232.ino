@@ -15,9 +15,13 @@ void setup() {
   int datalen = 2;
   byte mode = 0x01;
   PrestonPacket foo = PrestonPacket(mode, data, datalen);
+
+  int packetlen = foo.getPacketLength();
+
+  byte* packet = foo.getPacket();
   
-  for (int i = 0; i < foo.getPacketLength(); i++) {
-    Serial.println(foo.getPacket()[i], HEX);
+  for (int i = 0; i < packetlen; i++) {
+    Serial.println(packet[i], HEX);
   }
 
   /*prestonSerial.begin(115200);

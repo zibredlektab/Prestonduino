@@ -6,10 +6,10 @@
 class PrestonPacket {
   private:
     byte mode;
-    byte* data;
+    byte* data; // pointer to array containing data
     int checksum;
     byte* packet_hex;
-    byte* packet_ascii; // ascii encoded
+    byte* packet_ascii; // pointer to first element of array containing ascii-encoded packet
     int computeSum(byte* input, int len);
     void asciiEncode(byte* input, int len, byte* output);
     void compilePacket();
