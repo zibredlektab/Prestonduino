@@ -74,18 +74,19 @@ void PrestonPacket::compilePacket() {
 
   // Put it all together
   byte output[this->packetlen];
-  output[0] = 0x02; // STX
-  output[this->packetlen-1] = 0x03; // ETX
+  int ioutput = 0;
+  output[ioutput++] = 0x02; // STX
   for (int i = 0; i < coreasciilen; i++) {
     // Iterate through coreascii
-    output[i+1] = coreascii[i]; // Don't overwrite STX
+    output[ioutput++] = coreascii[i]; // Don't overwrite STX
   }
 
   for (int i = 0; i < 2; i++) {
-    // Iterate through sumascii
-    output[coreasciilen+i+1] = sumascii[i]; // Don't overwrite core
+    // Iterate through sumascii 
+    output[ioutput++] = sumascii[i]; // Don't overwrite core
   }
   
+  output[ioutput++] = 0x03; // ETX
   this->packet_ascii = output;
 }
 

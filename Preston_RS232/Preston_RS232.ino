@@ -33,10 +33,7 @@ void setup() {
   }
   Serial.println("Connected to Preston");
 
-  byte buf[] = {02,30,31,30,32,30,30,31,43,39,39,03};
-  prestonSerial.write(buf, sizeof(buf)+1);*/
-
-  
+  */
   Serial.println("----");
 }
 
