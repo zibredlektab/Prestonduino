@@ -5,6 +5,7 @@ SoftwareSerial prestonSerial(2, 3); //2 is RX, 3 is TX
 
 bool newdata = false; // flag for whether there is data available to be processed
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
+int packetlen = 0;
 
 void setup() {
   Serial.begin(9600); //open communication with computer
@@ -19,7 +20,7 @@ void setup() {
   byte mode = 0x01;
   PrestonPacket foo = PrestonPacket(mode, data, datalen);
 
-  int packetlen = foo.getPacketLength();
+  packetlen = foo.getPacketLength();
 
   byte* packet = foo.getPacket();
   
@@ -38,13 +39,15 @@ void setup() {
 }
 
 void loop() {
-
-
+  rcvData();
+  if (newdata) {
+    PrestonPacket rcv = PrestonPacket(rcvbuffer, packetlen);
+  }
 }
 
 bool sendPacketToPreston(byte* packet, int packetlen) {
   for (int i = 0; i < packetlen; i++) {
-    prestonSerial.print(packet[i]);
+    prestonSerial.print(packet[i], HEX);
   }
 }
 
@@ -65,12 +68,10 @@ int rcvData() {
     currentchar = Serial.read();
 
     if (rcving) {
-      rcvbuffer[i] = currentchar;
-      if (currentchar != etx) { // received byte is not etx, there is more to read
-        i++;
-      } else { // We have received etx, stop reading
+      rcvbuffer[i++] = currentchar;
+      if (currentchar == etx) { // We have received etx, stop reading
         rcving = false;
-        i = 0;
+        packetlen = i;
         newdata = true;
       }
       

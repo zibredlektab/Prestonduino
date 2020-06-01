@@ -1,17 +1,37 @@
 #include "Arduino.h"
 #include "PrestonPacket.h"
 
+byte stx = 0x02;
+byte etx = 0x03;
+
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
+  // Initializer for creating a new packet
   this->mode = cmd_mode;
   this->data = cmd_data;
   this->datalen = cmd_datalen;
   this->corelen = this->datalen + 2; // mode, size, data
   this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
-  compilePacket();
+  this->compilePacket();
 }
 
 
+PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
+  // Initializer for creating a packet from a recieved set of bytes
+  this->packetlen = len;
+  this->parseInput(inputbuffer, len);
+}
 
+void PrestonPacket::parseInput(byte* inputbuffer, int len) {
+  int bufferindex = 0;
+  
+  if (inputbuffer[0] != stx) {
+    return;
+  } else {
+    // set mode
+    // set datalen, corelen
+    // set data
+  }
+}
 
 void PrestonPacket::compilePacket() {
   /*  1) build core (mode + size + data)
@@ -73,21 +93,21 @@ void PrestonPacket::compilePacket() {
 
 
   // Put it all together
-  byte output[this->packetlen];
   int ioutput = 0;
-  output[ioutput++] = 0x02; // STX
+  
+  this->packet_ascii[ioutput++] = 0x02; // STX
+  
   for (int i = 0; i < coreasciilen; i++) {
     // Iterate through coreascii
-    output[ioutput++] = coreascii[i]; // Don't overwrite STX
+    this->packet_ascii[ioutput++] = coreascii[i]; // Don't overwrite STX
   }
 
   for (int i = 0; i < 2; i++) {
     // Iterate through sumascii 
-    output[ioutput++] = sumascii[i]; // Don't overwrite core
+    this->packet_ascii[ioutput++] = sumascii[i]; // Don't overwrite core
   }
   
-  output[ioutput++] = 0x03; // ETX
-  this->packet_ascii = output;
+  this->packet_ascii[ioutput++] = 0x03; // ETX
 }
 
 
@@ -121,9 +141,16 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
     
     output[i*2] = holder[0]; // populate output, two bytes to represent what was previously one hex byte
     output[(i*2)+1] = holder[1];
+    
   }
 }
 
+void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
+  for (int i = 0; i < len; i++) {
+    byte holder[2];
+    
+  }
+}
 
 
 
