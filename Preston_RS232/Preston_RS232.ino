@@ -19,7 +19,6 @@ void setup() {
   for (int i = 0; i < foo.getPacketLength(); i++) {
     Serial.println(foo.getPacket()[i], HEX);
   }
-  Serial.println();
 
   /*prestonSerial.begin(115200);
   while (!prestonSerial) {

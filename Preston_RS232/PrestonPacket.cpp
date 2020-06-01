@@ -82,7 +82,7 @@ void PrestonPacket::compilePacket() {
   }
   for (int i = 0; i < 2; i++) {
     // Iterate through sumascii
-    output[coreasciilen + 1 + i] = coreascii[i]; // Don't overwrite core
+    output[coreasciilen + i + 1] = sumascii[i]; // Don't overwrite core
   }
   
   this->packet_ascii = output;
