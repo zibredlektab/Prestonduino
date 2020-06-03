@@ -48,7 +48,7 @@ void PrestonPacket::compilePacket() {
 
 
   // Build the core
-  Serial.println("Building the core");
+  //Serial.println("Building the core");
   byte core[this->corelen];
   core[0] = this->mode; // Mode is first
   core[1] = this->datalen; // Size of data
@@ -58,37 +58,37 @@ void PrestonPacket::compilePacket() {
     core[2+i] = this->data[i]; // Make sure not to overwrite the mode & size
   }
 
-  Serial.print("Core is ");
+  //Serial.print("Core is ");
   for (int i = 0; i < this->corelen; i++) {
-    Serial.print(core[i], HEX);
+    //Serial.print(core[i], HEX);
   }
-  Serial.println();
+  //Serial.println();
   // Finished building core
 
   // Encode the core
   int coreasciilen = (this->corelen * 2); // Every byte in core becomes 2 bytes, as we 0-pad everything
   byte coreascii[coreasciilen];
   this->asciiEncode(core, this->corelen, coreascii);
-  Serial.print("Encoded core is: ");
+  //Serial.print("Encoded core is: ");
   for (int i=0; i<coreasciilen; i++) {
-    Serial.print(coreascii[i], HEX);
+    //Serial.print(coreascii[i], HEX);
   }
-  Serial.println();
+  //Serial.println();
 
   // Finished encoding core
 
   // Compute sum, encode sum
   int coresum = this->computeSum(coreascii, coreasciilen);
-  Serial.print("Sum is ");
-  Serial.println(coresum, HEX);
+  //Serial.print("Sum is ");
+  //Serial.println(coresum, HEX);
   byte sumascii[2];
   sprintf(sumascii, "%02X", coresum);
 
-  Serial.print("Encoded sum is: ");
+  //Serial.print("Encoded sum is: ");
   for (int i = 0; i < 2; i++) {
-    Serial.print(sumascii[i], HEX);
+    //Serial.print(sumascii[i], HEX);
   }
-  Serial.println();
+  //Serial.println();
   // Finished with sum
 
 
@@ -136,8 +136,8 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
     
     sprintf(holder, "%02X", input[i]);
     
-    Serial.println(holder[0]);
-    Serial.println(holder[1]);
+    //Serial.println(holder[0]);
+    //Serial.println(holder[1]);
     
     output[i*2] = holder[0]; // populate output, two bytes to represent what was previously one hex byte
     output[(i*2)+1] = holder[1];
