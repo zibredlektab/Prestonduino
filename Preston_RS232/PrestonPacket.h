@@ -6,7 +6,7 @@
 class PrestonPacket {
   private:
     byte mode;
-    byte* data; // pointer to array containing data
+    byte data[10]; // not encoded, 10 for now as arbitrary limit
     int checksum;
     byte packet_ascii[50]; // ascii-encoded packet, currently limited to 50 bytes (arbitrary "big" limit)
     int computeSum(byte* input, int len);
@@ -27,6 +27,7 @@ class PrestonPacket {
     int setMode(byte cmd_mode);
     byte* getData();
     int setData(byte* cmd_data);
+    int getDataLen();
     byte* getPacket();
     int getPacketLength();
     int getSum();

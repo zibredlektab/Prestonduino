@@ -7,7 +7,9 @@ byte etx = 0x03;
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet
   this->mode = cmd_mode;
-  this->data = cmd_data;
+  for (int i = 0; i < cmd_datalen; i++) {
+    this->data[i] = cmd_data[i];
+  }
   this->datalen = cmd_datalen;
   this->corelen = this->datalen + 2; // mode, size, data
   this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
@@ -18,6 +20,9 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
   this->packetlen = len;
+  for (int i = 0; i < len; i++){
+    this->packet_ascii[i] = inputbuffer[i];
+  }
   this->parseInput(inputbuffer, len);
 }
 
@@ -25,11 +30,26 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
   int bufferindex = 0;
   
   if (inputbuffer[0] != stx) {
+    Serial.println("Packet to parse doesn't start with STX");
     return;
   } else {
+    byte decoded[len/2-1];
+    this->asciiDecode(inputbuffer, len, decoded);
+    
     // set mode
+    this->mode = decoded[0];
+
     // set datalen, corelen
+    this->datalen = decoded[1];
+    this->corelen = this->datalen + 2;
+
     // set data
+    for (int i = 0; i < this->datalen; i++) {
+      this->data[i] = decoded[i+2];
+    }
+
+    // set sum
+    this->checksum = decoded[len/2-2];
   }
 }
 
@@ -146,9 +166,15 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 }
 
 void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
-  for (int i = 0; i < len; i++) {
-    byte holder[2];
-    
+  int outputlen = (len/2)-1;
+  for (int i = 0; i < outputlen; i++) {  //1, 3, 5, 7, etc  so i*2+1
+    // input[0] is stx, input[len-1] is etx
+    byte holder[3];
+    int j = (i*2)+1;
+    sprintf(holder, "%c%c", input[j], input[j+1]);
+    holder[2] = 0; // null-terminate so we can treat as a string
+    //Serial.println(strtol(holder, NULL, 16), HEX);
+    output[i] = strtol(holder, NULL, 16);
   }
 }
 
@@ -174,8 +200,12 @@ byte* PrestonPacket::getData() {
 
 
 int PrestonPacket::setData(byte* cmd_data) {
-  this->data = cmd_data;
+  //this->data = cmd_data;
   return 1;
+}
+
+int PrestonPacket::getDataLen() {
+  return this->datalen;
 }
 
 
