@@ -26,13 +26,12 @@ void setup() {
   Serial.println("Hello!");
 
   byte initdata[] = {0x10, 0x0};
-  byte initmode = 0x01;
   int initlen = 2;
-  //PrestonPacket init = PrestonPacket(initmode, initdata, initlen);
-
-  byte initpacket[] = {0x02, 0x30, 0x33, 0x30, 0x30, 0x43, 0x35, 0x03};
+  byte initmode = 0x01;
+  PrestonPacket init = PrestonPacket(initmode, initdata, initlen);
+  byte* initpacket = init.getPacket();
   
-  sendPacketToPreston(initpacket, 8);
+  sendPacketToPreston(initpacket, init.getPacketLength());
 
 
   byte data[] = {0x03};
@@ -43,8 +42,6 @@ void setup() {
   packetlen = foo.getPacketLength();
 
   byte* packet = foo.getPacket();
-
-  PrestonPacket bar = PrestonPacket(packet, packetlen);
   
   sendPacketToPreston(packet, packetlen);
 
