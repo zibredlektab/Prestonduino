@@ -5,7 +5,8 @@ byte stx = 0x02;
 byte etx = 0x03;
 
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
-  // Initializer for creating a new packet
+  // Initializer for creating a new packet from component parts
+  Serial.println("Creating a new PrestonPacket from component parts");
   this->mode = cmd_mode;
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
@@ -169,7 +170,7 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 
 void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
   int outputlen = (len/2)-1;
-  for (int i = 0; i < outputlen; i++) {  //1, 3, 5, 7, etc  so i*2+1
+  for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
     // input[0] is stx, input[len-1] is etx
     byte holder[3];
     int j = (i*2)+1;

@@ -22,8 +22,18 @@ void setup() {
   while (!Serial1) {
     ;
   }
-  Serial.println();
+  Serial.println("--Setup begins--");
   Serial.println("Hello!");
+
+  byte initdata[] = {0x10, 0x0};
+  byte initmode = 0x01;
+  int initlen = 2;
+  //PrestonPacket init = PrestonPacket(initmode, initdata, initlen);
+
+  byte initpacket[] = {0x02, 0x30, 0x33, 0x30, 0x30, 0x43, 0x35, 0x03};
+  
+  sendPacketToPreston(initpacket, 8);
+
 
   byte data[] = {0x03};
   int datalen = 1;
@@ -39,7 +49,7 @@ void setup() {
   sendPacketToPreston(packet, packetlen);
 
     
-  Serial.println("----");
+  Serial.println("--Setup complete, loop begins below--");
 }
 
 void loop() {
@@ -55,7 +65,7 @@ void loop() {
     
   rcvData();
   if (newdata) {
-    Serial.print("Received from Preston: ");
+    Serial.print("Received from MDR: ");
     for (int i=0; i < packetlen; i++) {
       Serial.print(rcvbuffer[i], HEX);
     }
@@ -67,7 +77,9 @@ void loop() {
     int rcvdatalen = rcv.getDataLen();
     byte *rcvdata = rcv.getData();
     for (int i = 0; i < rcvdatalen; i++) {
-      Serial.println(rcvdata[i], HEX);
+      char buf[20];
+      sprintf(buf, "%02X", rcvdata[i]);
+      Serial.println(buf);
     }
   }
 }
@@ -84,7 +96,7 @@ bool sendPacketToPreston(byte* packet, int packetlen) {
 
 int rcvData() {
   /* returns 1 if there is a new packet
-   * returns 0 if NAK was received
+   * returns 0 if NAK or ACK was received
    * returns -1 if anything else was received 
    */
   
@@ -111,10 +123,15 @@ int rcvData() {
       rcvbuffer[i++] = currentchar;
       rcving = true;
       
-    } else if (currentchar == nak || currentchar == ack) {
-      // NAK or ACK received from MDR
+    } else if (currentchar == nak) {
+      Serial.println("Received NAK from MDR");
+      // NAK received from MDR
       return 0;
       
+    } else if (currentchar == ack) {
+      Serial.println("Received ACK from MDR");
+      return 0;
+  
     } else {
       // something inexplicable was received from MDR
       return -1;
@@ -122,23 +139,4 @@ int rcvData() {
   }
 
   return 1;
-
-
-/*
-  byte response[
-  if (Serial1.available()) {
-    byte response[100] = Serial1.readBytes();
-  }
-  
-  if (response == char(06)) {
-    Serial.println("ACK recieved from Preston");
-    return true;
-  } else if (response == char(15)) {
-    Serial.println("NAK recieved from Preston");
-    return false;
-  } else {
-    Serial.print(response);
-    Serial.println(" recieved from Preston");
-    return false;
-  }*/
 }
