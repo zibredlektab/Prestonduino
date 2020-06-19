@@ -18,7 +18,8 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 
 
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
-  // Initializer for creating a packet from a recieved set of bytes
+  // Initializer for creating a packet from a recieved set of bytes, does not include STX and ETX
+  Serial.println("Creating a new PrestonPacket from a buffer");
   this->packetlen = len;
   for (int i = 0; i < len; i++){
     this->packet_ascii[i] = inputbuffer[i];
@@ -31,6 +32,7 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
   
   if (inputbuffer[0] != stx) {
     Serial.println("Packet to parse doesn't start with STX");
+    Serial.println(inputbuffer[0]);
     return;
   } else {
     byte decoded[len/2-1];

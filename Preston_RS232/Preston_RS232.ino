@@ -1,7 +1,5 @@
-#include <AltSoftSerial.h>
 #include "PrestonPacket.h"
 
-AltSoftSerial prestonSerial(11,12);
 
 bool newdata = false; // flag for whether there is data available to be processed
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
@@ -16,16 +14,20 @@ void setup() {
 
 //  SWprint();
   
-  Serial.begin(115200); //open communication with computer
+  Serial.begin(9600); //open communication with computer
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
+  }
+  Serial1.begin(115200); //open communication with MDR
+  while (!Serial1) {
+    ;
   }
   Serial.println();
   Serial.println("Hello!");
 
-  byte data[] = {0x00, 0x1c};
-  int datalen = 2;
-  byte mode = 0x01;
+  byte data[] = {0x03};
+  int datalen = 1;
+  byte mode = 0x04;
   PrestonPacket foo = PrestonPacket(mode, data, datalen);
 
   packetlen = foo.getPacketLength();
@@ -33,19 +35,8 @@ void setup() {
   byte* packet = foo.getPacket();
 
   PrestonPacket bar = PrestonPacket(packet, packetlen);
-  Serial.println(bar.getPacketLength());
-  Serial.println(bar.getMode(), HEX);
-  int bardatalen = bar.getDataLen();
-  Serial.println(bardatalen, HEX);
-  byte *bardata = bar.getData();
-  for (int i = 0; i < bardatalen; i++) {
-    Serial.println(bardata[i], HEX);
-  }
-  Serial.println(bar.getSum(), HEX);
-
-  //prestonSerial.begin(115200);
-
-  //sendPacketToPreston(packet, packetlen);
+  
+  sendPacketToPreston(packet, packetlen);
 
     
   Serial.println("----");
@@ -55,30 +46,39 @@ void loop() {
   /*byte packet[] = {0x02,0x30,0x34,0x30,0x31,0x30,0x33,0x32,0x41,0x03};
 
   for (int i = 0; i < 10; i++) {
-    prestonSerial.write(packet[i]);
+    Serial1.print(packet[i], HEX);
   }
-
-  //if (prestonSerial.available() > 0) {
-    char c = prestonSerial.read();
-    Serial.print(c);
-  //}
+  while (Serial1.available()) {
+    Serial.println(Serial1.read(), HEX);
+  }*/
   
+    
   rcvData();
   if (newdata) {
     Serial.print("Received from Preston: ");
-    PrestonPacket rcv = PrestonPacket(rcvbuffer, packetlen);
     for (int i=0; i < packetlen; i++) {
-      Serial.print(rcvbuffer[i]);
+      Serial.print(rcvbuffer[i], HEX);
     }
     Serial.println();
-  }*/
+    PrestonPacket rcv = PrestonPacket(rcvbuffer, packetlen);
+    newdata = false;
+
+
+    int rcvdatalen = rcv.getDataLen();
+    byte *rcvdata = rcv.getData();
+    for (int i = 0; i < rcvdatalen; i++) {
+      Serial.println(rcvdata[i], HEX);
+    }
+  }
 }
 
 
 bool sendPacketToPreston(byte* packet, int packetlen) {
   for (int i = 0; i < packetlen; i++) {
-    prestonSerial.write(packet[i]);
-    delay(10);
+    Serial.print("sending ");
+    Serial.println(packet[i], HEX);
+    
+    Serial1.write(packet[i]);
   }
 }
 
@@ -93,11 +93,11 @@ int rcvData() {
   char currentchar;
   char stx = 0x02;
   char etx = 0x03;
+  char ack = 0x06;
   char nak = 0x15;
   
-  while (prestonSerial.available() > 0 && !newdata) { //only receive if there is something to be received and no data in our buffer
-    Serial.println("data available");
-    currentchar = Serial.read();
+  while (Serial1.available() > 0 && !newdata) { //only receive if there is something to be received and no data in our buffer
+    currentchar = Serial1.read();
 
     if (rcving) {
       rcvbuffer[i++] = currentchar;
@@ -108,11 +108,11 @@ int rcvData() {
       }
       
     } else if (currentchar == stx) {
-      rcvbuffer[i] = currentchar;
+      rcvbuffer[i++] = currentchar;
       rcving = true;
       
-    } else if (currentchar == nak) {
-      // NAK received from MDR
+    } else if (currentchar == nak || currentchar == ack) {
+      // NAK or ACK received from MDR
       return 0;
       
     } else {
@@ -126,8 +126,8 @@ int rcvData() {
 
 /*
   byte response[
-  if (prestonSerial.available()) {
-    byte response[100] = prestonSerial.readBytes();
+  if (Serial1.available()) {
+    byte response[100] = Serial1.readBytes();
   }
   
   if (response == char(06)) {
