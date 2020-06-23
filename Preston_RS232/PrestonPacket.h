@@ -37,7 +37,7 @@ class PrestonPacket {
     byte* getPacket();
     int getPacketLength();
     int getSum();
-    int getFocusDistance();
+    unsigned int getFocusDistance();
 };
 
 #endif

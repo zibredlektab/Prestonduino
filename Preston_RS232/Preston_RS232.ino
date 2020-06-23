@@ -49,8 +49,8 @@ void loop() {
     int rcvdatalen = rcv->getDataLen();
     byte *rcvdata = rcv->getData();
 
-    Serial.print("start");
-    Serial.print(rcv->getFocusDistance(), HEX);
+    Serial.println("start");
+    Serial.println(rcv->getFocusDistance(), HEX);
     Serial.println("end");
 
     delete rcv;
