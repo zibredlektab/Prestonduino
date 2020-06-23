@@ -1,9 +1,6 @@
 #include "Arduino.h"
 #include "PrestonPacket.h"
 
-byte stx = 0x02;
-byte etx = 0x03;
-
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   Serial.println("Creating a new PrestonPacket from component parts");
@@ -19,28 +16,30 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 
 
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
-  // Initializer for creating a packet from a recieved set of bytes, does not include STX and ETX
+  // Initializer for creating a packet from a recieved set of bytes
   Serial.println("Creating a new PrestonPacket from a buffer");
+  Serial.print("Buffer is this many bytes long: ");
+  Serial.println(len);
   this->packetlen = len;
   for (int i = 0; i < len; i++){
     this->packet_ascii[i] = inputbuffer[i];
   }
-  this->parseInput(inputbuffer, len);
+  this->parseInput(this->packet_ascii, len);
 }
 
 void PrestonPacket::parseInput(byte* inputbuffer, int len) {
-  int bufferindex = 0;
+  static int bufferindex = 0;
   
-  if (inputbuffer[0] != stx) {
-    Serial.println("Packet to parse doesn't start with STX");
+  if (inputbuffer[0] != STX) {
+    Serial.print("Packet to parse doesn't start with STX, instead starts with ");
     Serial.println(inputbuffer[0]);
     return;
   } else {
     byte decoded[len/2-1];
     this->asciiDecode(inputbuffer, len, decoded);
-    
     // set mode
     this->mode = decoded[0];
+    
 
     // set datalen, corelen
     this->datalen = decoded[1];
@@ -50,6 +49,7 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     for (int i = 0; i < this->datalen; i++) {
       this->data[i] = decoded[i+2];
     }
+
 
     // set sum
     this->checksum = decoded[len/2-2];
@@ -71,7 +71,6 @@ void PrestonPacket::compilePacket() {
 
 
   // Build the core
-  //Serial.println("Building the core");
   byte core[this->corelen];
   core[0] = this->mode; // Mode is first
   core[1] = this->datalen; // Size of data
@@ -80,38 +79,18 @@ void PrestonPacket::compilePacket() {
     // Iterate through the data array
     core[2+i] = this->data[i]; // Make sure not to overwrite the mode & size
   }
-
-  //Serial.print("Core is ");
-  for (int i = 0; i < this->corelen; i++) {
-    //Serial.print(core[i], HEX);
-  }
-  //Serial.println();
   // Finished building core
 
   // Encode the core
   int coreasciilen = (this->corelen * 2); // Every byte in core becomes 2 bytes, as we 0-pad everything
   byte coreascii[coreasciilen];
   this->asciiEncode(core, this->corelen, coreascii);
-  //Serial.print("Encoded core is: ");
-  for (int i=0; i<coreasciilen; i++) {
-    //Serial.print(coreascii[i], HEX);
-  }
-  //Serial.println();
-
   // Finished encoding core
 
   // Compute sum, encode sum
   int coresum = this->computeSum(coreascii, coreasciilen);
-  //Serial.print("Sum is ");
-  //Serial.println(coresum, HEX);
   byte sumascii[2];
   sprintf(sumascii, "%02X", coresum);
-
-  //Serial.print("Encoded sum is: ");
-  for (int i = 0; i < 2; i++) {
-    //Serial.print(sumascii[i], HEX);
-  }
-  //Serial.println();
   // Finished with sum
 
 
@@ -159,9 +138,6 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
     
     sprintf(holder, "%02X", input[i]);
     
-    //Serial.println(holder[0]);
-    //Serial.println(holder[1]);
-    
     output[i*2] = holder[0]; // populate output, two bytes to represent what was previously one hex byte
     output[(i*2)+1] = holder[1];
     
@@ -170,13 +146,16 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 
 void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
   int outputlen = (len/2)-1;
-  for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
+  for (int i = 0; i < 8; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
     // input[0] is stx, input[len-1] is etx
-    byte holder[3];
+    static char holder[2];
     int j = (i*2)+1;
+
+    //holder[0] = char(input[j]);
+    //holder[1] = char(input[j+1]);
+
     sprintf(holder, "%c%c", input[j], input[j+1]);
-    holder[2] = 0; // null-terminate so we can treat as a string
-    //Serial.println(strtol(holder, NULL, 16), HEX);
+
     output[i] = strtol(holder, NULL, 16);
   }
 }
