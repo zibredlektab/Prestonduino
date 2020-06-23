@@ -51,7 +51,7 @@ void loop() {
 
     
       
-    Serial.print("focus");
+    Serial.print("start");
     static char outbuf[10];
     /*
     sprintf(&outbuf[0], "%02X", 0x1D);
@@ -63,7 +63,8 @@ void loop() {
       sprintf(&outbuf[(i-1)*2], "%02X", rcvdata[i]);
       //Serial.print(rcvdata[i], HEX);
     }
-    Serial.println(outbuf);
+    Serial.print(outbuf);
+    Serial.println("end");
 
     delete rcv;
   }
