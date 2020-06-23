@@ -6,10 +6,10 @@ char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 1
 int packetlen = 0;
 
 unsigned long time_now = 0;
-int period = 1000;
+int period = 12;
 
 void setup() {
-  Serial.begin(9600); //open communication with computer
+  Serial.begin(115200); //open communication with computer
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
   }
@@ -48,10 +48,19 @@ void loop() {
     newdata = false;
     int rcvdatalen = rcv->getDataLen();
     byte *rcvdata = rcv->getData();
+
     
-    for (int i = 1; i < rcvdatalen; i++) {
-      Serial.print(rcvdata[i], HEX);
+
+    Serial.print("focus");
+    char outbuf[2];
+    
+    
+    for (int i = 1; i < rcvdatalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
+      sprintf(outbuf, "%02X", rcvdata[i]);
+      //Serial.print(rcvdata[i], HEX);
+      Serial.print(outbuf);
     }
+    Serial.println();
 
     delete rcv;
   }
