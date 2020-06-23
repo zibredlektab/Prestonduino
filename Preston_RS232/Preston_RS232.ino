@@ -5,6 +5,9 @@ bool newdata = false; // flag for whether there is data available to be processe
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
 int packetlen = 0;
 
+unsigned long time_now = 0;
+int period = 1000;
+
 void setup() {
   Serial.begin(9600); //open communication with computer
   while (!Serial) {
@@ -14,8 +17,7 @@ void setup() {
   while (!Serial1) {
     ;
   }
-  Serial.println("--Setup begins--");
-  Serial.println("Hello!");
+
 
   byte initdata[] = {0x0, 0x0};
   int initlen = 2;
@@ -25,51 +27,57 @@ void setup() {
   
   sendPacketToPreston(initpacket, init->getPacketLength());
   delete init;
-
-  byte data[] = {0x2};
-  int datalen = 1;
-  byte mode = 0x04;
-  PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);
-
-  packetlen = reqfordata->getPacketLength();
-
-  byte* reqfordatapacket = reqfordata->getPacket();
-  
-  sendPacketToPreston(reqfordatapacket, packetlen);
-  delete reqfordata;
     
-  Serial.println("--Setup complete, loop begins--");
 }
 
 void loop() {  
+  if (millis() >= time_now + period) {
+    time_now += period;
+    askPrestonForData();
+  }
+
+  
   rcvData();
   if (newdata) {
-    Serial.print("Received from MDR: ");
+    /*Serial.print("Received from MDR: ");
     for (int i=0; i < packetlen; i++) {
       Serial.print(rcvbuffer[i], HEX);
     }
-    Serial.println();
-    
+    Serial.println();*/
     PrestonPacket *rcv = new PrestonPacket(rcvbuffer, packetlen);
     newdata = false;
     int rcvdatalen = rcv->getDataLen();
     byte *rcvdata = rcv->getData();
     
-    for (int i = 0; i < rcvdatalen; i++) {
-      Serial.println(rcvdata[i], HEX);
+    for (int i = 1; i < rcvdatalen; i++) {
+      Serial.print(rcvdata[i], HEX);
     }
 
     delete rcv;
   }
 }
 
+void askPrestonForData() {
+  byte data[] = {0x2};
+  int datalen = 1;
+  byte mode = 0x04;
+  PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);
+  
+  packetlen = reqfordata->getPacketLength();
+  
+  byte* reqfordatapacket = reqfordata->getPacket();
+  
+  sendPacketToPreston(reqfordatapacket, packetlen);
+  delete reqfordata;
+}
 
 bool sendPacketToPreston(byte* packet, int packetlen) {
   for (int i = 0; i < packetlen; i++) {
-    Serial.print("sending ");
-    Serial.println(packet[i], HEX);
+    //Serial.print("sending ");
+    //Serial.println(packet[i], HEX);
     
     Serial1.write(packet[i]);
+    Serial1.flush(); // wait for the packet to finish sending
   }
 }
 
@@ -85,6 +93,7 @@ int rcvData() {
   
   while (Serial1.available() > 0 && !newdata) { //only receive if there is something to be received and no data in our buffer
     currentchar = Serial1.read();
+    delay(10);
     if (rcving) {
       rcvbuffer[i++] = currentchar;
       if (currentchar == ETX) { // We have received etx, stop reading
@@ -94,6 +103,7 @@ int rcvData() {
       }
       
     } else if (currentchar == STX) {
+      i = 0;
       rcvbuffer[i++] = currentchar;
       rcving = true;
       
@@ -103,11 +113,13 @@ int rcvData() {
       return 0;
       
     } else if (currentchar == ACK) {
-      Serial.println("Received ACK from MDR");
+      // ACK received from MDR
+      delay(10);
       return 0;
   
     } else {
       // something inexplicable was received from MDR
+      Serial1.write(NAK); // tell the MDR that we don't understand
       return -1;
     }
   }
