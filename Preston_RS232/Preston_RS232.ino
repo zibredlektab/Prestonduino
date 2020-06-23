@@ -6,7 +6,7 @@ char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 1
 int packetlen = 0;
 
 unsigned long time_now = 0;
-int period = 12;
+int period = 1;
 
 void setup() {
   Serial.begin(115200); //open communication with computer
@@ -52,21 +52,7 @@ void loop() {
     
       
     Serial.print("start");
-    static char focusdist[10];
-    /*
-    sprintf(&focusdist[0], "%02X", 0x1D);
-    sprintf(&focusdist[2], "%02X", 0x1);
-    Serial.print(focusdist);
-    */
-
-    int j;
-    for (int i = 1; i < rcvdatalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
-      j = (i-1)*2;
-      sprintf(&focusdist[j], "%02X", rcvdata[i]);
-      //Serial.print(rcvdata[i], HEX);
-    }
-    focusdist[6] = "\0";
-    Serial.print(getKnobPercentage(strtol(focusdist, NULL, 16)));
+    Serial.print(rcv->getFocusDistance(), HEX);
     Serial.println("end");
 
     delete rcv;

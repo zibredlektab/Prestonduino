@@ -160,6 +160,24 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
 
 
 
+int PrestonPacket::getFocusDistance() {
+  if (this->mode != 0x04) {
+    Serial.println("Not mode 4, cannot get focus distance");
+    return -1.0;
+  }
+  
+  static char focusdist[6];
+  int j = 0;
+  for (int i = 1; i < this->datalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
+    j = (i-1)*2;
+    sprintf(&focusdist[j], "%02X", this->data[i]);
+  }
+
+  focusdist[j] = "\0";
+
+
+  return strtol(focusdist, NULL, HEX);
+}
 
 
 
