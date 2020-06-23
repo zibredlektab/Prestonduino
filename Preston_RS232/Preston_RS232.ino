@@ -52,22 +52,31 @@ void loop() {
     
       
     Serial.print("start");
-    static char outbuf[10];
+    static char focusdist[10];
     /*
-    sprintf(&outbuf[0], "%02X", 0x1D);
-    sprintf(&outbuf[2], "%02X", 0x1);
-    Serial.print(outbuf);
+    sprintf(&focusdist[0], "%02X", 0x1D);
+    sprintf(&focusdist[2], "%02X", 0x1);
+    Serial.print(focusdist);
     */
-   
+
+    int j;
     for (int i = 1; i < rcvdatalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
-      sprintf(&outbuf[(i-1)*2], "%02X", rcvdata[i]);
+      j = (i-1)*2;
+      sprintf(&focusdist[j], "%02X", rcvdata[i]);
       //Serial.print(rcvdata[i], HEX);
     }
-    Serial.print(outbuf);
+    focusdist[6] = "\0";
+    Serial.print(getKnobPercentage(strtol(focusdist, NULL, 16)));
     Serial.println("end");
 
     delete rcv;
   }
+}
+
+float getKnobPercentage(int distance) {
+  
+  Serial.println(distance, HEX);
+  return 0.0;
 }
 
 void askPrestonForData() {
