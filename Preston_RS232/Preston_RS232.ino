@@ -26,7 +26,7 @@ void setup() {
   sendPacketToPreston(initpacket, init->getPacketLength());
   delete init;
 
-  byte data[] = {0x47};
+  byte data[] = {0x2};
   int datalen = 1;
   byte mode = 0x04;
   PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);

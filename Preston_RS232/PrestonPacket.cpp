@@ -37,6 +37,8 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
   } else {
     byte decoded[len/2-1];
     this->asciiDecode(inputbuffer, len, decoded);
+    
+    
     // set mode
     this->mode = decoded[0];
     
@@ -44,6 +46,7 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     // set datalen, corelen
     this->datalen = decoded[1];
     this->corelen = this->datalen + 2;
+
 
     // set data
     for (int i = 0; i < this->datalen; i++) {
@@ -146,13 +149,10 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 
 void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
   int outputlen = (len/2)-1;
-  for (int i = 0; i < 8; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
+  for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
     // input[0] is stx, input[len-1] is etx
     static char holder[2];
     int j = (i*2)+1;
-
-    //holder[0] = char(input[j]);
-    //holder[1] = char(input[j+1]);
 
     sprintf(holder, "%c%c", input[j], input[j+1]);
 
