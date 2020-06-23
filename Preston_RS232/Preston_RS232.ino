@@ -50,17 +50,20 @@ void loop() {
     byte *rcvdata = rcv->getData();
 
     
-
+      
     Serial.print("focus");
-    char outbuf[2];
-    
-    
+    static char outbuf[10];
+    /*
+    sprintf(&outbuf[0], "%02X", 0x1D);
+    sprintf(&outbuf[2], "%02X", 0x1);
+    Serial.print(outbuf);
+    */
+   
     for (int i = 1; i < rcvdatalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
-      sprintf(outbuf, "%02X", rcvdata[i]);
+      sprintf(&outbuf[(i-1)*2], "%02X", rcvdata[i]);
       //Serial.print(rcvdata[i], HEX);
-      Serial.print(outbuf);
     }
-    Serial.println();
+    Serial.println(outbuf);
 
     delete rcv;
   }
