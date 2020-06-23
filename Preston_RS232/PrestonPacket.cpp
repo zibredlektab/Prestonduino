@@ -163,7 +163,7 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
 int PrestonPacket::getFocusDistance() {
   if (this->mode != 0x04) {
     Serial.println("Not mode 4, cannot get focus distance");
-    return -1.0;
+    return -1;
   }
   
   static char focusdist[6];
@@ -173,8 +173,9 @@ int PrestonPacket::getFocusDistance() {
     sprintf(&focusdist[j], "%02X", this->data[i]);
   }
 
-  focusdist[j] = "\0";
+  //focusdist[j] = "\0";
 
+  Serial.println(focusdist);
 
   return strtol(focusdist, NULL, HEX);
 }

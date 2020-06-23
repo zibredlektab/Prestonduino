@@ -6,7 +6,7 @@ char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 1
 int packetlen = 0;
 
 unsigned long time_now = 0;
-int period = 1;
+int period = 12;
 
 void setup() {
   Serial.begin(115200); //open communication with computer
@@ -19,7 +19,7 @@ void setup() {
   }
 
 
-  byte initdata[] = {0x0, 0x0};
+  byte initdata[] = {0x10, 0x00};
   int initlen = 2;
   byte initmode = 0x01;
   PrestonPacket *init = new PrestonPacket(initmode, initdata, initlen);
@@ -49,8 +49,6 @@ void loop() {
     int rcvdatalen = rcv->getDataLen();
     byte *rcvdata = rcv->getData();
 
-    
-      
     Serial.print("start");
     Serial.print(rcv->getFocusDistance(), HEX);
     Serial.println("end");
@@ -108,6 +106,7 @@ int rcvData() {
         rcving = false;
         packetlen = i;
         newdata = true;
+        Serial1.write(ACK); // Polite thing to do
       }
       
     } else if (currentchar == STX) {
@@ -116,13 +115,11 @@ int rcvData() {
       rcving = true;
       
     } else if (currentchar == NAK) {
-      Serial.println("Received NAK from MDR");
       // NAK received from MDR
       return 0;
       
     } else if (currentchar == ACK) {
       // ACK received from MDR
-      delay(10);
       return 0;
   
     } else {
