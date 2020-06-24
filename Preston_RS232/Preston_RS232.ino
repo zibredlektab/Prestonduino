@@ -1,7 +1,7 @@
 #include "PrestonPacket.h"
 
 
-bool newdata = false; // flag for whether there is data available to be processed
+bool packetcomplete = false; // flag for whether there is data available to be processed
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
 int packetlen = 0;
 
@@ -19,7 +19,7 @@ void setup() {
   }
 
 
-  byte initdata[] = {0x10, 0x00};
+  byte initdata[] = {0x00, 0x00};
   int initlen = 2;
   byte initmode = 0x01;
   PrestonPacket *init = new PrestonPacket(initmode, initdata, initlen);
@@ -30,29 +30,23 @@ void setup() {
     
 }
 
-void loop() {  
-  if (millis() >= time_now + period) {
-    time_now += period;
-    askPrestonForData();
-  }
+void loop() {
+  Serial.println(millis());
+  askPrestonForData();
 
   
   rcvData();
-  if (newdata) {
-    /*Serial.print("Received from MDR: ");
-    for (int i=0; i < packetlen; i++) {
-      Serial.print(rcvbuffer[i], HEX);
-    }
-    Serial.println();*/
+  if (packetcomplete) {
+
     PrestonPacket *rcv = new PrestonPacket(rcvbuffer, packetlen);
-    newdata = false;
+    packetcomplete = false;
     int rcvdatalen = rcv->getDataLen();
     byte *rcvdata = rcv->getData();
 
     Serial.print("start");
     Serial.print(rcv->getFocusDistance());
     Serial.println("end");
-
+    
     delete rcv;
   }
 }
@@ -64,7 +58,7 @@ float getKnobPercentage(int distance) {
 }
 
 void askPrestonForData() {
-  byte data[] = {0x2};
+  byte data[] = {0x2}; //0x1 iris, 0x2 focus, 0x4 zoom, 0x8 aux
   int datalen = 1;
   byte mode = 0x04;
   PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);
@@ -97,15 +91,14 @@ int rcvData() {
   bool rcving = false;
   char currentchar;
   
-  while (Serial1.available() > 0 && !newdata) { //only receive if there is something to be received and no data in our buffer
+  while (Serial1.available() > 0 && !packetcomplete) { //only receive if there is something to be received and no data in our buffer
     currentchar = Serial1.read();
-    delay(10);
     if (rcving) {
       rcvbuffer[i++] = currentchar;
       if (currentchar == ETX) { // We have received etx, stop reading
         rcving = false;
         packetlen = i;
-        newdata = true;
+        packetcomplete = true;
         Serial1.write(ACK); // Polite thing to do
       }
       
