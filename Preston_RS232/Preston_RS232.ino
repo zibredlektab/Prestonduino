@@ -1,12 +1,17 @@
 #include "PrestonPacket.h"
+#include "MaxTools.h"
 
 
+
+bool rcving = false;
 bool packetcomplete = false; // flag for whether there is data available to be processed
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
 int packetlen = 0;
 
+MaxTools *tools = new MaxTools();
+
 unsigned long time_now = 0;
-int period = 12;
+int period = 5;
 
 void setup() {
   Serial.begin(115200); //open communication with computer
@@ -17,8 +22,7 @@ void setup() {
   while (!Serial1) {
     ;
   }
-
-
+  
   byte initdata[] = {0x00, 0x00};
   int initlen = 2;
   byte initmode = 0x01;
@@ -31,8 +35,10 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(millis());
-  askPrestonForData();
+  if (millis() >= time_now + period) {
+    time_now = millis();
+    askPrestonForData();
+  }
 
   
   rcvData();
@@ -51,11 +57,6 @@ void loop() {
   }
 }
 
-float getKnobPercentage(int distance) {
-  
-  Serial.println(distance, HEX);
-  return 0.0;
-}
 
 void askPrestonForData() {
   byte data[] = {0x2}; //0x1 iris, 0x2 focus, 0x4 zoom, 0x8 aux
@@ -88,36 +89,50 @@ int rcvData() {
    */
   
   static int i = 0;
-  bool rcving = false;
   char currentchar;
   
   while (Serial1.available() > 0 && !packetcomplete) { //only receive if there is something to be received and no data in our buffer
     currentchar = Serial1.read();
+    //Serial.print("received character ");
+    //Serial.println(currentchar);
     if (rcving) {
       rcvbuffer[i++] = currentchar;
       if (currentchar == ETX) { // We have received etx, stop reading
+        //Serial.println("ETX");
         rcving = false;
         packetlen = i;
         packetcomplete = true;
         Serial1.write(ACK); // Polite thing to do
+      } else {
+        //Serial.println(currentchar);
       }
       
     } else if (currentchar == STX) {
+      //Serial.println("STX");
       i = 0;
       rcvbuffer[i++] = currentchar;
       rcving = true;
       
     } else if (currentchar == NAK) {
+      //Serial.println("NAK");
       // NAK received from MDR
-      return 0;
+      break;
       
     } else if (currentchar == ACK) {
+      //Serial.println("ACK");
       // ACK received from MDR
-      return 0;
+      break;
   
     } else {
+      Serial.print("(I have no idea what this means) ");
+      Serial.println(currentchar);
       // something inexplicable was received from MDR
+      while (Serial1.available()) {
+        Serial.print("flushed: ");
+        Serial.println(Serial1.read(), HEX);
+      }
       Serial1.write(NAK); // tell the MDR that we don't understand
+      
       return -1;
     }
   }

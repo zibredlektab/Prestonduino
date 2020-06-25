@@ -162,7 +162,7 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
 
 unsigned int PrestonPacket::getFocusDistance() {
   if (this->mode != 0x04) {
-    Serial.println("Not mode 4, cannot get focus distance");
+    Serial.println("******************Not mode 4, cannot get focus distance******************");
     return -1;
   }
   
