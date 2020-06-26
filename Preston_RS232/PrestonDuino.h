@@ -26,13 +26,14 @@ class PrestonDuino {
     int sendToMDR(PrestonPacket packet, bool retry); // same as above, with option to retry on NAK
     int rcvFromMDR(byte* buf); // >0 result is length of data received, -1 if ACK, -2 if ERR, -3 if NAK
     
-    // All of the following are according to the Preston protocol, returning 1 if an ACK is recieved, 0 if ERR, and -1 if NAK
-    int mode(byte datah, byte datal);
-    int stat();
-    int who();
-    int data(byte datadescription);
-    int data(byte* datadescription, int datalen);
-    int rtc(byte select, byte* data); // this is called "Time" in the protocol. Time is a reserved name, hence rtc instead.
+    // All of the following are according to the Preston protocol.
+    // Methods that return data will return a byte or byte array, the length of which is determined by the protocol.
+    void mode(byte datah, byte datal);
+    byte* stat();
+    byte who();
+    byte* data(byte datadescription);
+    byte* data(byte* datadescription, int datalen); // not sure what is returned for this command
+    byte* rtc(byte select, byte* data); // this is called "Time" in the protocol. Time is a reserved name, hence rtc instead.
     int setl(byte motors);
     int ct();
     int ct(byte cameratype);
@@ -44,6 +45,8 @@ class PrestonDuino {
     int info(byte type);
     int dist(byte type, int dist);
     //int err(); // Here for completeness but unused as a client command
+
+    // Methods for 
 };
 
 #endif
