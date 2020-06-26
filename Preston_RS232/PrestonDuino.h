@@ -19,6 +19,9 @@ class PrestonDuino {
     unsigned long time_now = 0; // used for scheduling packets
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
 
+    void sendACK();
+    void sendNAK();
+
     
   public:
     PrestonDuino(HardwareSerial& serial);
@@ -34,17 +37,17 @@ class PrestonDuino {
     byte* data(byte datadescription);
     byte* data(byte* datadescription, int datalen); // not sure what is returned for this command
     byte* rtc(byte select, byte* data); // this is called "Time" in the protocol. Time is a reserved name, hence rtc instead.
-    int setl(byte motors);
-    int ct();
-    int ct(byte cameratype);
-    int mset(byte mseth, byte msetl);
-    int mstat(byte motor);
-    int rs(bool camerarun);
-    int tcstat();
-    int ld();
-    int info(byte type);
-    int dist(byte type, int dist);
-    //int err(); // Here for completeness but unused as a client command
+    void setl(byte motors);
+    byte ct(); // MDR2 only
+    void ct(byte cameratype); // MDR2 only
+    byte* mset(byte mseth, byte msetl); //MDR3/4 only
+    byte* mstat(byte motor);
+    void rs(bool camerarun);
+    byte tcstat();
+    byte* ld(); // MDR3/4 only, first element of array is size of payload
+    byte* info(byte type); // MDR3/4 only, first element of array is size of payload
+    void dist(byte type, int dist);
+    //void err(); // Here for completeness but unused as a client command
 
     // Methods for 
 };
