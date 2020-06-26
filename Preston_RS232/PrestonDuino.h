@@ -44,12 +44,11 @@ class PrestonDuino {
     byte* mstat(byte motor);
     void rs(bool camerarun);
     byte tcstat();
-    byte* ld(); // MDR3/4 only, first element of array is size of payload
+    byte* ld(); // MDR3/4 only
     byte* info(byte type); // MDR3/4 only, first element of array is size of payload
     void dist(byte type, int dist);
     //void err(); // Here for completeness but unused as a client command
 
-    // Methods for 
 };
 
 #endif
