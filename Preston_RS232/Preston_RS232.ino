@@ -1,4 +1,5 @@
 #include "PrestonPacket.h"
+#include "PrestonDuino.h"
 #include "MaxTools.h"
 
 
@@ -9,11 +10,15 @@ char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 1
 int packetlen = 0;
 
 MaxTools *tools = new MaxTools();
+PrestonDuino *mdr = new PrestonDuino(Serial1);
 
 unsigned long time_now = 0;
 int period = 5;
 
 void setup() {
+
+  
+  
   Serial.begin(115200); //open communication with computer
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
@@ -94,7 +99,7 @@ int rcvData() {
   while (Serial1.available() > 0 && !packetcomplete) { //only receive if there is something to be received and no data in our buffer
     currentchar = Serial1.read();
     //Serial.print("received character ");
-    //Serial.println(currentchar);
+    //Serial.print(currentchar);
     if (rcving) {
       rcvbuffer[i++] = currentchar;
       if (currentchar == ETX) { // We have received etx, stop reading
@@ -103,6 +108,7 @@ int rcvData() {
         packetlen = i;
         packetcomplete = true;
         Serial1.write(ACK); // Polite thing to do
+        return 1;
       } else {
         //Serial.println(currentchar);
       }
@@ -137,5 +143,5 @@ int rcvData() {
     }
   }
 
-  return 1;
+  return 0;
 }
