@@ -297,3 +297,11 @@ byte* PrestonDuino::info(byte type) {
   
   return reply;
 }
+
+void PrestonDuino::dist(byte type, int dist) {
+  //TODO properly format distance (should be 3 bytes)
+  
+  byte data[4] = {type, dist};
+  PrestonPacket *pak = new PrestonPacket(0x10, data, 4);
+  this->command(pak);
+}

@@ -39,6 +39,7 @@ class PrestonDuino {
     int sendToMDR(PrestonPacket* packet); // Same as sendToMDR above, but takes a packet. Does not retry on NAK
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
     void setMDRTimeout(int timeout); // returns the timeout
+
     
     // All of the following are according to the Preston protocol.
     // Methods that return data will return a byte or byte array, the length of which is determined by the protocol.
