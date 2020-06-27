@@ -1,6 +1,5 @@
 #include "PrestonPacket.h"
 #include "PrestonDuino.h"
-#include "MaxTools.h"
 
 
 
@@ -9,7 +8,6 @@ bool packetcomplete = false; // flag for whether there is data available to be p
 char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
 int packetlen = 0;
 
-MaxTools *tools = new MaxTools();
 PrestonDuino *mdr = new PrestonDuino(Serial1);
 
 unsigned long time_now = 0;
