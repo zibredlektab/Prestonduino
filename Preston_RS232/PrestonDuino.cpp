@@ -151,7 +151,7 @@ void PrestonDuino::sendNAK() {
 
 
 int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
-  // Send a PrestonPacket to the MDR, byte by byte. If "retry" is true, packet will be re-sent upon timout or NAK
+  // Send a PrestonPacket to the MDR, byte by byte. If "retry" is true, packet will be re-sent upon timout or NAK, up to 3 times
   int packetlen = packet->getPacketLength();
   byte* packetbytes = packet->getPacket();
   int response = this->sendToMDR(packetbytes, packetlen);
@@ -160,12 +160,38 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
     // TODO retry
   }
 
+  return response;
+
 }
 
 
 
 int PrestonDuino::sendToMDR(PrestonPacket* packet) {
-  this->sendToMDR(packet, false);
+  return this->sendToMDR(packet, false);
+}
+
+bool PrestonDuino::command(PrestonPacket* pak) {
+  if (this->sendToMDR(pak) == ACK) {
+    delete pak;
+    return true;
+  }
+  
+  return false;
+}
+
+byte* PrestonDuino::commandWithReply(PrestonPacket* pak) {
+  if (this->sendToMDR(pak) == ACK) {
+    // Packet was acknowledged by MDR
+    if (this->waitForData()) {
+      // Response packet was received
+      if (this->parseData() > 0) {
+        // Response was successfully 
+        return this->rcvpacket->getData();
+      }
+    }
+  }
+
+  delete pak;
 }
 
 
@@ -175,18 +201,13 @@ void PrestonDuino::mode(byte modeh, byte model) {
   data[0] = modeh;
   data[1] = model;
   PrestonPacket *pak = new PrestonPacket(0x01, data, 2);
-  
-  this->sendToMDR(pak);
-  
-  delete pak;
+  this->command(pak);
 }
 
 
 
 byte* PrestonDuino::stat() {
   PrestonPacket *pak = new PrestonPacket(0x02, NULL, 0);
+  return this->commandWithReply(pak);
 
-  this->sendToMDR(pak);
-
-  delete pak;
 }

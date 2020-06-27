@@ -29,6 +29,8 @@ class PrestonDuino {
     bool waitForData(); // returns true if response was recieved
     bool rcvData(); // true if usable data received, false if not
     int parseData(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
+    byte* commandWithReply(PrestonPacket* pak);
+    bool command(PrestonPacket* pak); // true if ACK
 
 
   public:
