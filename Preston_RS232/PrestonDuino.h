@@ -29,16 +29,17 @@ class PrestonDuino {
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not
     int parseRcv(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
-    byte* commandWithReply(PrestonPacket* pak);
+    byte* commandWithReply(PrestonPacket* pak); // returns just the data portion from MDR response
     bool command(PrestonPacket* pak); // true if ACK
 
 
   public:
     PrestonDuino(HardwareSerial& serial);
-    int sendToMDR(byte* tosend, int len); // >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error
-    int sendToMDR(PrestonPacket* packet); // Same as sendToMDR above, but takes a packet. Does not retry on NAK
+    
+    int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error
+    int sendToMDR(PrestonPacket* packet); // sends a constructed PrestonPacket to MDR, returns same as above. Does not retry on NAK
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
-    void setMDRTimeout(int timeout); // returns the timeout
+    void setMDRTimeout(int timeout); // sets the timeout
 
     
     // All of the following are according to the Preston protocol.
