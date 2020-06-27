@@ -46,7 +46,7 @@ class PrestonDuino {
     byte* stat();
     byte who();
     byte* data(byte datadescription);
-    byte* data(byte* datadescription, int datalen); // not sure what is returned in this case
+    void data(byte* datadescription, int datalen); // not sure what is returned in this case, I think just ACK?
     byte* rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
     void setl(byte motors);
     byte ct(); // MDR2 only

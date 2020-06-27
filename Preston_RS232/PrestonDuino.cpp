@@ -211,3 +211,48 @@ byte* PrestonDuino::stat() {
   return this->commandWithReply(pak);
 
 }
+
+byte PrestonDuino::who() {
+  PrestonPacket *pak = new PrestonPacket(0x03, NULL, 0);
+  byte* data = this->commandWithReply(pak);
+  return data[0];
+}
+
+byte* PrestonDuino::data(byte datadescription) {
+  PrestonPacket *pak = new PrestonPacket(0x04, datadescription, 1);
+  return this->commandWithReply(pak);
+}
+
+void PrestonDuino::data(byte* datadescription, int datalen) {
+  PrestonPacket *pak = new PrestonPacket(0x04, datadescription, datalen);
+  this->command(pak);
+}
+
+byte* PrestonDuino::rtc(byte select, byte* data) {
+  int len = 0;
+  if (select == 0x01) {
+    len = 8;
+  } else if (select == 0x02 || select == 0x04) {
+    len = 5;
+  } else {
+    len = 1;
+  }
+  PrestonPacket *pak = new PrestonPacket(0x05, data, len);
+  return this->commandWithReply(pak);
+}
+
+void PrestonDuino::setl(byte motors) {
+  PrestonPacket *pak = new PrestonPacket(0x06, motors, 1);
+  this->command(pak);
+}
+
+byte PrestonDuino::ct() {
+  PrestonPacket *pak = new PrestonPacket(0x07, NULL, 0);
+  byte* data = this->commandWithReply(pak);
+  return data[0];
+}
+
+void PrestonDuino::ct(byte cameratype) {
+  PrestonPacket *pak = new PrestonPacket(0x07, cameratype, 1);
+  this->command(pak);
+}
