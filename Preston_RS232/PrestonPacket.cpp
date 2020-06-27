@@ -220,7 +220,7 @@ byte* PrestonPacket::getPacket() {
 }
 
 
-int PrestonPacket::getPacketLength() {
+int PrestonPacket::getPacketLen() {
 //  Serial.print("packetlen is ");
 //  Serial.println(this->packetlen);
   return this->packetlen;

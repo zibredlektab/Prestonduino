@@ -34,7 +34,7 @@ void setup() {
   PrestonPacket *init = new PrestonPacket(initmode, initdata, initlen);
   byte* initpacket = init->getPacket();
   
-  sendPacketToPreston(initpacket, init->getPacketLength());
+  sendPacketToPreston(initpacket, init->getPacketLen());
   delete init;
     
 }
@@ -67,7 +67,7 @@ void askPrestonForData() {
   byte mode = 0x04;
   PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);
   
-  packetlen = reqfordata->getPacketLength();
+  packetlen = reqfordata->getPacketLen();
   
   byte* reqfordatapacket = reqfordata->getPacket();
   

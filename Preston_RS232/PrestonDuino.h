@@ -12,10 +12,10 @@ class PrestonDuino {
   private:
     // variables
     HardwareSerial *ser; // serial port connected to MDR
-    byte rcvdata[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
+    byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     bool rcving; // flag that we are in the middle of receiving a packet
     bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
-    int rcvdatalen = 0; // length of incoming packet info
+    int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR
     
     unsigned long time_now = 0; // used for scheduling packets (Caution: this will overflow if the program runs for over 49.7 days. Remember to reboot once a month or so)
@@ -26,9 +26,9 @@ class PrestonDuino {
     void sendACK();
     void sendNAK();
 
-    bool waitForData(); // returns true if response was recieved
-    bool rcvData(); // true if usable data received, false if not
-    int parseData(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
+    bool waitForRcv(); // returns true if response was recieved
+    bool rcv(); // true if usable data received, false if not
+    int parseRcv(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     byte* commandWithReply(PrestonPacket* pak);
     bool command(PrestonPacket* pak); // true if ACK
 
@@ -53,7 +53,7 @@ class PrestonDuino {
     void ct(byte cameratype); // MDR2 only
     byte* mset(byte mseth, byte msetl); //MDR3/4 only
     byte* mstat(byte motor);
-    void r_s(bool camerarun);
+    void r_s(bool rs);
     byte tcstat();
     byte* ld(); // MDR3/4 only
     byte* info(byte type); // MDR3/4 only, first element of array is size of payload
