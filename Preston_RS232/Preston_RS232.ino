@@ -51,8 +51,6 @@ void loop() {
 
     PrestonPacket *rcv = new PrestonPacket(rcvbuffer, packetlen);
     packetcomplete = false;
-    int rcvdatalen = rcv->getDataLen();
-    byte *rcvdata = rcv->getData();
 
     Serial.print("start");
     Serial.print(rcv->getFocusDistance());
