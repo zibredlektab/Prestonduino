@@ -22,10 +22,10 @@ class PrestonDuino {
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
     int timeout = 2000; // milliseconds to wait for a response
 
+
     // methods
     void sendACK();
     void sendNAK();
-
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not
     int parseRcv(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error

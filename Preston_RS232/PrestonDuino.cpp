@@ -55,7 +55,7 @@ bool PrestonDuino::waitForRcv() {
 bool PrestonDuino::rcv() {
   // check if available data, if so check the first char for following:
   //  ACK/NAK: add to rcv and return
-  //  STX: add all bytes to rcv until ETX is found (if second STX is found, see next line)
+  //  STX: add all bytes to rcv until ETX is found (if second STX etc is found, see next line)
   //  Anything else: treat as garbage data. Send NAK to MDR and toss the buffer
   // return true if we got usable data, false if not
   

@@ -35,9 +35,7 @@ class PrestonPacket {
     PrestonPacket(byte cmd_mode, byte* cmd_data, int datalen);
     PrestonPacket(byte* inputbuffer, int len);
     byte getMode();
-    int setMode(byte cmd_mode);
     byte* getData();
-    int setData(byte* cmd_data);
     int getDataLen();
     byte* getPacket();
     int getPacketLen();

@@ -8,7 +8,7 @@
 
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
-  //Serial.println("Creating a new PrestonPacket from component parts");
+  
   this->mode = cmd_mode;
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
@@ -22,7 +22,7 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
-  //Serial.println("Creating a new PrestonPacket from a buffer");
+  
   this->packetlen = len;
   for (int i = 0; i < len; i++){
     this->packet_ascii[i] = inputbuffer[i];
@@ -188,21 +188,10 @@ byte PrestonPacket::getMode() {
 }
 
 
-int PrestonPacket::setMode(byte cmd_mode) {
-  this->mode = cmd_mode;
-  return 1;
-}
-
-
 byte* PrestonPacket::getData() {
   return this->data;
 }
 
-
-int PrestonPacket::setData(byte* cmd_data) {
-  //this->data = cmd_data;
-  return 1;
-}
 
 int PrestonPacket::getDataLen() {
   return this->datalen;
@@ -214,14 +203,11 @@ int PrestonPacket::getSum() {
 }
 
 
-
 byte* PrestonPacket::getPacket() {
   return this->packet_ascii;
 }
 
 
 int PrestonPacket::getPacketLen() {
-//  Serial.print("packetlen is ");
-//  Serial.println(this->packetlen);
   return this->packetlen;
 }
