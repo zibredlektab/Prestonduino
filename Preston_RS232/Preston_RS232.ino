@@ -3,76 +3,51 @@
 
 
 
-bool rcving = false;
-bool packetcomplete = false; // flag for whether there is data available to be processed
-char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
-int packetlen = 0;
+//bool rcving = false;
+//bool packetcomplete = false; // flag for whether there is data available to be processed
+//char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
+//int packetlen = 0;
 
-PrestonDuino *mdr = new PrestonDuino(Serial1);
+byte* lensdata;
+
+PrestonDuino *mdr = new PrestonDuino();
 
 unsigned long time_now = 0;
 int period = 5;
 
 void setup() {
-
-  
   
   Serial.begin(115200); //open communication with computer
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
   }
-  Serial1.begin(115200); //open communication with MDR
-  while (!Serial1) {
-    ;
+  
+  mdr->init(Serial1);
+
+  lensdata = mdr->ld();
+  
+  for (int i = 0; i < 4; i++) {
+    Serial.print(lensdata[i], HEX);
   }
-  
-  byte initdata[] = {0x00, 0x00};
-  int initlen = 2;
-  byte initmode = 0x01;
-  PrestonPacket *init = new PrestonPacket(initmode, initdata, initlen);
-  byte* initpacket = init->getPacket();
-  
-  sendPacketToPreston(initpacket, init->getPacketLen());
-  delete init;
-    
+  Serial.println();
+  Serial.println("----");
 }
 
 void loop() {
-  if (millis() >= time_now + period) {
+  /*if (millis() >= time_now + period) {
     time_now = millis();
-    askPrestonForData();
+    lensdata = mdr->ld();
   }
-
   
-  rcvData();
-  if (packetcomplete) {
-
-    PrestonPacket *rcv = new PrestonPacket(rcvbuffer, packetlen);
-    packetcomplete = false;
-
     Serial.print("start");
-    Serial.print(rcv->getFocusDistance());
-    Serial.println("end");
-    
-    delete rcv;
-  }
+    for (int i = 0; i < 3; i++) {
+      Serial.print(lensdata[i]);
+    }
+    Serial.println("end");*/
 }
 
 
-void askPrestonForData() {
-  byte data[] = {0x2}; //0x1 iris, 0x2 focus, 0x4 zoom, 0x8 aux
-  int datalen = 1;
-  byte mode = 0x04;
-  PrestonPacket *reqfordata = new PrestonPacket(mode, data, datalen);
-  
-  packetlen = reqfordata->getPacketLen();
-  
-  byte* reqfordatapacket = reqfordata->getPacket();
-  
-  sendPacketToPreston(reqfordatapacket, packetlen);
-  delete reqfordata;
-}
-
+/*
 bool sendPacketToPreston(byte* packet, int packetlen) {
   for (int i = 0; i < packetlen; i++) {
     //Serial.print("sending ");
@@ -87,7 +62,7 @@ int rcvData() {
   /* returns 1 if there is a new packet
    * returns 0 if NAK or ACK was received
    * returns -1 if anything else was received 
-   */
+   
   
   static int i = 0;
   char currentchar;
@@ -140,4 +115,4 @@ int rcvData() {
   }
 
   return 0;
-}
+}*/

@@ -6,30 +6,45 @@
 #include "PrestonDuino.h"
 
 
-PrestonDuino::PrestonDuino(HardwareSerial& serial) {
+PrestonDuino::PrestonDuino() {
+}
+
+bool PrestonDuino::init(HardwareSerial& serial) {
   // Open a connection to the MDR on Serial port 'serial'
   ser = &serial;
   ser->begin(115200);
   while (!ser) {
     ;
   }
+  Serial.println("Connected to MDR");
+  return ser;
 }
 
 
 
 int PrestonDuino::sendToMDR(byte* tosend, int len) {
   // >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error message
-  
-  int response = 0;
-  
+  Serial.print("Initiating new send action, total of ");
+  Serial.print(len);
+  Serial.println(" bytes");
   for (int i = 0; i < len; i++) {
+    Serial.print("Sending ");
+    Serial.print(tosend[i], HEX);
+    Serial.println(" to MDR");
+    
     ser->write(tosend[i]);
     ser->flush(); // wait for byte to finish sending
   }
+  Serial.println("Send complete");
 
+  
+  int response = 0;
+  
   if (this->waitForRcv()) {
     // response received
     response = this->parseRcv();
+  } else {
+    Serial.println("No response received");
   }
 
   return response;
@@ -38,14 +53,20 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 
 
 bool PrestonDuino::waitForRcv() {
+  Serial.print("Waiting for response, the time is now ");
   this->time_now = millis();
+  Serial.println(this->time_now);
   
   while(millis() <= this->time_now + this->timeout) {
     if (ser->available()) {
+      Serial.print("Response is available, time is now ");
+      Serial.println(millis());
       return this->rcv();
     }
   }
-
+  
+  Serial.print("Timeout, the time is now ");
+  Serial.println(millis());
   return false;
 }
 
@@ -61,17 +82,24 @@ bool PrestonDuino::rcv() {
   
   static int i = 0;
   char currentchar;
+  bool out = false;
+
   
   while (ser->available() > 0 && !this->rcvreadytoprocess) { //only receive if there is something to be received and no data in our buffer
     currentchar = ser->read();
+    Serial.print("Received ");
+    Serial.print(currentchar, HEX);
+    Serial.println(" from MDR");
     if (this->rcving) {
       this->rcvbuf[i++] = currentchar;
       if (currentchar == ETX) { // We have received etx, stop reading
+        Serial.println("Char is ETX");
         this->rcving = false;
         this->rcvlen = i;
         this->rcvreadytoprocess = true;
-        this->sendACK(); // Polite thing to do
-        return true;
+       // this->sendACK(); // Polite thing to do
+        out = true;
+        break;
       } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
         // This should not happen, and means that our packet integrity is compromised (we started reading into a new packet somehow)
         break;
@@ -79,31 +107,42 @@ bool PrestonDuino::rcv() {
       
     } else if (currentchar == STX) {
       // STX received from MDR
+      Serial.println("Char is STX");
       i = 0;
       this->rcvbuf[i++] = currentchar;
       this->rcving = true;
       
     } else if (currentchar == NAK || currentchar == ACK) {
+      Serial.println("Char is either NAK or ACK");
       this->rcvbuf[0] = currentchar;
-      return true;
+      this->rcvreadytoprocess = true;
+      this->rcvlen = 1;
+      this->rcving = false;
+      out = true;
+      break;
   
     } else {
       break;
     }
   }
-  
-  // something inexplicable was received from MDR
-  while (ser->available()) {
-    // dump the buffer
-    ser->read();
-  }
-  this->sendNAK(); // tell the MDR that we don't understand
 
-  this->rcving = false;
-  this->rcvlen = 0;
-  this->rcvreadytoprocess = false;
+  if (out) {
+    return true;
+  } else {
+    // something inexplicable was received from MDR
+    Serial.println("I have no idea what was just received from the MDR");
+    while (ser->available()) {
+      // dump the buffer
+      ser->read();
+    }
+    this->sendNAK(); // tell the MDR that we don't understand
   
-  return false; // :(
+    this->rcving = false;
+    this->rcvlen = 0;
+    this->rcvreadytoprocess = false;
+    
+    return false; // :(
+  }
 
 }
 
@@ -112,21 +151,25 @@ bool PrestonDuino::rcv() {
 
 int PrestonDuino::parseRcv() {
   // >0 result is length of data received, -1 if ACK, -2 if error, -3 if NAK
-  
+  Serial.println("Parsing response from MDR");
   int response = 0;
   
   if (this->rcvreadytoprocess) {
     if (rcvbuf[0] == ACK) {
+      Serial.println("Reply is ACK");
       response = -1;
     } else if (rcvbuf[0] == NAK) {
+      Serial.println("Reply is NAK");
       response = -2;
     } else if (rcvbuf[0] == STX) {
       PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
       this->rcvpacket = pak;
       if (this->rcvpacket->getMode() == 0x11) {
+        Serial.println("Reply is an error packet");
         // received packet is an error message
         response = -3;
       } else {
+        Serial.println("Reply is a data packet");
         response = rcvlen;
       }
     }
@@ -139,13 +182,15 @@ int PrestonDuino::parseRcv() {
 
 
 void PrestonDuino::sendACK() {
-  this->sendToMDR(ACK, 1);
+  byte ack[1] = {ACK};
+  this->sendToMDR(ack, 1);
 }
 
 
 
 void PrestonDuino::sendNAK() {
-  this->sendToMDR(NAK, 1);
+  byte nak[1] = {NAK};
+  this->sendToMDR(nak, 1);
 }
 
 
@@ -156,7 +201,8 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
   byte* packetbytes = packet->getPacket();
   int response = this->sendToMDR(packetbytes, packetlen);
 
-  if (response = -2) {
+  if (response == -2) {
+    Serial.println("Sending to MDR failed");
     // TODO retry
   }
 
@@ -173,22 +219,29 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet) {
 
 
 bool PrestonDuino::command(PrestonPacket* pak) {
-  if (this->sendToMDR(pak) == ACK) {
+  Serial.println("Sending a command that doesn't expect a reply");
+  if (this->sendToMDR(pak) == -2) {
+    Serial.println("Command was acknowledged");
     delete pak;
     return true;
   }
-  
+  Serial.println("Command was not acknowledged");
   return false;
 }
 
 
 
 byte* PrestonDuino::commandWithReply(PrestonPacket* pak) {
-  if (this->sendToMDR(pak) == ACK) {
+  Serial.println("Sending a command that expects a response");
+  if (this->sendToMDR(pak) == -1) {
+    Serial.println("Command was acknowledged, waiting for response");
     // Packet was acknowledged by MDR
     if (this->waitForRcv()) {
+      Serial.println("Response was recieved, parsing response");
       // Response packet was received
       if (this->parseRcv() > 0) {
+        Serial.print("Response parsed, data length is ");
+        Serial.println(rcvpacket->getDataLen());
         // Response was successfully 
         return this->rcvpacket->getData();
       }
@@ -206,8 +259,6 @@ void PrestonDuino::mode(byte modeh, byte model) {
   this->command(pak);
 }
 
-
-
 byte* PrestonDuino::stat() {
   PrestonPacket *pak = new PrestonPacket(0x02, NULL, 0);
   return this->commandWithReply(pak);
@@ -221,7 +272,7 @@ byte PrestonDuino::who() {
 }
 
 byte* PrestonDuino::data(byte datadescription) {
-  PrestonPacket *pak = new PrestonPacket(0x04, datadescription, 1);
+  PrestonPacket *pak = new PrestonPacket(0x04, &datadescription, 1);
   return this->commandWithReply(pak);
 }
 
@@ -244,7 +295,7 @@ byte* PrestonDuino::rtc(byte select, byte* data) {
 }
 
 void PrestonDuino::setl(byte motors) {
-  PrestonPacket *pak = new PrestonPacket(0x06, motors, 1);
+  PrestonPacket *pak = new PrestonPacket(0x06, &motors, 1);
   this->command(pak);
 }
 
@@ -254,7 +305,7 @@ byte PrestonDuino::ct() {
 }
 
 void PrestonDuino::ct(byte cameratype) {
-  PrestonPacket *pak = new PrestonPacket(0x07, cameratype, 1);
+  PrestonPacket *pak = new PrestonPacket(0x07, &cameratype, 1);
   this->command(pak);
 }
 
@@ -265,7 +316,7 @@ byte* PrestonDuino::mset(byte mseth, byte msetl) {
 }
 
 byte* PrestonDuino::mstat(byte motor) {
-  PrestonPacket *pak = new PrestonPacket(0x09, motor, 1);
+  PrestonPacket *pak = new PrestonPacket(0x09, &motor, 1);
   return this->commandWithReply(pak);
 }
 

@@ -10,10 +10,16 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   
   this->mode = cmd_mode;
+  Serial.print("Mode is ");
+  Serial.println(this->mode, HEX);
+  Serial.println("Data is:");
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
+    Serial.println(this->data[i]);
   }
-  this->datalen = cmd_datalen;
+  this->datalen = cmd_datalen;  
+  Serial.print("Data length is ");
+  Serial.println(this->datalen);
   this->corelen = this->datalen + 2; // mode, size, data
   this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
   this->compilePacket();
@@ -30,9 +36,7 @@ PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   this->parseInput(this->packet_ascii, len);
 }
 
-void PrestonPacket::parseInput(byte* inputbuffer, int len) {
-  static int bufferindex = 0;
-  
+void PrestonPacket::parseInput(byte* inputbuffer, int len) {  
   if (inputbuffer[0] != STX) {
     Serial.print("Packet to parse doesn't start with STX, instead starts with ");
     Serial.println(inputbuffer[0]);
@@ -80,7 +84,8 @@ void PrestonPacket::compilePacket() {
   byte core[this->corelen];
   core[0] = this->mode; // Mode is first
   core[1] = this->datalen; // Size of data
-  
+
+
   for (int i = 0; i < this->datalen; i++) {
     // Iterate through the data array
     core[2+i] = this->data[i]; // Make sure not to overwrite the mode & size
@@ -91,6 +96,11 @@ void PrestonPacket::compilePacket() {
   int coreasciilen = (this->corelen * 2); // Every byte in core becomes 2 bytes, as we 0-pad everything
   byte coreascii[coreasciilen];
   this->asciiEncode(core, this->corelen, coreascii);
+
+  for (int i = 0; i <= coreasciilen; i++) {
+    //delay(1);
+  }
+
   // Finished encoding core
 
   // Compute sum, encode sum
@@ -104,6 +114,7 @@ void PrestonPacket::compilePacket() {
   int ioutput = 0;
   
   this->packet_ascii[ioutput++] = 0x02; // STX
+
   
   for (int i = 0; i < coreasciilen; i++) {
     // Iterate through coreascii
@@ -166,16 +177,16 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
 
 
 unsigned int PrestonPacket::getFocusDistance() {
-  if (this->mode != 0x04) {
-    Serial.println("******************Not mode 4, cannot get focus distance******************");
-    return -1;
+  int res = 0;
+  int i = 0;
+  static char focusdist[6];
+  if (this->mode == 0x04) {
+    focusdist[4] = "\0";
+    i = 1; //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
   }
-  
-  static char focusdist[4];
   int j = 0;
-  for (int i = 1; i < this->datalen; i++) { //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
-    j = (i-1)*2;
-    sprintf(&focusdist[j], "%02X", this->data[i]);
+  for (i; i < this->datalen; i++) { 
+    sprintf(&focusdist[j++], "%02X", this->data[i]);
   }
 
   return strtol(focusdist, NULL, HEX);
@@ -204,6 +215,9 @@ int PrestonPacket::getSum() {
 
 
 byte* PrestonPacket::getPacket() {
+  for (int i = 0; i < this->packetlen; i++) {
+    //Serial.println(packet_ascii[i]);
+  }
   return this->packet_ascii;
 }
 

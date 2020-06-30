@@ -6,10 +6,10 @@
 #ifndef PrestonPacket_h
 #define PrestonPacket_h
 
-#define STX 0x02
-#define ETX 0x03
-#define ACK 0x06
-#define NAK 0x15
+#define STX 2
+#define ETX 3
+#define ACK 6
+#define NAK 15
 
 
 #include "Arduino.h"
@@ -17,7 +17,7 @@
 class PrestonPacket {
   private:
     byte mode;
-    byte data[10]; // not encoded, 10 for now as arbitrary limit
+    byte data[20]; // not encoded, 20 for now as arbitrary limit
     int checksum;
     byte packet_ascii[50]; // ascii-encoded packet, currently limited to 50 bytes (arbitrary "big" limit)
     int computeSum(byte* input, int len);

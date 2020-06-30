@@ -34,8 +34,8 @@ class PrestonDuino {
 
 
   public:
-    PrestonDuino(HardwareSerial& serial);
-    
+    PrestonDuino();
+    bool init(HardwareSerial& serial);
     int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error
     int sendToMDR(PrestonPacket* packet); // sends a constructed PrestonPacket to MDR, returns same as above. Does not retry on NAK
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
