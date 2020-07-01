@@ -101,6 +101,7 @@ bool PrestonDuino::rcv() {
         out = true;
         break;
       } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
+        Serial.println("Found a new packet in the middle of the current packet...that's bad");
         // This should not happen, and means that our packet integrity is compromised (we started reading into a new packet somehow)
         break;
       }

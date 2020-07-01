@@ -13,7 +13,7 @@ class PrestonDuino {
     // variables
     HardwareSerial *ser; // serial port connected to MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
-    bool rcving; // flag that we are in the middle of receiving a packet
+    bool rcving = false; // flag that we are in the middle of receiving a packet
     bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR

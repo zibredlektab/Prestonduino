@@ -10,16 +10,11 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   
   this->mode = cmd_mode;
-  Serial.print("Mode is ");
-  Serial.println(this->mode, HEX);
-  Serial.println("Data is:");
+
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
-    Serial.println(this->data[i]);
   }
-  this->datalen = cmd_datalen;  
-  Serial.print("Data length is ");
-  Serial.println(this->datalen);
+  this->datalen = cmd_datalen;
   this->corelen = this->datalen + 2; // mode, size, data
   this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
   this->compilePacket();
@@ -97,22 +92,17 @@ void PrestonPacket::compilePacket() {
   byte coreascii[coreasciilen];
   this->asciiEncode(core, this->corelen, coreascii);
 
-  for (int i = 0; i <= coreasciilen; i++) {
-    //delay(1);
-  }
-
   // Finished encoding core
 
   // Compute sum, encode sum
   int coresum = this->computeSum(coreascii, coreasciilen);
-  byte sumascii[2];
+  byte sumascii[3];
   sprintf(sumascii, "%02X", coresum);
   // Finished with sum
 
 
   // Put it all together
   int ioutput = 0;
-  
   this->packet_ascii[ioutput++] = 0x02; // STX
 
   
@@ -122,7 +112,7 @@ void PrestonPacket::compilePacket() {
   }
 
   for (int i = 0; i < 2; i++) {
-    // Iterate through sumascii 
+    // Iterate through sumascii
     this->packet_ascii[ioutput++] = sumascii[i]; // Don't overwrite core
   }
   
@@ -151,7 +141,7 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
    */
   
   for (int i = 0; i < len ; i++) {
-    byte holder[2]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte)
+    byte holder[3]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte) (with a trailing 0)
     
     sprintf(holder, "%02X", input[i]);
     
@@ -165,7 +155,7 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
   int outputlen = (len/2)-1;
   for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
     // input[0] is stx, input[len-1] is etx
-    static char holder[2];
+    static char holder[3]; // don't forget the trailing 0
     int j = (i*2)+1;
 
     sprintf(holder, "%c%c", input[j], input[j+1]);
@@ -215,9 +205,6 @@ int PrestonPacket::getSum() {
 
 
 byte* PrestonPacket::getPacket() {
-  for (int i = 0; i < this->packetlen; i++) {
-    //Serial.println(packet_ascii[i]);
-  }
   return this->packet_ascii;
 }
 

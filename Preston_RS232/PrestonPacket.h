@@ -10,6 +10,7 @@
 #define ETX 3
 #define ACK 6
 #define NAK 15
+#define printline Serial.print(__LINE__); Serial.print(": ");
 
 
 #include "Arduino.h"
@@ -29,6 +30,7 @@ class PrestonPacket {
     int datalen; // length of data portion of core
     int corelen; // length of core of packet
     int packetlen; // length of full packet, ascii encoded
+
     
 
   public:
