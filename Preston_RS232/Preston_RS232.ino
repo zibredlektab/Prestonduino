@@ -1,13 +1,6 @@
 #include "PrestonPacket.h"
 #include "PrestonDuino.h"
 
-
-
-//bool rcving = false;
-//bool packetcomplete = false; // flag for whether there is data available to be processed
-//char rcvbuffer[100]; // buffer for storing incoming data, currently limited to 100 bytes since that seems like more than enough?
-//int packetlen = 0;
-
 byte* lensdata;
 
 PrestonDuino *mdr = new PrestonDuino();
