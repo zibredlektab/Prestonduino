@@ -20,7 +20,7 @@ void setup() {
 }
 
 void loop() {
-  if (millis() >= time_now + period) {
+/*  if (millis() >= time_now + period) {
     time_now = millis();
     lensdata = mdr->ld();
   }
@@ -29,5 +29,5 @@ void loop() {
     for (int i = 0; i < 3; i++) {
       Serial.print(lensdata[i], HEX);
     }
-    Serial.println("end");
+    Serial.println("end");*/
 }

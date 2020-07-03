@@ -17,6 +17,7 @@ class PrestonDuino {
     bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR
+    int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
     
     unsigned long time_now = 0; // used for scheduling packets (Caution: this will overflow if the program runs for over 49.7 days. Remember to reboot once a month or so)
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
@@ -33,7 +34,7 @@ class PrestonDuino {
     bool command(PrestonPacket* pak); // true if ACK
 
 
-  public:
+  public:  
     PrestonDuino();
     bool init(HardwareSerial& serial);
     int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error

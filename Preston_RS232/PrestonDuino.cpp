@@ -16,7 +16,15 @@ bool PrestonDuino::init(HardwareSerial& serial) {
   while (!ser) {
     ;
   }
-  Serial.println("Connected to MDR");
+  Serial.println("Connected to MDR, asking for type");
+  
+  byte* mdrinfo = this->info(0x0);
+
+  int infolen = mdrinfo[0];
+
+  this->mdrtype = mdrinfo[5];
+  Serial.println(this->mdrtype);
+  
   return ser;
 }
 
@@ -88,7 +96,7 @@ bool PrestonDuino::rcv() {
   while (ser->available() > 0 && !this->rcvreadytoprocess) { //only receive if there is something to be received and no data in our buffer
     currentchar = ser->read();
     Serial.print("Received ");
-    Serial.print(currentchar, HEX);
+    Serial.print(char(currentchar));
     Serial.println(" from MDR");
     if (this->rcving) {
       this->rcvbuf[i++] = currentchar;
@@ -337,16 +345,28 @@ byte* PrestonDuino::ld() {
 }
 
 byte* PrestonDuino::info(byte type) {
-  PrestonPacket *pak = new PrestonPacket(0x0E, type, 1);
+  PrestonPacket *pak = new PrestonPacket(0x0E, &type, 0x01);
   byte* reply = this->commandWithReply(pak);
+
+  Serial.print("Reply mode is ");
+  Serial.println(this->rcvpacket->getMode());
+  
   byte len = this->rcvpacket->getDataLen();
+  
+  Serial.print("Length of data is ");
+  Serial.println(len);
+  
   byte out[len+1];
+  
   out[0] = len;
   
+  Serial.println("Data follows");
+  
   for (int i = 0; i < len; i++) {
+    Serial.println(reply[i], HEX);
     out[i+1] = reply[i];
   }
-  
+  Serial.println("End of data");
   return reply;
 }
 
