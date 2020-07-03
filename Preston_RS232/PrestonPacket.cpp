@@ -166,24 +166,6 @@ void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
 
 
 
-unsigned int PrestonPacket::getFocusDistance() {
-  int res = 0;
-  int i = 0;
-  static char focusdist[6];
-  if (this->mode == 0x04) {
-    focusdist[4] = "\0";
-    i = 1; //starting at 1 because the first byte in a mode 4 response is the identifier of the data set
-  }
-  int j = 0;
-  for (i; i < this->datalen; i++) { 
-    sprintf(&focusdist[j++], "%02X", this->data[i]);
-  }
-
-  return strtol(focusdist, NULL, HEX);
-}
-
-
-
 byte PrestonPacket::getMode() {
   return this->mode;
 }

@@ -63,6 +63,16 @@ class PrestonDuino {
     void dist(byte type, int dist);
     //void err(); // Here for completeness but unused as a client command
 
+
+    // The following are helper methods, simplifying common tasks
+    // Lens data requires lens to be calibrated (mapped) from the hand unit
+    byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
+    int getFocusDistance(); // Focus distance, in mm (1mm precision)
+    int getFocalLength(); // Focal length, in mm (1mm precision)
+    int getAperture(); // Aperture (*100)
+    char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
+    
+
 };
 
 #endif

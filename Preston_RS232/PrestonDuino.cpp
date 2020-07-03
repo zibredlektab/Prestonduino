@@ -377,3 +377,67 @@ void PrestonDuino::dist(byte type, int dist) {
   PrestonPacket *pak = new PrestonPacket(0x10, data, 4);
   this->command(pak);
 }
+
+/*  Helper commands follow
+ *  Note that lenses must be properly calibrated for any of this to work
+ */
+
+
+byte* PrestonDuino::getLensData() {
+  byte* lensdata;
+
+  if (this->rcvpacket->getMode() == 0x0C) {
+    lensdata = this->rcvpacket->getData();
+  } else {
+    lensdata = this->ld();
+  }
+
+  return lensdata;
+}
+
+
+
+int PrestonDuino::getFocusDistance() {
+  byte* lensdata = this->getLensData();
+  byte dist[4];
+  memcpy(&dist[1], &lensdata, 3);
+  return uint32_t(dist);
+}
+
+
+
+int PrestonDuino::getFocalLength() {
+  byte* lensdata = this->getLensData();
+  byte flength[2];
+  memcpy(&flength, &lensdata[3], 2);
+  return uint16_t(flength);
+}
+
+
+
+int PrestonDuino::getAperture() {
+  byte* lensdata = this->getLensData();
+  byte aperture[2];
+  memcpy(&aperture, &lensdata[5], 2);
+  return uint16_t(aperture);
+}
+
+
+
+char* PrestonDuino::getLensName() {
+  byte* lensinfo;
+
+  if (this->rcvpacket->getMode() == 0x0E) {
+    lensinfo = this->rcvpacket->getData();
+  } else {
+    lensinfo = this->info(0x1);
+  }
+
+  char lensname[15];
+
+  memcpy(&lensname, &lensinfo[1], 14);
+
+  lensname[14] = "\0";
+  
+  return lensname;
+}
