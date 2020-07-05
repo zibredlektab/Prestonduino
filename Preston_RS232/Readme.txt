@@ -1,6 +1,7 @@
 README for PrestonDuino
 
-Created by Max Batchelder, max@first.ac. 
+Created by Max Batchelder, max@first.ac. To support further development, please consider
+	sending me some cash. http://paypal.me/MaxBatchelder
 
 This is an Arduino library for communicating with a Preston MDR. It works with MDR2, MDR3,
 	and MDR4, and supports all commands as specified in the Preston RS-232 Communication
@@ -45,4 +46,3 @@ TODO:
 	- Test the more obscure commands
 	- Investigate why info(0x0) responds without an ACK (update MDR3 fw), possibly change
 		to support this behavior (depending on response from Preston)
-	- 

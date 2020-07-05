@@ -12,6 +12,7 @@ class PrestonDuino {
   private:
     // variables
     HardwareSerial *ser; // serial port connected to MDR
+    bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     bool rcving = false; // flag that we are in the middle of receiving a packet
     bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
@@ -40,7 +41,7 @@ class PrestonDuino {
     int sendToMDR(PrestonPacket* packet); // sends a constructed PrestonPacket to MDR, returns same as above. Does not retry on NAK
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
     void setMDRTimeout(int timeout); // sets the timeout
-
+    bool readyToSend();
     
     // All of the following are according to the Preston protocol.
     // Methods that return data will return a byte or byte array, the length of which is determined by the protocol.
@@ -70,7 +71,6 @@ class PrestonDuino {
     int getFocalLength(); // Focal length, in mm (1mm precision)
     int getAperture(); // Aperture (*100)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
-    
 
 };
 
