@@ -3,7 +3,7 @@
 
 byte* lensdata;
 
-PrestonDuino *mdr = new PrestonDuino();
+PrestonDuino *mdr = new PrestonDuino(Serial1);
 
 unsigned long time_now = 0;
 int period = 5;
@@ -14,8 +14,6 @@ void setup() {
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Native USB only
   }
-  
-  mdr->init(Serial1);
 
 }
 

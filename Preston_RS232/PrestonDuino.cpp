@@ -6,10 +6,7 @@
 #include "PrestonDuino.h"
 
 
-PrestonDuino::PrestonDuino() {
-}
-
-bool PrestonDuino::init(HardwareSerial& serial) {
+PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   // Open a connection to the MDR on Serial port 'serial'
   ser = &serial;
   ser->begin(115200);
@@ -25,7 +22,6 @@ bool PrestonDuino::init(HardwareSerial& serial) {
   this->mdrtype = mdrinfo[5];
   Serial.println(this->mdrtype);
   */
-  return ser;
 }
 
 

@@ -5,6 +5,8 @@ This is an Arduino library for communicating with a Preston MDR. It works with M
 	Protocol. Please contact techsupport@prestoncinema.com to obtain a copy of the protocol
 	spec.
 	
+See Preston_RS232.ino for an example of how to use PrestonDuino.
+	
 Tips:
 	1) Make sure you're properly installing the library in your IDE. That process is
 	explained here: https://www.baldengineer.com/installing-arduino-library-from-github.html
@@ -25,4 +27,14 @@ Tips:
 	lines to do anything useful with the library, meaning Arduino Uno won't cut it. I
 	recommend Arduino Mega.
 	
-	5) Otherwise, see Preston_RS232.ino for an example of how to use PrestonDuino.
+	5) PrestonDuino only stores the most recent data received from the MDR, if you will
+	need to access historical data it's up to you to store it elsewhere.
+	
+TODO:
+	- Get SoftwareSerial working, to support simpler Arduino systems
+	- Properly handle commands that only support specific MDR models
+	- Resend MDR messages on a NAK response
+	- Test the more obscure commands
+	- Investigate why info(0x0) responds without an ACK (update MDR3 fw), possibly change
+		to support this behavior (depending on response from Preston)
+	- 
