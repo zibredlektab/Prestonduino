@@ -19,4 +19,10 @@ Tips:
 	setting up a level shifter. I'm also working on building a custom hardware solution for
 	this to make it simpler.
 	
-	4) See Preston_RS232.ino for an example of how to use PrestonDuino.
+	4) The library currently only works with a hardware Serial connection, not SoftwareSerial.
+	In my initial testing, it seemed that SoftwareSerial wasn't reliable enough. I still
+	want to go back and get soft serial working, but for now you'll need two hardware serial
+	lines to do anything useful with the library, meaning Arduino Uno won't cut it. I
+	recommend Arduino Mega.
+	
+	5) Otherwise, see Preston_RS232.ino for an example of how to use PrestonDuino.

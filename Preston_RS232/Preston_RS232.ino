@@ -20,7 +20,7 @@ void setup() {
 }
 
 void loop() {
-  /*if (millis() >= time_now + period) {
+  /* (millis() >= time_now + period) {
     time_now = millis();
     lensdata = mdr->ld();
   }
