@@ -18,13 +18,13 @@ bool PrestonDuino::init(HardwareSerial& serial) {
   }
   Serial.println("Connected to MDR, asking for type");
   
-  byte* mdrinfo = this->info(0x0);
+  /*byte* mdrinfo = this->info(0x0);
 
   int infolen = mdrinfo[0];
 
   this->mdrtype = mdrinfo[5];
   Serial.println(this->mdrtype);
-  
+  */
   return ser;
 }
 
