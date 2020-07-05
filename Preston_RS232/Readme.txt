@@ -1,9 +1,17 @@
 README for PrestonDuino
 
+Created by Max Batchelder, max@first.ac. 
+
 This is an Arduino library for communicating with a Preston MDR. It works with MDR2, MDR3,
 	and MDR4, and supports all commands as specified in the Preston RS-232 Communication
 	Protocol. Please contact techsupport@prestoncinema.com to obtain a copy of the protocol
 	spec.
+	
+	If all you need is lens data, these are the helper methods to access those variables:
+		int getFocusDistance() returns the focus distance, in mm (1mm precision)
+		int getFocalLength(); returns the focal length, in mm (1mm precision)
+		int getAperture(); returns the aperture (*100, so 5.6 returns as 5600)
+		char* getLensName();  returns the lens name, as assigned in hand unit
 	
 See Preston_RS232.ino for an example of how to use PrestonDuino.
 	
