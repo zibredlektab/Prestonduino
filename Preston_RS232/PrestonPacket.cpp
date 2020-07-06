@@ -6,6 +6,11 @@
 #include "Arduino.h"
 #include "PrestonPacket.h"
 
+PrestonPacket::PrestonPacket(byte cmd_mode) {
+  // Initializer for creating a new packet for a command with no arguments
+  PrestonPacket(cmd_mode, NULL, 0);
+}
+
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   

@@ -34,8 +34,9 @@ class PrestonPacket {
     
 
   public:
-    PrestonPacket(byte cmd_mode, byte* cmd_data, int datalen);
-    PrestonPacket(byte* inputbuffer, int len);
+    PrestonPacket(byte cmd_mode); // For commands that don't take arguments
+    PrestonPacket(byte cmd_mode, byte* cmd_data, int datalen); // For commands that do take arguments
+    PrestonPacket(byte* inputbuffer, int len); // For parsing incoming bytes into a PrestonPacket
     byte getMode();
     byte* getData();
     int getDataLen();
