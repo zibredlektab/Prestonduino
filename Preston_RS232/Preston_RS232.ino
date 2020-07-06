@@ -17,7 +17,7 @@ void setup() {
 
   delay(100);
   
-  int dist = mdr->getAperture();
+  int dist = mdr->getFocalLength();
   
   Serial.print("start");
   Serial.print(dist);
