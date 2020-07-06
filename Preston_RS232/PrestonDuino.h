@@ -30,9 +30,8 @@ class PrestonDuino {
     void sendNAK();
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not
-    int parseRcv(); // >0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
-    byte* commandWithReply(PrestonPacket* pak); // returns just the data portion from MDR response
-    bool command(PrestonPacket* pak); // true if ACK
+    int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
+    byte* sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
 
 
   public:  
@@ -43,25 +42,28 @@ class PrestonDuino {
     void setMDRTimeout(int timeout); // sets the timeout
     bool readyToSend();
     
-    // All of the following are according to the Preston protocol.
-    // Methods that return data will return a byte or byte array, the length of which is determined by the protocol.
-    void mode(byte datah, byte datal);
+    /* All of the following are according to the Preston protocol.
+     * The first byte is a signed int identifying the type of the response:
+     * 0 if timeout, -1 if ACK with no further reply, -2 if NAK, -3 if error, >0 result is length of data section in the MDR reply
+     * The following array is the data section of the MDR reply
+     */
+    byte* mode(byte datah, byte datal);
     byte* stat();
-    byte who();
+    byte* who();
     byte* data(byte datadescription);
-    void data(byte* datadescription, int datalen); // not sure what is returned in this case, I think just ACK?
+    byte* data(byte* datadescription, int datalen); // not sure what is returned in this case, I think just ACK?
     byte* rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
-    void setl(byte motors);
-    byte ct(); // MDR2 only
-    void ct(byte cameratype); // MDR2 only
+    byte* setl(byte motors);
+    byte* ct(); // MDR2 only
+    byte* ct(byte cameratype); // MDR2 only
     byte* mset(byte mseth, byte msetl); //MDR3/4 only
     byte* mstat(byte motor);
-    void r_s(bool rs);
-    byte tcstat();
+    byte* r_s(bool rs);
+    byte* tcstat();
     byte* ld(); // MDR3/4 only
     byte* info(byte type); // MDR3/4 only, first element of array is size of payload
-    void dist(byte type, int dist);
-    //void err(); // Here for completeness but unused as a client command
+    byte* dist(byte type, int dist);
+    byte* err(); // Here for completeness but unused as a client command
 
 
     // The following are helper methods, simplifying common tasks
@@ -69,7 +71,7 @@ class PrestonDuino {
     byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
     int getFocusDistance(); // Focus distance, in mm (1mm precision)
     int getFocalLength(); // Focal length, in mm (1mm precision)
-    int getAperture(); // Aperture (*100)
+    int getAperture(); // Aperture (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
 
 };

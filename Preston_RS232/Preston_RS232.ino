@@ -8,6 +8,7 @@ PrestonDuino *mdr;
 unsigned long time_now = 0;
 int period = 5;
 
+
 void setup() {
   
   Serial.begin(115200); //open communication with computer
@@ -15,6 +16,7 @@ void setup() {
   mdr = new PrestonDuino(Serial1);
 
 }
+
 
 void loop() {
   if (mdr->readyToSend()) {

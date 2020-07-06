@@ -11,7 +11,7 @@ This is an Arduino library for communicating with a Preston MDR. It works with M
 	If all you need is lens data, these are the helper methods to access those variables:
 		int getFocusDistance() returns the focus distance, in mm (1mm precision)
 		int getFocalLength(); returns the focal length, in mm (1mm precision)
-		int getAperture(); returns the aperture (*100, so 5.6 returns as 5600)
+		int getAperture(); returns the aperture (*100, ex T-5.6 returns as 560)
 		char* getLensName();  returns the lens name, as assigned in hand unit
 	
 See Preston_RS232.ino for an example of how to use PrestonDuino.
@@ -20,7 +20,7 @@ Tips:
 	1) Make sure you're properly installing the library in your IDE. That process is
 	explained here: https://www.baldengineer.com/installing-arduino-library-from-github.html
 	
-	2) There are two class definitions (libraries), PrestonDuino and PrestonPacket.
+	2) There are two class definitions, PrestonDuino and PrestonPacket.
 	Both need to be installed. PrestonDuino manages actual serial communication with the 
 	MDR, while PrestonPacket defines the structure of data sent and received from the MDR.
 	

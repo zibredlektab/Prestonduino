@@ -217,7 +217,7 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
   int response = this->sendToMDR(packetbytes, packetlen);
 
   if (response == -2) {
-    //Serial.println("Sending to MDR failed");
+    // NAK received, MDR didn't understand us. Resend packet.
     // TODO retry
   }
 
@@ -233,69 +233,55 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet) {
 
 
 
-bool PrestonDuino::command(PrestonPacket* pak) {
-  //Serial.println("Sending a command that doesn't expect a reply");
-  if (this->sendToMDR(pak) == -1) {
-    //Serial.println("Command was acknowledged");
-    delete pak;
-    return true;
-  }
-  //Serial.println("Command was not acknowledged");
-  return false;
-}
-
-
-
-byte* PrestonDuino::commandWithReply(PrestonPacket* pak) {
-  //Serial.println("Sending a command that expects a response");
-  if (this->sendToMDR(pak) == -1) {
-    //Serial.println("Command was acknowledged, waiting for response");
+byte* PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
+  // Sending a sendCommand that does expect a reply
+  int8_t stat = this->sendToMDR(pak);
+  if (withreply && stat == -1) {
     // Packet was acknowledged by MDR
     if (this->waitForRcv()) {
-      //Serial.println("Response was recieved, parsing response");
       // Response packet was received
-      if (this->parseRcv() > 0) {
-        //Serial.print("Response parsed, data length is ");
-        //Serial.println(rcvpacket->getDataLen());
-        // Response was successfully 
-        return this->rcvpacket->getData();
-      }
-    } else {
-      //Serial.println("No response was received");
+      stat = this->parseRcv();
     }
   }
-
+  
   delete pak;
+
+  byte out[this->rcvpacket->getDataLen()+1];
+  out[0] = stat;
+  memcpy(out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+  return out;
 }
 
+/*
+ *  Preston-specified commands
+ */
 
 
-void PrestonDuino::mode(byte modeh, byte model) {
+byte* PrestonDuino::mode(byte modeh, byte model) {
   byte data[2] = {modeh, model};
   PrestonPacket *pak = new PrestonPacket(0x01, data, 2);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
 byte* PrestonDuino::stat() {
   PrestonPacket *pak = new PrestonPacket(0x02, NULL, 0);
-  return this->commandWithReply(pak);
-
+  return this->sendCommand(pak, true);
 }
 
-byte PrestonDuino::who() {
+byte* PrestonDuino::who() {
   PrestonPacket *pak = new PrestonPacket(0x03, NULL, 0);
-  byte* data = this->commandWithReply(pak);
+  byte* data = this->sendCommand(pak, true);
   return data[0];
 }
 
 byte* PrestonDuino::data(byte datadescription) {
   PrestonPacket *pak = new PrestonPacket(0x04, &datadescription, 1);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
-void PrestonDuino::data(byte* datadescription, int datalen) {
+byte* PrestonDuino::data(byte* datadescription, int datalen) {
   PrestonPacket *pak = new PrestonPacket(0x04, datadescription, datalen);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
 byte* PrestonDuino::rtc(byte select, byte* data) {
@@ -308,85 +294,66 @@ byte* PrestonDuino::rtc(byte select, byte* data) {
     len = 1;
   }
   PrestonPacket *pak = new PrestonPacket(0x05, data, len);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
-void PrestonDuino::setl(byte motors) {
+byte* PrestonDuino::setl(byte motors) {
   PrestonPacket *pak = new PrestonPacket(0x06, &motors, 1);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
-byte PrestonDuino::ct() {
+byte* PrestonDuino::ct() {
   PrestonPacket *pak = new PrestonPacket(0x07, NULL, 0);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
-void PrestonDuino::ct(byte cameratype) {
+byte* PrestonDuino::ct(byte cameratype) {
   PrestonPacket *pak = new PrestonPacket(0x07, &cameratype, 1);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
 byte* PrestonDuino::mset(byte mseth, byte msetl) {
   byte data[2] = {mseth, msetl};
   PrestonPacket *pak = new PrestonPacket(0x08, data, 2);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
 byte* PrestonDuino::mstat(byte motor) {
   PrestonPacket *pak = new PrestonPacket(0x09, &motor, 1);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
-void PrestonDuino::r_s(bool rs) {
+byte* PrestonDuino::r_s(bool rs) {
   PrestonPacket *pak = new PrestonPacket(0x0A, byte(rs), 1);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
-byte PrestonDuino::tcstat() {
+byte* PrestonDuino::tcstat() {
   PrestonPacket *pak = new PrestonPacket(0x0B, NULL, 0);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
 byte* PrestonDuino::ld() {
   PrestonPacket *pak = new PrestonPacket(0x0C, NULL, 0);
-  return this->commandWithReply(pak);
+  return this->sendCommand(pak, true);
 }
 
 byte* PrestonDuino::info(byte type) {
   PrestonPacket *pak = new PrestonPacket(0x0E, &type, 0x01);
-  byte* reply = this->commandWithReply(pak);
-
-  //Serial.print("Reply mode is ");
-  //Serial.println(this->rcvpacket->getMode());
-  
-  byte len = this->rcvpacket->getDataLen();
-  
-  //Serial.print("Length of data is ");
-  //Serial.println(len);
-  
-  byte out[len+1];
-  
-  out[0] = len;
-  
-  //Serial.println("Data follows");
-  
-  for (int i = 0; i < len; i++) {
-    //Serial.println(reply[i], HEX);
-    out[i+1] = reply[i];
-  }
-  //Serial.println("End of data");
-  return reply;
+  return this->sendCommand(pak, true);
 }
 
-void PrestonDuino::dist(byte type, int dist) {
+byte* PrestonDuino::dist(byte type, int dist) {
   //TODO properly format distance (should be 3 bytes)
   
   byte data[4] = {type, dist};
   PrestonPacket *pak = new PrestonPacket(0x10, data, 4);
-  this->command(pak);
+  return this->sendCommand(pak, false);
 }
 
-/*  Helper commands follow
+
+
+/*  Helper Commands 
  *  Note that lenses must be properly calibrated for any of this to work
  */
 
