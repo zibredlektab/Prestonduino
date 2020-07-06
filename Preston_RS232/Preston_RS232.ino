@@ -16,17 +16,13 @@ void setup() {
   mdr = new PrestonDuino(Serial1);
 
   delay(100);
-  
-  command_reply lens = mdr->ld();
 
-  Serial.print("Reply status is ");
-  Serial.println(lens.replystatus);
+  
+  char* lens = mdr->getLensName();
+
   
   Serial.print("start");
-  for (int i = 0; i < lens.replystatus; i++) {
-    Serial.print(lens.data[i], HEX);
-    Serial.print(" ");
-  }
+  Serial.print(lens);
   Serial.println("end");
 }
 

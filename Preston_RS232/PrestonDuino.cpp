@@ -513,27 +513,36 @@ int PrestonDuino::getAperture() {
   return ((uint16_t*)iris)[0];
 }
 
-
+/* 25, actually 17
+ * 38, actually 34
+ * 
+ */
 
 char* PrestonDuino::getLensName() {
   command_reply lensinfo = this->info(0x1);
 
-  int lensnamelen = lensinfo.replystatus;
+  int lensnamelen = lensinfo.replystatus-2; //first two bytes in the reply to info() are the type of info
 
   Serial.print("Lens name is this long: ");
   Serial.println(lensnamelen);
   
-  char lensname[lensnamelen];
-
+  static char lensname[100];
+  int lastnotwhitespace = 0;
   for (int i = 0; i < lensnamelen; i++) {
-    Serial.println(char(lensinfo.data[i]));
+    lensname[i] = lensinfo.data[i+2];
+    if (!isspace(lensname[i])) {
+      lastnotwhitespace = i;
+    }
   }
 
-  lensname[lensnamelen] = "\0";
+  lensname[lastnotwhitespace+1] = 0;
 
+
+  Serial.println("Lens name follows");
   for (int i = 0; i < lensnamelen; i++) {
     Serial.println(lensname[i]);
   }
+  Serial.println("End of lens name");
   
   return lensname;
 }
