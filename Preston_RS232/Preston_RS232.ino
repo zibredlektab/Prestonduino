@@ -10,7 +10,7 @@ int period = 5;
 
 
 void setup() {
-  
+
   Serial.begin(115200); //open communication with computer
 
   mdr = new PrestonDuino(Serial1);

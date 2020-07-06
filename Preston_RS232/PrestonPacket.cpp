@@ -6,6 +6,9 @@
 #include "Arduino.h"
 #include "PrestonPacket.h"
 
+
+
+
 PrestonPacket::PrestonPacket(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
   this->mode = cmd_mode;
@@ -15,6 +18,11 @@ PrestonPacket::PrestonPacket(byte cmd_mode) {
 
   this->compilePacket();
 }
+
+
+
+
+
 
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
@@ -31,12 +39,18 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 
 
 
+
+
+
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
   
   this->packetlen = len;
-  this->parseInput(this->packet_ascii, len);
+  this->parseInput(inputbuffer, len);
 }
+
+
+
 
 
 
@@ -46,34 +60,66 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     Serial.println(inputbuffer[0]);
     return;
   } else {
-    byte decoded[len/2-1];
-    this->asciiDecode(inputbuffer, len, decoded);
-
-    Serial.println("Decoded bytes for new PrestonPacket are as follows:");
-    for (int i = 0; i < 100; i++){
-      Serial.println(decoded[i], HEX);
+    Serial.println("Bytes to parse follow");
+    for (int i = 0; i < len; i++) {
+      Serial.println(inputbuffer[i], HEX);
     }
-    Serial.println("End of decoded bytes");
+    Serial.println("End of bytes to parse");
+
+
+    // Ascii decode the packet header
+    byte decodedheader[2];
+    this->asciiDecode(&inputbuffer[1], 4, decodedheader);
+
+    Serial.println("Decoded header is as follows");
+    for (int i = 0; i < 2; i++) {
+      Serial.println(decodedheader[i]);
+    }
+    Serial.println("End of decoded header");
     
     // set mode
-    this->mode = decoded[0];
-    
+    this->mode = decodedheader[0];
+
+    Serial.print("Mode of reply is ");
+    Serial.println(this->mode);
 
     // set datalen, corelen
-    this->datalen = decoded[1];
+    this->datalen = decodedheader[1];
     this->corelen = this->datalen + 2;
 
 
-    // set data
-    for (int i = 0; i < this->datalen; i++) {
-      this->data[i] = decoded[i+2];
+
+    if (this->mode == 0x0E) {
+      // Data should be treated as literal ascii, not encoded ascii
+      for (int i = 0; i < this->datalen; i++) {
+        this->data[i] = inputbuffer[i+5]; // data starts at index 5
+      }
+    } else {
+      // Data needs to be decoded from encoded ascii
+      byte decodedcore[this->datalen];
+      this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore);
+      // set data
+      Serial.println("Decoded core is as follows");
+      for (int i = 0; i < this->datalen; i++) {
+        this->data[i] = decodedcore[i];
+        Serial.println(this->data[i], HEX);
+      }
+      Serial.println("End of decoded core");
+
     }
 
-
+    
     // set sum
-    this->checksum = decoded[len/2-2];
+    byte decodedsum[1];
+    this->asciiDecode(&inputbuffer[5+(this->datalen*2)], 2, decodedsum);
+    this->checksum = decodedsum[0];
+    Serial.print("Checksum is ");
+    Serial.println(this->checksum, HEX);
   }
 }
+
+
+
 
 void PrestonPacket::compilePacket() {
   /*  1) build core (mode + size + data)
@@ -138,6 +184,10 @@ void PrestonPacket::compilePacket() {
 }
 
 
+
+
+
+
 int PrestonPacket::computeSum(byte* input, int len) {
   // byte* input is an ascii-encoded array
   
@@ -150,6 +200,10 @@ int PrestonPacket::computeSum(byte* input, int len) {
   this->checksum = sum % 0x100;
   return this->checksum;
 }
+
+
+
+
 
 
 void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
@@ -169,18 +223,42 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
   }
 }
 
-void PrestonPacket::asciiDecode(byte* input, int len, byte* output) {
-  int outputlen = (len/2)-1;
+
+
+
+
+void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
+  int outputlen = inputlen/2;
+  
+  Serial.print("outputlen is ");
+  Serial.println(outputlen);
+  
+  Serial.println("Bytes given to asciiDecode follow");
+  for (int i = 0; i < inputlen; i++) {
+    Serial.println(input[i], HEX);
+  }
+  Serial.println("End of bytes for asciiDecode, decoded bytes follow");
+  
   for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
-    // input[0] is stx, input[len-1] is etx
     static char holder[3]; // don't forget the trailing 0
-    int j = (i*2)+1;
+    int j = (i*2);
 
     sprintf(holder, "%c%c", input[j], input[j+1]);
+
+    Serial.print(holder[0]);
+    Serial.print(",");
+    Serial.println(holder[1]);
 
     output[i] = strtol(holder, NULL, 16);
   }
 }
+
+
+
+/*
+ *  Getters & setters
+ */
+
 
 
 
