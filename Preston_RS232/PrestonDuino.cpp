@@ -419,7 +419,6 @@ int PrestonDuino::getFocusDistance() {
   }
   Serial.println("----");
   
-  //memcpy(&dist[0], lensdata, 3);
   for (int i = 2; i >= 0; i--) {
     dist[i] = lensdata[2-i];
   }
@@ -449,9 +448,31 @@ int PrestonDuino::getFocalLength() {
 
 int PrestonDuino::getAperture() {
   byte* lensdata = this->getLensData();
-  byte aperture[2];
-  memcpy(&aperture, &lensdata[10], 4);
-  return uint16_t(aperture);
+  byte dist[2];
+  //memcpy(&aperture, &lensdata[10], 4);
+  //return uint16_t(aperture);
+
+
+  Serial.println("Iris data:");
+  for (int i = 0; i < 2; i++) {
+    Serial.println(lensdata[3+i], HEX);
+  }
+  Serial.println("----");
+  
+  for (int i = 1; i >= 0; i--) {
+    dist[i] = lensdata[4-i];
+  }
+
+  Serial.println("Iris data isolated:");
+  for (int i = 0; i < 2; i++) {
+    Serial.println(dist[i], HEX);
+  }
+
+  Serial.println("----");
+  Serial.print("Iris data as int: ");
+  Serial.println(((uint16_t*)dist)[0], DEC);
+
+  return ((uint16_t*)dist)[0];
 }
 
 
