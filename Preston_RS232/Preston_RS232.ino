@@ -17,10 +17,16 @@ void setup() {
 
   delay(100);
   
-  byte* lens = mdr->who();
+  command_reply lens = mdr->ld();
+
+  Serial.print("Reply status is ");
+  Serial.println(lens.replystatus);
   
   Serial.print("start");
-  Serial.print(lens[0]);
+  for (int i = 0; i < lens.replystatus; i++) {
+    Serial.print(lens.data[i], HEX);
+    Serial.print(" ");
+  }
   Serial.println("end");
 }
 
