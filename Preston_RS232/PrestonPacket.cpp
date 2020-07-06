@@ -8,6 +8,7 @@
 
 PrestonPacket::PrestonPacket(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
+  // TODO make this work
   PrestonPacket(cmd_mode, NULL, 0);
 }
 
@@ -193,7 +194,7 @@ int PrestonPacket::getSum() {
 
 byte* PrestonPacket::getPacket() {
   for (int i = 0; i < this->packetlen; i++) {
-    //Serial.println(packet_ascii[i], HEX);
+    Serial.println(packet_ascii[i], HEX);
   }
   return this->packet_ascii;
 }

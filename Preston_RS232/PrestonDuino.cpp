@@ -8,15 +8,17 @@
 
 PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   // Open a connection to the MDR on Serial port 'serial'
+  
   ser = &serial;
   ser->begin(115200);
 
   // Connection to MDR theoretically open, testing with WHO
 
-  while (this->who()[0] == 0) {
+  while (!ser) {
     ; // wait until we get a reply
   }
 
+  Serial.println("MDR connection is open");
   // TODO slightly more robust way of checking for connection?
   this->connectionopen = true;
 
@@ -47,7 +49,8 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
    */
 
   for (int i = 0; i < len; i++) {
-    
+    Serial.print("Sending ");
+    Serial.println(tosend[i], HEX);
     ser->write(tosend[i]);
     ser->flush(); // wait for byte to finish sending
   }
@@ -57,6 +60,7 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
   
   if (this->waitForRcv()) {
     // response received
+    Serial.println("Got a response");
     response = this->parseRcv();
   }
 
@@ -72,13 +76,14 @@ bool PrestonDuino::waitForRcv() {
   
   while(millis() <= this->time_now + this->timeout) {
     if (ser->available()) {
+      Serial.println("Response is available");
       // Response is available
       return this->rcv();
     }
   }
 
   // If it gets this far, there was a timeout
-  
+  Serial.println("Timeout");
   return false;
 }
 
@@ -101,6 +106,9 @@ bool PrestonDuino::rcv() {
   
   while (ser->available() > 0 && !this->rcvreadytoprocess) { //only receive if there is something to be received and no data in our buffer
     currentchar = ser->read();
+    Serial.print("Received ");
+    Serial.print(char(currentchar));
+    Serial.println(" from MDR");
     
     if (this->rcving) {
       // Currently in the process of receiving an incoming packet
@@ -192,7 +200,7 @@ int PrestonDuino::parseRcv() {
         
       } else {
         // Reply is a response packet
-        response = rcvlen;
+        response = this->rcvpacket->getDataLen();
       }
     }
 
@@ -206,13 +214,17 @@ int PrestonDuino::parseRcv() {
 
 
 void PrestonDuino::sendACK() {
-  this->sendToMDR({ACK}, 1);
+  Serial.println("Sending ACK to MDR");
+  ser->write(ACK);
+  ser->flush();
 }
 
 
 
 void PrestonDuino::sendNAK() {
-  this->sendToMDR({NAK}, 1);
+  Serial.println("Sending NAK to MDR");
+  ser->write(NAK);
+  ser->flush();
 }
 
 
@@ -229,6 +241,9 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
     // TODO retry
   }
 
+
+  Serial.print("Response status is ");
+  Serial.println(response);
   delete packet;
   return response;
 
@@ -246,20 +261,25 @@ byte* PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
   // Return an array of the reply, first element of which is an indicator of the reply type
   
-  int8_t stat = this->sendToMDR(pak); // MDR's receipt of the command packet
+  int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
   
   if (withreply && stat == -1) {
     // Packet was acknowledged by MDR
+
+    Serial.println("Command packet acknowledged, awaiting reply");
     
     if (this->waitForRcv()) {
       // Response packet was received
+      Serial.println("Got a reply packet");
       stat = this->parseRcv(); // MDR's response to the command packet
+      Serial.print("Status of reply packet is ");
+      Serial.println(stat);
     }
   }
 
-  byte out[this->rcvpacket->getDataLen()+1];
+  byte out[100];
   out[0] = stat; // First index of return array is the reply type
-  memcpy(out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+  //memcpy(&out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
   return out;
 }
 
@@ -347,7 +367,7 @@ byte* PrestonDuino::tcstat() {
 }
 
 byte* PrestonDuino::ld() {
-  PrestonPacket *pak = new PrestonPacket(0x0C);
+  PrestonPacket *pak = new PrestonPacket(0x0C, NULL, 0);
   return this->sendCommand(pak, true);
 }
 
@@ -372,15 +392,12 @@ byte* PrestonDuino::dist(byte type, int dist) {
 
 
 byte* PrestonDuino::getLensData() {
-  byte* lensdata;
-
-  if (this->rcvpacket->getMode() == 0x0C) {
-    lensdata = this->rcvpacket->getData();
-  } else {
-    lensdata = this->ld();
+  if (this->rcvpacket->getMode() != 0x0C) {
+    // Ensures that the data we're accessing is from an ld command, not something else
+    this->ld();
   }
-
-  return lensdata;
+  
+  return this->rcvpacket->getData();
 }
 
 
@@ -388,7 +405,7 @@ byte* PrestonDuino::getLensData() {
 int PrestonDuino::getFocusDistance() {
   byte* lensdata = this->getLensData();
   byte dist[4];
-  memcpy(&dist[1], &lensdata, 3);
+  memcpy(&dist[1], &lensdata, 6);
   return uint32_t(dist);
 }
 
@@ -397,7 +414,7 @@ int PrestonDuino::getFocusDistance() {
 int PrestonDuino::getFocalLength() {
   byte* lensdata = this->getLensData();
   byte flength[2];
-  memcpy(&flength, &lensdata[3], 2);
+  memcpy(&flength, &lensdata[6], 4);
   return uint16_t(flength);
 }
 
@@ -406,7 +423,7 @@ int PrestonDuino::getFocalLength() {
 int PrestonDuino::getAperture() {
   byte* lensdata = this->getLensData();
   byte aperture[2];
-  memcpy(&aperture, &lensdata[5], 2);
+  memcpy(&aperture, &lensdata[10], 4);
   return uint16_t(aperture);
 }
 

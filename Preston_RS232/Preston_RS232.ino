@@ -15,21 +15,35 @@ void setup() {
 
   mdr = new PrestonDuino(Serial1);
 
+  delay(100);
+  
+  lensdata = mdr->ld();
+  int lensdatalen = lensdata[0];
+  
+  Serial.print("Data is this many bytes long: ");
+  Serial.println(lensdatalen);
+  
+  Serial.print("start");
+  for (int i = 0; i < lensdatalen; i++) {
+    Serial.print(lensdata[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println("end");
 }
 
 
 void loop() {
-  if (mdr->readyToSend()) {
+ /* if (mdr->readyToSend()) {
     if (millis() >= time_now + period) {
       time_now = millis();
       lensdata = mdr->ld();
     }
     
-    Serial.print("start");
-    for (int i = 0; i < 3; i++) {
+    Serial.print("");
+    for (int i = 1; i < lensdata[0]; i++) {
       Serial.print(lensdata[i], HEX);
       Serial.print(" ");
     }
-    Serial.println("end");
-  }
+    Serial.println();
+  }*/
 }
