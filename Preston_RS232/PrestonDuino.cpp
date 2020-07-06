@@ -214,6 +214,7 @@ int PrestonDuino::parseRcv() {
 
 
 void PrestonDuino::sendACK() {
+  // Send ACK, don't wait for a reply (there shouldn't be one)
   Serial.println("Sending ACK to MDR");
   ser->write(ACK);
   ser->flush();
@@ -222,6 +223,7 @@ void PrestonDuino::sendACK() {
 
 
 void PrestonDuino::sendNAK() {
+  // Send NAK, don't wait for a reply (that will be handled elsewhere)
   Serial.println("Sending NAK to MDR");
   ser->write(NAK);
   ser->flush();
@@ -277,9 +279,9 @@ byte* PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
     }
   }
 
-  byte out[100];
+  static byte out[100];
   out[0] = stat; // First index of return array is the reply type
-  //memcpy(&out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+  memcpy(&out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
   return out;
 }
 
@@ -367,7 +369,7 @@ byte* PrestonDuino::tcstat() {
 }
 
 byte* PrestonDuino::ld() {
-  PrestonPacket *pak = new PrestonPacket(0x0C, NULL, 0);
+  PrestonPacket *pak = new PrestonPacket(0x0C);
   return this->sendCommand(pak, true);
 }
 
@@ -392,11 +394,16 @@ byte* PrestonDuino::dist(byte type, int dist) {
 
 
 byte* PrestonDuino::getLensData() {
-  if (this->rcvpacket->getMode() != 0x0C) {
+ // if (this->rcvpacket->getMode() != 0x0C) {
     // Ensures that the data we're accessing is from an ld command, not something else
     this->ld();
+ // }
+
+  Serial.println("Lens data:");
+  for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
+    Serial.println(this->rcvpacket->getData()[i], HEX);
   }
-  
+  Serial.println("----");
   return this->rcvpacket->getData();
 }
 
@@ -405,8 +412,28 @@ byte* PrestonDuino::getLensData() {
 int PrestonDuino::getFocusDistance() {
   byte* lensdata = this->getLensData();
   byte dist[4];
-  memcpy(&dist[1], &lensdata, 6);
-  return uint32_t(dist);
+  dist[3] = 0;
+  Serial.println("Focus data:");
+  for (int i = 0; i < 3; i++) {
+    Serial.println(lensdata[i], HEX);
+  }
+  Serial.println("----");
+  
+  //memcpy(&dist[0], lensdata, 3);
+  for (int i = 2; i >= 0; i--) {
+    dist[i] = lensdata[2-i];
+  }
+
+  Serial.println("Focus data isolated:");
+  for (int i = 0; i < 4; i++) {
+    Serial.println(dist[i], HEX);
+  }
+
+  Serial.println("----");
+  Serial.print("Focus data as int: ");
+  Serial.println(((uint32_t*)dist)[0], DEC);
+
+  return ((uint32_t*)dist)[0];
 }
 
 

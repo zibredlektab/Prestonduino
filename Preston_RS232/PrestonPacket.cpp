@@ -8,8 +8,12 @@
 
 PrestonPacket::PrestonPacket(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
-  // TODO make this work
-  PrestonPacket(cmd_mode, NULL, 0);
+  this->mode = cmd_mode;
+
+  this->data[0] = NULL;
+  this->datalen = 0;
+
+  this->compilePacket();
 }
 
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
@@ -20,9 +24,8 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
   }
+  
   this->datalen = cmd_datalen;
-  this->corelen = this->datalen + 2; // mode, size, data
-  this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
   this->compilePacket();
 }
 
@@ -79,6 +82,10 @@ void PrestonPacket::compilePacket() {
    * 
    * 
    */
+
+
+  this->corelen = this->datalen + 2; // mode, size, data
+  this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
 
 
   // Build the core

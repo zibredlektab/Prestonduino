@@ -17,17 +17,10 @@ void setup() {
 
   delay(100);
   
-  lensdata = mdr->ld();
-  int lensdatalen = lensdata[0];
-  
-  Serial.print("Data is this many bytes long: ");
-  Serial.println(lensdatalen);
+  int dist = mdr->getFocusDistance();
   
   Serial.print("start");
-  for (int i = 0; i < lensdatalen; i++) {
-    Serial.print(lensdata[i], HEX);
-    Serial.print(" ");
-  }
+  Serial.print(dist);
   Serial.println("end");
 }
 
