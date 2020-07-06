@@ -30,15 +30,15 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 }
 
 
+
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
   
   this->packetlen = len;
-  for (int i = 0; i < len; i++){
-    this->packet_ascii[i] = inputbuffer[i];
-  }
   this->parseInput(this->packet_ascii, len);
 }
+
+
 
 void PrestonPacket::parseInput(byte* inputbuffer, int len) {  
   if (inputbuffer[0] != STX) {
@@ -48,7 +48,12 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
   } else {
     byte decoded[len/2-1];
     this->asciiDecode(inputbuffer, len, decoded);
-    
+
+    Serial.println("Decoded bytes for new PrestonPacket are as follows:");
+    for (int i = 0; i < 100; i++){
+      Serial.println(decoded[i], HEX);
+    }
+    Serial.println("End of decoded bytes");
     
     // set mode
     this->mode = decoded[0];
@@ -200,9 +205,6 @@ int PrestonPacket::getSum() {
 
 
 byte* PrestonPacket::getPacket() {
-  for (int i = 0; i < this->packetlen; i++) {
-    Serial.println(packet_ascii[i], HEX);
-  }
   return this->packet_ascii;
 }
 

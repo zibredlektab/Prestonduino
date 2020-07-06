@@ -50,7 +50,7 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 
   for (int i = 0; i < len; i++) {
     Serial.print("Sending ");
-    Serial.println(tosend[i], HEX);
+    Serial.println(char(tosend[i]));
     ser->write(tosend[i]);
     ser->flush(); // wait for byte to finish sending
   }
@@ -107,7 +107,7 @@ bool PrestonDuino::rcv() {
   while (ser->available() > 0 && !this->rcvreadytoprocess) { //only receive if there is something to be received and no data in our buffer
     currentchar = ser->read();
     Serial.print("Received ");
-    Serial.print(char(currentchar));
+    Serial.print(currentchar, HEX);
     Serial.println(" from MDR");
     
     if (this->rcving) {
@@ -279,9 +279,17 @@ byte* PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
     }
   }
 
+  Serial.println("Reply data is as follows");
+  for (int i = 0; i < 100; i++) {
+    Serial.println(this->rcvpacket->getData()[i], HEX);
+  }
+  Serial.println("End of reply array");
+
   static byte out[100];
   out[0] = stat; // First index of return array is the reply type
-  memcpy(&out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+  
+ // memcpy(&out[1], this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+
   return out;
 }
 
@@ -496,19 +504,24 @@ int PrestonDuino::getAperture() {
 
 
 char* PrestonDuino::getLensName() {
-  byte* lensinfo;
+  byte* lensinfo = this->info(0x1);
 
-  if (this->rcvpacket->getMode() == 0x0E) {
-    lensinfo = this->rcvpacket->getData();
-  } else {
-    lensinfo = this->info(0x1);
+  int lensnamelen = lensinfo[0];
+
+  Serial.print("Lens name is this long: ");
+  Serial.println(lensnamelen);
+  
+  char lensname[lensnamelen];
+
+  for (int i = 0; i < lensnamelen; i++) {
+    Serial.println(char(lensinfo[i]));
   }
 
-  char lensname[15];
+  lensname[lensnamelen] = "\0";
 
-  memcpy(&lensname, &lensinfo[1], 14);
-
-  lensname[14] = "\0";
+  for (int i = 0; i < lensnamelen; i++) {
+    Serial.println(lensname[i]);
+  }
   
   return lensname;
 }

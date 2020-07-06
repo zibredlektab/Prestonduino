@@ -17,10 +17,10 @@ void setup() {
 
   delay(100);
   
-  int dist = mdr->getFocalLength();
+  byte* lens = mdr->who();
   
   Serial.print("start");
-  Serial.print(dist);
+  Serial.print(lens[0]);
   Serial.println("end");
 }
 

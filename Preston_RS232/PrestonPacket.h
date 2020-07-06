@@ -18,7 +18,7 @@
 class PrestonPacket {
   private:
     byte mode;
-    byte data[20]; // not encoded, 20 for now as arbitrary limit
+    byte data[100]; // not encoded, 100 for now as arbitrary limit
     int checksum;
     byte packet_ascii[50]; // ascii-encoded packet, currently limited to 50 bytes (arbitrary "big" limit)
     int computeSum(byte* input, int len);
