@@ -20,6 +20,7 @@ class PrestonDuino {
   private:
     // variables
     HardwareSerial *ser; // serial port connected to MDR
+    bool firstpacket = true;
     bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     bool rcving = false; // flag that we are in the middle of receiving a packet

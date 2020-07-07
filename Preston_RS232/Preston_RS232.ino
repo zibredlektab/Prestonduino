@@ -1,12 +1,12 @@
 #include "PrestonPacket.h"
 #include "PrestonDuino.h"
 
-command_reply lensdata;
+char* lensdata;
 
 PrestonDuino *mdr;
 
-int time_now = 0;
-int period = 50;
+unsigned long long time_now = 0;
+int period = 5;
 
 int count = 0;
 
@@ -21,15 +21,14 @@ void setup() {
 
 
 void loop() {
-  //Serial.println(millis());
-  
+
   if (millis() >= time_now + period) {
     Serial.print(count++);
     Serial.print(": ");
     
     time_now = millis();
-    lensdata = mdr->info(0x1);
-    Serial.println(lensdata.replystatus);
+    lensdata = mdr->getLensName();
+    Serial.println(lensdata);
   }
   
 }

@@ -84,7 +84,7 @@ bool PrestonDuino::waitForRcv() {
   }
 
   // If it gets this far, there was a timeout
-  Serial.println("Timeout");
+  //Serial.println("Timeout");
   return false;
 }
 
@@ -181,34 +181,48 @@ int PrestonDuino::parseRcv() {
   int response = 0;
   
   //if (this->rcvreadytoprocess) {
-    //Serial.println("starting to process rcv");
+    //Serial.println("Starting to process rcv");
     // TODO This should always be true, parseRcv() shouldn't be called unless we're ready to process...
     if (rcvbuf[0] == ACK) {
       // Reply is ACK
+      //Serial.println("Rcv is ACK");
       response = -1;
       
     } else if (rcvbuf[0] == NAK) {
       // Reply is NAK
+      //Serial.println("Rcv is NAK");
       response = -2;
       
     } else if (rcvbuf[0] == STX) {
+      //Serial.println("Rcv is a packet");
       // Reply is a packet
-      delete this->rcvpacket;
+      
+      if (!this->firstpacket) {
+        // Delete the previously-received packet before making a new one
+        delete this->rcvpacket;
+      } else {
+        this->firstpacket = false;
+      }
       PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
       this->rcvpacket = pak;
       
       if (this->rcvpacket->getMode() == 0x11) {
         // Reply is an error message
+        //Serial.println("Rcv packet is an error");
         response = -3;
         // TODO actual error handling
         
       } else {
         // Reply is a response packet
         response = this->rcvpacket->getDataLen();
+        //Serial.print("Packet is ");
+        //Serial.print(response);
+        //Serial.println(" bytes long");
       }
     }
 
     // Done processing
+    //Serial.println("Done processing rcv");
     this->rcvreadytoprocess = false;
   //}
 
@@ -286,7 +300,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
         //Serial.println(stat);
         reply.replystatus = stat;
       } else {
-        Serial.println("Reply packet never came");
+        //Serial.println("Reply packet never came");
       }
 
   
