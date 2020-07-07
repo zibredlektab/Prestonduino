@@ -6,10 +6,6 @@
 #include "PrestonDuino.h"
 
 
-
-
-
-
 PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   // Open a connection to the MDR on Serial port 'serial'
 
@@ -270,9 +266,8 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
   // Return an array of the reply, first element of which is an indicator of the reply type
   int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
-  command_reply out;
-  out.replystatus = stat;
-  out.data = NULL;
+  reply.replystatus = stat;
+  reply.data = NULL;
   
   //Serial.print("Immediate response to command is ");
   //Serial.println(stat);
@@ -288,7 +283,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
         stat = this->parseRcv(); // MDR's response to the command packet
         //Serial.print("Status of reply packet is ");
         //Serial.println(stat);
-        out.replystatus = stat;
+        reply.replystatus = stat;
       } else {
         Serial.println("Reply packet never came");
       }
@@ -300,11 +295,11 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
       }
       //Serial.println("End of reply array");
 
-      out.data = this->rcvpacket->getData();
+      reply.data = this->rcvpacket->getData();
     }
   }
 
-  return out;
+  return reply;
 }
 
 

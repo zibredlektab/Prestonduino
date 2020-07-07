@@ -1,7 +1,7 @@
 #include "PrestonPacket.h"
 #include "PrestonDuino.h"
 
-uint32_t lensdata;
+command_reply lensdata;
 
 PrestonDuino *mdr;
 
@@ -21,12 +21,15 @@ void setup() {
 
 
 void loop() {
+  Serial.println(time_now);
+  
   if (millis() >= time_now + period) {
     Serial.print(count++);
     Serial.print(": ");
+    
     time_now = millis();
-    lensdata = mdr->getFocusDistance();
-    Serial.println(lensdata);
+    lensdata = mdr->info(0x1);
+    Serial.println(lensdata.replystatus);
   }
   
 }
