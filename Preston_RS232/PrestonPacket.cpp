@@ -56,32 +56,32 @@ PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
 
 void PrestonPacket::parseInput(byte* inputbuffer, int len) {  
   if (inputbuffer[0] != STX) {
-    Serial.print("Packet to parse doesn't start with STX, instead starts with ");
-    Serial.println(inputbuffer[0]);
+    //Serial.print("Packet to parse doesn't start with STX, instead starts with ");
+    //Serial.println(inputbuffer[0]);
     return;
   } else {
-    Serial.println("Bytes to parse follow");
+    //Serial.println("Bytes to parse follow");
     for (int i = 0; i < len; i++) {
-      Serial.println(inputbuffer[i], HEX);
+      //Serial.println(inputbuffer[i], HEX);
     }
-    Serial.println("End of bytes to parse");
+    //Serial.println("End of bytes to parse");
 
 
     // Ascii decode the packet header
     byte decodedheader[2];
     this->asciiDecode(&inputbuffer[1], 4, decodedheader);
 
-    Serial.println("Decoded header is as follows");
+    //Serial.println("Decoded header is as follows");
     for (int i = 0; i < 2; i++) {
-      Serial.println(decodedheader[i]);
+      //Serial.println(decodedheader[i]);
     }
-    Serial.println("End of decoded header");
+    //Serial.println("End of decoded header");
     
     // set mode
     this->mode = decodedheader[0];
 
-    Serial.print("Mode of reply is ");
-    Serial.println(this->mode);
+    //Serial.print("Mode of reply is ");
+    //Serial.println(this->mode);
 
     // set datalen, corelen
     this->datalen = decodedheader[1];
@@ -99,12 +99,12 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
       byte decodedcore[this->datalen];
       this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore);
       // set data
-      Serial.println("Decoded core is as follows");
+      //Serial.println("Decoded core is as follows");
       for (int i = 0; i < this->datalen; i++) {
         this->data[i] = decodedcore[i];
-        Serial.println(this->data[i], HEX);
+        //Serial.println(this->data[i], HEX);
       }
-      Serial.println("End of decoded core");
+      //Serial.println("End of decoded core");
 
     }
 
@@ -113,8 +113,8 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     byte decodedsum[1];
     this->asciiDecode(&inputbuffer[5+(this->datalen*2)], 2, decodedsum);
     this->checksum = decodedsum[0];
-    Serial.print("Checksum is ");
-    Serial.println(this->checksum, HEX);
+    //Serial.print("Checksum is ");
+    //Serial.println(this->checksum, HEX);
   }
 }
 
@@ -230,14 +230,14 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
   int outputlen = inputlen/2;
   
-  Serial.print("outputlen is ");
-  Serial.println(outputlen);
+  //Serial.print("outputlen is ");
+  //Serial.println(outputlen);
   
-  Serial.println("Bytes given to asciiDecode follow");
+  //Serial.println("Bytes given to asciiDecode follow");
   for (int i = 0; i < inputlen; i++) {
-    Serial.println(input[i], HEX);
+    //Serial.println(input[i], HEX);
   }
-  Serial.println("End of bytes for asciiDecode, decoded bytes follow");
+  //Serial.println("End of bytes for asciiDecode, decoded bytes follow");
   
   for (int i = 0; i < outputlen; i++) {  // need to iterate over 1, 3, 5, 7, etc so i*2+1
     static char holder[3]; // don't forget the trailing 0
@@ -245,9 +245,9 @@ void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
 
     sprintf(holder, "%c%c", input[j], input[j+1]);
 
-    Serial.print(holder[0]);
-    Serial.print(",");
-    Serial.println(holder[1]);
+    //Serial.print(holder[0]);
+    //Serial.print(",");
+    //Serial.println(holder[1]);
 
     output[i] = strtol(holder, NULL, 16);
   }

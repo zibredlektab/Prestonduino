@@ -1,13 +1,14 @@
 #include "PrestonPacket.h"
 #include "PrestonDuino.h"
 
-byte* lensdata;
+uint32_t lensdata;
 
 PrestonDuino *mdr;
 
 unsigned long time_now = 0;
 int period = 5;
 
+int count = 0;
 
 void setup() {
 
@@ -16,29 +17,16 @@ void setup() {
   mdr = new PrestonDuino(Serial1);
 
   delay(100);
-
-  
-  char* lens = mdr->getLensName();
-
-  
-  Serial.print("start");
-  Serial.print(lens);
-  Serial.println("end");
 }
 
 
 void loop() {
- /* if (mdr->readyToSend()) {
-    if (millis() >= time_now + period) {
-      time_now = millis();
-      lensdata = mdr->ld();
-    }
-    
-    Serial.print("");
-    for (int i = 1; i < lensdata[0]; i++) {
-      Serial.print(lensdata[i], HEX);
-      Serial.print(" ");
-    }
-    Serial.println();
-  }*/
+  if (millis() >= time_now + period) {
+    Serial.print(count++);
+    Serial.print(": ");
+    time_now = millis();
+    lensdata = mdr->getFocusDistance();
+    Serial.println(lensdata);
+  }
+  
 }
