@@ -193,6 +193,7 @@ int PrestonDuino::parseRcv() {
       
     } else if (rcvbuf[0] == STX) {
       // Reply is a packet
+      delete this->rcvpacket;
       PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
       this->rcvpacket = pak;
       

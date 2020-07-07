@@ -5,8 +5,8 @@ command_reply lensdata;
 
 PrestonDuino *mdr;
 
-unsigned long time_now = 0;
-int period = 5;
+int time_now = 0;
+int period = 50;
 
 int count = 0;
 
@@ -21,7 +21,7 @@ void setup() {
 
 
 void loop() {
-  Serial.println(time_now);
+  //Serial.println(millis());
   
   if (millis() >= time_now + period) {
     Serial.print(count++);
