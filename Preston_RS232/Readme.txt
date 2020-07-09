@@ -44,6 +44,4 @@ TODO:
 	- Properly handle commands that only support specific MDR models
 	- Resend MDR messages on a NAK response
 	- Test the more obscure commands
-	- Investigate why info(0x0) responds without an ACK (update MDR3 fw), possibly change
-		to support this behavior (depending on response from Preston)
 	- Actually check the checksum for package validity
