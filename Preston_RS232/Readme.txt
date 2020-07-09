@@ -9,7 +9,7 @@ This is an Arduino library for communicating with a Preston MDR. It works with M
 	spec.
 	
 	If all you need is lens data, these are the helper methods to access those variables:
-		int getFocusDistance() returns the focus distance, in mm (1mm precision)
+		uint32_t getFocusDistance() returns the focus distance, in mm (1mm precision)
 		int getFocalLength(); returns the focal length, in mm (1mm precision)
 		int getAperture(); returns the aperture (*100, ex T-5.6 returns as 560)
 		char* getLensName();  returns the lens name, as assigned in hand unit
