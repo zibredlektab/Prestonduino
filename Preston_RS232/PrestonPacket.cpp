@@ -230,7 +230,7 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
   int outputlen = inputlen/2;
   
-  //Serial.print("outputlen is ");
+  //Serial.print("Length of decoded byte array is ");
   //Serial.println(outputlen);
   
   //Serial.println("Bytes given to asciiDecode follow");

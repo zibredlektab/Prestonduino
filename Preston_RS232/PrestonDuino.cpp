@@ -215,7 +215,7 @@ int PrestonDuino::parseRcv() {
       } else {
         // Reply is a response packet
         response = this->rcvpacket->getDataLen();
-        //Serial.print("Packet is ");
+        //Serial.print("Packet data is ");
         //Serial.print(response);
         //Serial.println(" bytes long");
       }
@@ -286,33 +286,34 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   
   //Serial.print("Immediate response to command is ");
   //Serial.println(stat);
-  
-  if (stat == -1) {
-    if (withreply) {
-      // Packet was acknowledged by MDR
-  
-      //Serial.println("Command packet acknowledged, awaiting reply");
-      if (this->waitForRcv()) {
-        // Response packet was received
-        //Serial.println("Got a reply packet");
-        stat = this->parseRcv(); // MDR's response to the command packet
-        //Serial.print("Status of reply packet is ");
-        //Serial.println(stat);
-        reply.replystatus = stat;
-      } else {
-        //Serial.println("Reply packet never came");
-      }
 
+  if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
+    // Either: timeout, NAK, or ACK for a command that doesn't need a reply
+    return reply;
+  } else if (stat == -1 && withreply) {
+    // Packet was acknowledged by MDR, but we still need a reply
   
-      //Serial.println("Reply data is as follows");
-      for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
-        //Serial.println(this->rcvpacket->getData()[i], HEX);
-      }
-      //Serial.println("End of reply array");
-
-      reply.data = this->rcvpacket->getData();
+    //Serial.println("Command packet acknowledged, awaiting reply");
+    if (this->waitForRcv()) {
+      // Response packet was received
+      //Serial.println("Got a reply packet");
+      stat = this->parseRcv(); // MDR's response to the command packet
+      //Serial.print("Status of reply packet is ");
+      //Serial.println(stat);
+      reply.replystatus = stat;
+    } else {
+      //Serial.println("Reply packet never came");
     }
   }
+
+
+  //Serial.println("Reply data is as follows");
+  for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
+    //Serial.println(this->rcvpacket->getData()[i], HEX);
+  }
+  //Serial.println("End of reply array");
+
+  reply.data = this->rcvpacket->getData();
 
   return reply;
 }
@@ -428,7 +429,7 @@ command_reply PrestonDuino::dist(byte type, int dist) {
 byte* PrestonDuino::getLensData() {
   command_reply reply = this->ld();
 
-  //erial.println("Lens data:");
+  //Serial.println("Lens data:");
   for (int i = 0; i < reply.replystatus; i++) {
     //Serial.println(reply.data[i], HEX);
   }
