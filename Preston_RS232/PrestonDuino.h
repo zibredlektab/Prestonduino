@@ -9,7 +9,7 @@
 #define PrestonDuino_h
 
 struct command_reply {
-  int replystatus;
+  uint8_t replystatus;
   byte* data;
 };
 
@@ -53,6 +53,7 @@ class PrestonDuino {
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
     void setMDRTimeout(int timeout); // sets the timeout
     bool readyToSend();
+    command_reply getReply();
     
     /* All of the following are according to the Preston protocol.
      * The first byte is a signed int identifying the type of the response:
@@ -63,7 +64,7 @@ class PrestonDuino {
     command_reply stat();
     command_reply who();
     command_reply data(byte datadescription);
-    command_reply data(byte* datadescription, int datalen); // not sure what is returned in this case, I think just ACK?
+    command_reply data(byte* datadescription, int datalen);
     command_reply rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
     command_reply setl(byte motors);
     command_reply ct(); // MDR2 only
@@ -80,11 +81,19 @@ class PrestonDuino {
 
     // The following are helper methods, simplifying common tasks
     // Lens data requires lens to be calibrated (mapped) from the hand unit
+
+    // Getters
     byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
     uint32_t getFocusDistance(); // Focus distance, in mm (1mm precision)
     int getFocalLength(); // Focal length, in mm (1mm precision)
     int getAperture(); // Aperture (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
+
+    // Setters
+    command_reply setLensData(uint32_t dist, uint16_t aperture, uint16_t flength);
+    command_reply setFocusDistance(uint32_t dist);
+    command_reply setAperture(uint16_t aperture);
+    command_reply setFocalLength(uint16_t flength);
 
 };
 

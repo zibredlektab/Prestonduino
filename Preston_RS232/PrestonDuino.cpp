@@ -282,7 +282,6 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Return an array of the reply, first element of which is an indicator of the reply type
   int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
   reply.replystatus = stat;
-  reply.data = NULL;
   
   //Serial.print("Immediate response to command is ");
   //Serial.println(stat);
@@ -318,6 +317,10 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   return reply;
 }
 
+
+command_reply PrestonDuino::getReply() {
+  return this->reply;
+}
 
 
 /*
@@ -444,27 +447,12 @@ uint32_t PrestonDuino::getFocusDistance() {
   static uint32_t distint;
   byte dist[4];
   dist[3] = 0;
-  //Serial.println("Focus data:");
-  for (int i = 0; i < 3; i++) {
-    //Serial.println(lensdata[i], HEX);
-  }
-  //Serial.println("----");
   
   for (int i = 2; i >= 0; i--) {
     dist[i] = lensdata[2-i];
   }
 
-  //Serial.println("Focus data isolated:");
-  for (int i = 0; i < 4; i++) {
-    //Serial.println(dist[i], HEX);
-  }
-
-
   distint = ((uint32_t*)dist)[0];
-  
-  //Serial.println("----");
-  //Serial.print("Focus data as int: ");
-  //Serial.println(distint);
 
   return distint;
 }
@@ -555,4 +543,51 @@ char* PrestonDuino::getLensName() {
   //Serial.println("End of lens name");
   
   return lensname;
+}
+
+
+
+
+command_reply PrestonDuino::setLensData(uint32_t dist, uint16_t aperture, uint16_t flength) {
+  // dist is actually a 0-padded little-endian 24-bit int
+
+  byte newlensdata[8];
+  newlensdata[0] = 0x7; //FIZ data
+
+
+  // Focus
+
+  Serial.print("Input dist is 0x");
+  Serial.println(dist, HEX);
+
+  newlensdata[3] = (dist >> 0);
+  newlensdata[2] = (dist >> 8);
+  newlensdata[1] = (dist >> 16);
+
+
+  // Iris
+
+  Serial.print("Input iris is ");
+  Serial.println(aperture);
+
+  newlensdata[5] = (aperture >> 0);
+  newlensdata[4] = (aperture >> 8);
+
+
+  // Zoom
+
+  Serial.print("Input zoom is ");
+  Serial.println(flength);
+
+  newlensdata[7] = (flength >> 0);
+  newlensdata[6] = (flength >> 8);
+
+
+  Serial.println("New lens data packet: ");
+  for (int i = 0; i < 8; i++){
+    Serial.println(newlensdata[i], HEX);
+  }
+  
+  return this->data(newlensdata, 8);
+  
 }

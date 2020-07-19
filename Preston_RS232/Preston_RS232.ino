@@ -6,7 +6,9 @@ command_reply lensdata;
 PrestonDuino *mdr;
 
 unsigned long long time_now = 0;
-int period = 2000;
+int period = 500;
+bool controllingfocus = true;
+byte pos = 0x0;
 
 long int ringtable[7][2] = {
   {0x410000, 140},
@@ -24,7 +26,12 @@ void setup() {
 
   mdr = new PrestonDuino(Serial1);
 
+  lensdata = mdr->data(0x02);
+
+  mdr->setLensData(0x6F2, 567, 250);
+
   delay(100);
+  
 }
 
 
@@ -32,19 +39,27 @@ void loop() {
   if (millis() >= time_now + period) {
     
     time_now = millis();
-    lensdata = mdr->data(0x41);
-    byte posarray[4];
-    posarray[3] = 0;
-    for (int i = 2; i >= 0; i--) {
-      posarray[i] = lensdata.data[2-i];
+
+  /*  if (controllingfocus) {
+      mdr->mode(0x10,0x0);
+    } else {
+      mdr->mode(0x10,0x2);
     }
-    long int pos = ((long int*)posarray)[0];
-    Serial.println("Input position: ");
-    Serial.println(pos, 16);
+    controllingfocus = !controllingfocus;
+
+    mdr->data(0x02);    
+
+    
+ /*   Serial.print("Input position: ");
+    for (int i = 1; i < lensdata.replystatus; i++) {
+      Serial.print(lensdata.data[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
     int iris = lookUp(pos, ringtable);
     Serial.print("Iris: ");
     Serial.println(iris);
-    Serial.println("----");
+    Serial.println("----");*/
   }
 }
 
