@@ -6,9 +6,10 @@ command_reply lensdata;
 PrestonDuino *mdr;
 
 unsigned long long time_now = 0;
-int period = 500;
-bool controllingfocus = true;
+int period = 10;
 byte pos = 0x0;
+
+bool autofocus = true;
 
 long int ringtable[7][2] = {
   {0x410000, 140},
@@ -26,19 +27,61 @@ void setup() {
 
   mdr = new PrestonDuino(Serial1);
 
-  lensdata = mdr->data(0x02);
+  //lensdata = mdr->data(0x02);
 
-  mdr->setLensData(0x6F2, 567, 250);
+//  mdr->setLensData(0x6F2, 567, 250);
+
+  
+  mdr->mode(0x0, 0x2); // take control of focus
 
   delay(100);
   
 }
 
-
 void loop() {
   if (millis() >= time_now + period) {
     
     time_now = millis();
+    if (autofocus) {
+      
+      byte* dist = mdr->data(0x20).data; // get rangefinder distance
+
+      // flip endianness
+      byte distreverseorder[2];
+      distreverseorder[0] = dist[2];
+      distreverseorder[1] = dist[1];
+
+      // convert to feet
+      double distasfloat = 3429.0;//((uint16_t*)distreverseorder)[0];
+      distasfloat /= 3.048;
+
+      Serial.print("Distance as float: ");
+      Serial.println(distasfloat);
+
+      // convert to int
+      double distbase;
+      modf (distasfloat, &distbase);
+      uint16_t distasint = (int)(distbase + 0.5);
+
+      Serial.print("Distance as integer: ");
+      Serial.println(distasint);
+
+      // flip endianness again
+      byte newfocusdata[3];
+
+      newfocusdata[2] = distasint >> 0;
+      newfocusdata[1] = distasint >> 8;
+
+      newfocusdata[0] = 0x02; // flag it as focus distance
+
+      Serial.print("focusdata is: ");
+      for (int i = 0; i < 3; i++) {
+        Serial.print(newfocusdata[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+      mdr->data(newfocusdata, 3); // send it back to the mdr
+    }
 
   /*  if (controllingfocus) {
       mdr->mode(0x10,0x0);
