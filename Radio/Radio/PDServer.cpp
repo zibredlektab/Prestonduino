@@ -28,7 +28,7 @@ void PDServer::onLoop() {
       Serial.print(from, HEX);
       Serial.print(": ");
       Serial.println((char*)this->buf);
-      if (this->buf[0] = "0x1") {
+      if (this->buf[0] = 1) {
         // This message contains a PrestonPacket
         PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
         int replystat = this->mdr->sendToMDR(pak);
@@ -38,16 +38,40 @@ void PDServer::onLoop() {
             Serial.println("failed to send reply");
           }
         }
+      } else if (this->buf[0] = 2) {
+        // This message is requesting data
+        uint8_t datatype = this->buf[1];
+        switch (datatype) {
+          case 1:
+            if(!this->manager->sendtoWait((uint8_t*)mdr->getAperture(), 2, this->address)) {
+              Serial.println("failed to send reply");
+            }
+            break;
+          case 2:
+            if(!this->manager->sendtoWait((uint8_t*)mdr->getFocusDistance(), 4, this->address)) {
+              Serial.println("failed to send reply");
+            }
+            break;
+          case 4:
+            if(!this->manager->sendtoWait((uint8_t*)mdr->getFocalLength(), 2, this->address)) {
+              Serial.println("failed to send reply");
+            }
+            break;
+          default:
+            // Client is asking for an unsupported data type
+            break;
+        }
       }
     }
   }
 }
 
 byte* PDServer::replyToArray(command_reply input) {
-  byte output[input.replystatus + 1];
-  output[0] = input.replystatus;
-  for (int i = 0; i < input.replystatus; i++) {
-    output[i+1] = input.data[i];
+  byte output[input.replystatus + 2];
+  output[0] = 0;
+  output[1] = input.replystatus;
+  for (int i = 0; i < input.replystatus+1; i++) {
+    output[i+2] = input.data[i];
   }
   return output;
 }
