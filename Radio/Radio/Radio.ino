@@ -1,55 +1,49 @@
 #include <RH_RF95.h>
-#include <RHReliableDatagram.h>
+//#include <RHReliableDatagram.h>
 
-#include <U8x8lib.h>
 
 #define SERVER_ADDRESS 0
 #define CLIENT_ADDRESS 1
 
 
 RH_RF95 driver;
-RHReliableDatagram manager(driver, SERVER_ADDRESS);
+//RHReliableDatagram manager(driver, SERVER_ADDRESS);
 
-U8X8_SSD1306_128X64_NONAME_HW_I2C oled (NULL);
+
+bool ledison = true;
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);
-  if (!manager.init()) {
-    Serial.println("init failed");
+  Serial.begin(9600);  
+  if (driver.init()) {
+    driver.setModemConfig(RH_RF95::Bw500Cr45Sf128);
   }
-  oled.begin();
   
-  oled.setFont(u8x8_font_amstrad_cpc_extended_r);
+ /* if (!manager.init()) {
+    Serial.println("init failed");
+    
+  } else {
+    
+    Serial.println("init complete");
+  }*/
+
+  
+  pinMode(LED_BUILTIN, OUTPUT);
+
 }
 
-uint8_t buf[5];
-uint8_t fromaddress;
-uint8_t reply[] = "Got it!";
+uint8_t buf[11];
+uint32_t dist;
 
 void loop() {
   
-  if (manager.available()) {
-    oled.clearDisplay();
+  if (driver.available()) {
     uint8_t len = sizeof(buf);
-    if (manager.recvfrom(buf, &len, &fromaddress)){
-      //manager.sendtoWait(reply, sizeof(reply), fromaddress);
-      Serial.print("got a request from: 0x");
-      Serial.print(fromaddress, HEX);
-      Serial.print(": ");
-      for (int i = 0; i < len; i++) {
-        Serial.print((char)buf[i]);
-        Serial.print(" ");
-      }
-      Serial.println();
+    if (driver.recv(buf, &len)){
+      dist = strtoul(buf, NULL, 10);
+      Serial.print("Distance: ");
+      Serial.println(dist);
     }
   }
-  
-  oled.setCursor(0, 0);
-  oled.print(fromaddress);
-
-  oled.setCursor(0, 20);
-  oled.print((char*)buf);
 
 
 }

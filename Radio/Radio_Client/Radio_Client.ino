@@ -1,48 +1,34 @@
 #include <RH_RF95.h>
-#include <RHReliableDatagram.h>
-
-#define SERVER_ADDRESS 0
-#define CLIENT_ADDRESS 1
+#include <PrestonDuino.h>
+#include <PrestonPacket.h>
 
 
 RH_RF95 driver;
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+
+PrestonDuino *mdr;
+
+uint32_t dist;
+char buf[10];
+uint8_t buflen = 0;
 
 void setup() {
-  Serial.begin(115200);
-  while (!Serial);
-  if (!manager.init()) {
-    Serial.println("init failed");
+  mdr = new PrestonDuino(Serial);
+  if (driver.init()) {
+    driver.setModemConfig(RH_RF95::Bw500Cr45Sf128);
   }
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(10);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
-uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-int pot = 1023;
-uint8_t data[5];
 
 void loop() {
-  Serial.println("Sending!");
-  pot = analogRead(0);
+  
+  dist = mdr->getFocusDistance();
+  
+  buflen = snprintf(buf, sizeof(buf), "%lu", (unsigned long)dist);
 
-  sprintf(data, "%d", pot);
-
-  if (manager.sendto(data, sizeof(data), SERVER_ADDRESS)) {
-/*
-    uint8_t len = sizeof(buf);
-    uint8_t fromaddress;
-    
-    if (manager.recvfromAckTimeout(buf, &len, 10, &fromaddress)) {
-      Serial.print("got a reply from: 0x");
-      Serial.print(fromaddress, HEX);
-      Serial.print(": ");
-      Serial.println((char*)buf);
-    } else {
-      Serial.println("No reply");
-    }
-  } else {
-    Serial.println("sendtoWait failed");*/
-  }
-
-  //delay(10);
-
+  driver.send(buf, buflen+1);
 }
