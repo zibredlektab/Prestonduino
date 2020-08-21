@@ -21,39 +21,51 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
   for (int i = 0; i <= datalen; i++) {
     tosend[i+1] = data[i];
   }
+
+  
   if(this->manager->sendtoWait(tosend, datalen+1, this->server_address)) {
     // Got an acknowledgement of our message
     
-    if (!waitforreply) {
+    if (!this->waitforreply) {
       // Don't need a reply
       return true;
+      
     } else {
       // A reply is expected, let's wait for it
       uint8_t len = sizeof(this->buf);
       uint8_t from;
       if (this->manager->recvfromAckTimeout(this->buf, &len, 2000, &from)) {
         // Reply was received
-        if (this->buf[0] == 0x0) {
+        waitforreply = false;
+        
+        if (this->buf[0] == 0) {
           // Reply message is a commandreply
           this->arrayToCommandReply(this->buf);
-          waitforreply = false;
-          return true;
-        } else if (this->buf[0] > 0x2) {
+          
+        } else if (this->buf[0] == 3) {
+          // Response is an MDR ack, no further processing needed
+          
+        } else if (this->buf[0] > 3) {
           // Response is a data set
           for (int i = 0; i < len-1; i++) {
             this->rcvdata[i] = this->buf[i+1];
           }
-          return true;
         }
+        return true;
+        
       } else {
-        // Reply was not received
-        waitforreply = false;
+        // Reply was not received (timeout)
         return false;
       }
     }
+
+
+    
   } else {
     // Did not get an acknowledgement of message
   }
+
+  
 }
 
 void PDClient::arrayToCommandReply(byte* input) {

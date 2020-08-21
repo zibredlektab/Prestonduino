@@ -32,9 +32,15 @@ void PDServer::onLoop() {
         // This message contains a PrestonPacket
         PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
         int replystat = this->mdr->sendToMDR(pak);
-        if (replystat >= 0 || replystat == -1) {
+        if (replystat == -1) {
+          // MDR acknowledged the packet, didn't send any other data
+          if(!this->manager->sendtoWait((uint8_t*)3, 1, this->address)) { // 0x3 is ack
+            Serial.println("failed to send reply");
+          }
+        } else if (replystat > 0) {
+          // MDR sent data
           command_reply reply = this->mdr->getReply();
-          if(!this->manager->sendtoWait((uint8_t*)&reply, reply.replystatus + 1, this->address)) {
+          if(!this->manager->sendtoWait(this->replyToArray(reply), reply.replystatus + 1, this->address)) {
             Serial.println("failed to send reply");
           }
         }
@@ -66,8 +72,8 @@ void PDServer::onLoop() {
   }
 }
 
-byte* PDServer::replyToArray(command_reply input) {
-  byte output[input.replystatus + 2];
+uint8_t* PDServer::replyToArray(command_reply input) {
+  uint8_t output[input.replystatus + 2];
   output[0] = 0;
   output[1] = input.replystatus;
   for (int i = 0; i < input.replystatus+1; i++) {

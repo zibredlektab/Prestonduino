@@ -13,9 +13,10 @@
  * 0x0 = Command reply
  * 0x1 = PrestonPacket
  * 0x2 = Requesting data (see bit map for data byte)
- * 0x3 = uint16_t data (2 bytes)
- * 0x4 = uint32_t data (4 bytes)
- * 0x5 = char* data (length stored in first index)
+ * 0x3 = ack from mdr
+ * 0x4 = uint16_t data (2 bytes)
+ * 0x5 = uint32_t data (4 bytes)
+ * 0x6 = char* data (length stored in first index)
  * 
  * Bits as follows:
  * 1 - Iris
@@ -35,7 +36,7 @@ class PDServer {
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t buflen;
 
-    byte* replyToArray(command_reply input);
+    uint8_t* replyToArray(command_reply input);
 
   public:
     PDServer(uint8_t addr, HardwareSerial& mdrserial);
