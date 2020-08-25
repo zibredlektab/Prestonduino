@@ -247,7 +247,6 @@ void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
 
     //Serial.print(holder[0]);
     //Serial.print(",");
-    //Serial.println(holder[1]);
 
     output[i] = strtol(holder, NULL, 16);
   }
