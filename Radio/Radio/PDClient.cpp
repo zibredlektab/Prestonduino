@@ -4,15 +4,22 @@
 PDClient::PDClient(uint8_t addr) {
   this->address = addr;
 
-  if (!this->driver.setFrequency(RF95_FREQ)) {
-    Serial.println("setFrequency failed");
-    while (1);
-  }
   
   this->manager = new RHReliableDatagram(this->driver, this->address);
   if (!this->manager->init()) {
-    Serial.println("RH manager init failed");
+    //Serial.println("RH manager init failed");
   }
+
+  if (!this->driver.setFrequency(915.0)) {
+    //Serial.println("Driver failed to set frequency");
+  }
+  
+  this->driver.setModemConfig(RH_RF95::Bw500Cr45Sf128);
+}
+
+bool PDClient::sendMessage(uint8_t type, uint8_t data) {
+  uint8_t dataarray[] = {data};
+  return this->sendMessage(type, dataarray, 1);
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
@@ -22,38 +29,61 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
     tosend[i+1] = data[i];
   }
 
+  //Serial.print("Sending message: ");
+  //Serial.print(type);
+  //Serial.print(" ");
+  for (int i = 0; i < datalen; i++) {
+    //Serial.print(data[i]);
+    //Serial.print(" ");
+  }
+  //Serial.println();
   
   if(this->manager->sendtoWait(tosend, datalen+1, this->server_address)) {
     // Got an acknowledgement of our message
-    
+    //Serial.println("Message was received");
     if (!this->waitforreply) {
       // Don't need a reply
+      //Serial.println("No reply needed");
       return true;
       
     } else {
       // A reply is expected, let's wait for it
       uint8_t len = sizeof(this->buf);
       uint8_t from;
+      //Serial.println("Awaiting reply");
       if (this->manager->recvfromAckTimeout(this->buf, &len, 2000, &from)) {
+        //Serial.print("Got a reply: ");
+        for (int i = 0; i < len; i++) {
+          //Serial.print(this->buf[i]);
+          //Serial.print(" ");
+        }
+        //Serial.println();
         // Reply was received
         waitforreply = false;
         
         if (this->buf[0] == 0) {
+          //Serial.println("Reply is a CR");
           // Reply message is a commandreply
           this->arrayToCommandReply(this->buf);
           
         } else if (this->buf[0] == 3) {
+          //Serial.println("MDR acknowledges command");
           // Response is an MDR ack, no further processing needed
           
         } else if (this->buf[0] > 3) {
+          //Serial.print("Reply is data: ");
           // Response is a data set
-          for (int i = 0; i < len-1; i++) {
-            this->rcvdata[i] = this->buf[i+1];
+          for (int i = 0; i < len; i++) {
+            this->rcvdata[i] = this->buf[i];
+            //Serial.print(this->rcvdata[i]);
+            //Serial.print(" ");
           }
+          //Serial.println();
         }
         return true;
         
       } else {
+        //Serial.println("No reply received (timeout)");
         // Reply was not received (timeout)
         return false;
       }
@@ -62,6 +92,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
 
     
   } else {
+    //Serial.println("Message was not received");
     // Did not get an acknowledgement of message
   }
 
@@ -93,35 +124,40 @@ command_reply PDClient::sendCommand(uint8_t command) {
 
 
 uint8_t* PDClient::getFIZData() {
-  if (this->sendMessage(2, 7, 1)) {
+  if (this->sendMessage(2, 7)) {
     // Message acknowledged
     return (uint8_t*)rcvdata;
   }
 }
 
 uint32_t PDClient::getFocusDistance() {
-  if (this->sendMessage(2, 2, 1)) {
+  //Serial.println("Asking for focus distance");
+  this->waitforreply = true;
+  if (this->sendMessage(2, 2)) {
     // Message acknowledged
-    return (uint32_t)rcvdata;
+    return strtoul(rcvdata, NULL, 10);
   }
 }
 
 uint16_t PDClient::getAperture() {
-  if (this->sendMessage(2, 1, 1)) {
+  this->waitforreply = true;
+  if (this->sendMessage(2, 1)) {
     // Message acknowledged
-    return (uint16_t)rcvdata;
+    return strtoul(rcvdata, NULL, 10);
   }
 }
 
 uint16_t PDClient::getFocalLength() {
-  if (this->sendMessage(2, 4, 1)) {
+  this->waitforreply = true;
+  if (this->sendMessage(2, 4)) {
     // Message acknowledged
-    return (uint16_t)rcvdata;
+    return strtoul(rcvdata, NULL, 10);
   }
 }
 
 char* PDClient::getLensName() {
-  if (this->sendMessage(2, 16, 1)) {
+  this->waitforreply = true;
+  if (this->sendMessage(2, 16)) {
     // Message acknowledged
     return (char*)rcvdata;
   }

@@ -1,12 +1,10 @@
 #include "Arduino.h"
-#include "PrestonPacket.h"
-#include "PrestonDuino.h"
+#include <PrestonPacket.h>
+#include <PrestonDuino.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #ifndef PDServer_h
 #define PDServer_h
-
-#define RF95_FREQ 915.0
 
 /*
  * First byte of message will always be uint8_t describing the type of the message:

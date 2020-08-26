@@ -1,6 +1,6 @@
 #include "Arduino.h"
-#include "PrestonPacket.h"
-#include "PrestonDuino.h"
+#include <PrestonPacket.h>
+#include <PrestonDuino.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #ifndef PDClient_h
@@ -18,6 +18,7 @@ class PDClient {
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t buflen;
     bool waitforreply = false;
+    bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
     command_reply response;
     byte rcvdata[50];
