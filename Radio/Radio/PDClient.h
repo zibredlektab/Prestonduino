@@ -27,7 +27,7 @@ class PDClient {
 
 
   public:
-    PDClient();
+    PDClient(int chan = 0);
     void onLoop();
     command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
     command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return

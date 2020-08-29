@@ -1,9 +1,9 @@
 #include "PDServer.h"
 
-
-PDServer::PDServer(uint8_t addr, HardwareSerial& mdrserial) {
+PDServer::PDServer(int chan, HardwareSerial& mdrserial) {
   //Serial.begin(115200);
-  this->address = addr;
+  this->channel = chan;
+  this->address = chan * 0x10;
   this->ser = &mdrserial;
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
@@ -100,4 +100,8 @@ uint8_t* PDServer::replyToArray(command_reply input) {
     output[i+2] = input.data[i];
   }
   return output;
+}
+
+uint8_t PDServer::getAddress() {
+  return this->address;
 }

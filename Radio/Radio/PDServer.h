@@ -26,6 +26,7 @@
 
 class PDServer {
   private:
+    uint8_t channel; //hard-coded for now, will eventually be determined by pot
     uint8_t address;
     HardwareSerial *ser;
     PrestonDuino *mdr;
@@ -37,8 +38,9 @@ class PDServer {
     uint8_t* replyToArray(command_reply input);
 
   public:
-    PDServer(uint8_t addr, HardwareSerial& mdrserial);
+    PDServer(int chan = 0, HardwareSerial& mdrserial = Serial);
     void onLoop();
+    uint8_t getAddress();
   
 };
 

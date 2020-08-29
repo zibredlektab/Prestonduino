@@ -1,7 +1,8 @@
 #include "PDClient.h"
 
 
-PDClient::PDClient() {
+PDClient::PDClient(int chan) {
+  this->channel = chan;
   this->server_address = this->channel * 0x10;
   this->address += this->server_address;
 
