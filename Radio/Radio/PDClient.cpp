@@ -1,20 +1,27 @@
 #include "PDClient.h"
 
 
-PDClient::PDClient(uint8_t addr) {
-  this->address = addr;
+PDClient::PDClient() {
+  this->server_address = this->channel * 0x10;
+  this->address += this->server_address;
 
+  Serial.print("My start address is 0x");
+  Serial.println(this->address, HEX);
   
   this->manager = new RHReliableDatagram(this->driver, this->address);
+  Serial.println("Manager created, initializing");
   if (!this->manager->init()) {
-    //Serial.println("RH manager init failed");
+    Serial.println("RH manager init failed");
+  } else {
+    Serial.println("RH manager initialized");
   }
 
   if (!this->driver.setFrequency(915.0)) {
     //Serial.println("Driver failed to set frequency");
   }
-  
   this->driver.setModemConfig(RH_RF95::Bw500Cr45Sf128);
+
+  this->findAddress();
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t data) {
@@ -161,4 +168,42 @@ char* PDClient::getLensName() {
     // Message acknowledged
     return (char*)rcvdata;
   }
+}
+
+void PDClient::onLoop() {
+  if (!this->final_address) {
+    this->findAddress();
+  }
+  if (this->manager->available()) {
+    Serial.println();
+    Serial.println("Message available");
+    this->buflen = sizeof(this->buf);
+    uint8_t from;
+    if (manager->recvfromAck(this->buf, &this->buflen, &from)) {
+      // Do nothing for now, all we need is the acknowledgment of the ping
+    }
+  }
+}
+
+uint8_t PDClient::getAddress() {
+  return this->address;
+}
+
+void PDClient::findAddress() {
+  for (int i = 1; i <= 0xF; i++) {
+    Serial.print("Trying address 0x");
+    Serial.println(this->server_address + i, HEX);
+    if (!this->manager->sendtoWait("", 0, this->server_address + i)) {
+      Serial.println("Didn't get a response from this address, taking it for myself");
+      // Did not get an ack from this address, so this address is available
+      this->address = this->server_address + i;
+      this->manager->setThisAddress(this->address );
+      this->final_address = true;
+      break;
+    }
+    Serial.println("Got a reply, trying the next address");
+  }
+
+  Serial.print("My final address is 0x");
+  Serial.println(this->address, HEX);
 }
