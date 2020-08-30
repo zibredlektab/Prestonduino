@@ -52,6 +52,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
     if (!this->waitforreply) {
       // Don't need a reply
       //Serial.println("No reply needed");
+      this->errorstate = 0x0;
       return true;
       
     } else {
@@ -78,7 +79,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
           //Serial.println("MDR acknowledges command");
           // Response is an MDR ack, no further processing needed
           
-        } else if (this->buf[0] > 3) {
+        } else if (this->buf[0] > 3 && this->buf[0] != 0xF) {
           //Serial.print("Reply is data: ");
           // Response is a data set
           for (int i = 0; i < len; i++) {
@@ -87,12 +88,17 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
             //Serial.print(" ");
           }
           //Serial.println();
+        } else {
+          //Serial.print("Server sent back an error code: 0x");
+          //Serial.println(this->buf[1]);
+          this->errorstate = this->buf[1];
         }
         return true;
         
       } else {
         //Serial.println("No reply received (timeout)");
         // Reply was not received (timeout)
+        this->errorstate = 0x1;
         return false;
       }
     }
@@ -100,8 +106,10 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
 
     
   } else {
+    this->errorstate = 0x1; //server not responding
     //Serial.println("Message was not received");
     // Did not get an acknowledgement of message
+    return false;
   }
 
   
@@ -184,10 +192,29 @@ void PDClient::onLoop() {
       // Do nothing for now, all we need is the acknowledgment of the ping
     }
   }
+
+  this->handleErrors();
+}
+
+bool PDClient::handleErrors() {
+  switch (this->errorstate) {
+    case 0:
+      return false;
+    default:
+      return true;    
+  }
 }
 
 uint8_t PDClient::getAddress() {
   return this->address;
+}
+
+uint8_t PDClient::getChannel() {
+  return this->channel;
+}
+
+uint8_t PDClient::getErrorState() {
+  return this->errorstate;
 }
 
 void PDClient::findAddress() {

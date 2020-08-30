@@ -1,10 +1,14 @@
 #include "Arduino.h"
 #include <PrestonPacket.h>
-#include <PrestonDuino.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #ifndef PDClient_h
 #define PDClient_h
+
+struct command_reply {
+  uint8_t replystatus;
+  byte* data;
+};
 
 
 class PDClient {
@@ -15,6 +19,7 @@ class PDClient {
     bool final_address = false;
     RH_RF95 driver;
     RHReliableDatagram *manager;
+    uint8_t errorstate = 0x0;
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t buflen;
     bool waitforreply = false;
@@ -24,6 +29,7 @@ class PDClient {
     byte rcvdata[50];
     void findAddress();
     void arrayToCommandReply(byte* input);
+    bool handleErrors();
 
 
   public:
@@ -38,6 +44,8 @@ class PDClient {
     uint16_t getFocalLength();
     char* getLensName();
     uint8_t getAddress();
+    uint8_t getChannel();
+    uint8_t getErrorState();
 
 
   

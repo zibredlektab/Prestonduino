@@ -37,13 +37,19 @@ void PDServer::onLoop() {
         int replystat = this->mdr->sendToMDR(pak);
         if (replystat == -1) {
           // MDR acknowledged the packet, didn't send any other data
-          if(!this->manager->sendtoWait((uint8_t*)3, 1, this->address)) { // 0x3 is ack
+          if(!this->manager->sendtoWait((uint8_t*)3, 1, from)) { // 0x3 is ack
             //Serial.println("failed to send reply");
           }
         } else if (replystat > 0) {
           // MDR sent data
           command_reply reply = this->mdr->getReply();
-          if(!this->manager->sendtoWait(this->replyToArray(reply), reply.replystatus + 1, this->address)) {
+          if(!this->manager->sendtoWait(this->replyToArray(reply), reply.replystatus + 1, from)) {
+            //Serial.println("failed to send reply");
+          }
+        } else if (replystat == 0) {
+          // MDR didn't respond
+          uint8_t err[] = {0xF, 0x2};
+          if (!this->manager->sendtoWait(err, 2, from)) {
             //Serial.println("failed to send reply");
           }
         }
