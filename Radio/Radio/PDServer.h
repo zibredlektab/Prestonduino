@@ -36,13 +36,13 @@
 
 class PDServer {
   private:
-    uint8_t channel; //hard-coded for now, will eventually be determined by pot
-    uint8_t address;
+    uint8_t channel = 0xA; //hard-coded for now, will eventually be determined by pot
+    uint8_t address = 0x0;
     HardwareSerial *ser;
     PrestonDuino *mdr;
-    RH_RF95 driver;
+    RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t buf[30];
     uint8_t buflen;
 
     uint8_t* replyToArray(command_reply input);

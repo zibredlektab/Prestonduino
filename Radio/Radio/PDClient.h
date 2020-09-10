@@ -20,13 +20,13 @@ class PDClient {
     RH_RF95 driver;
     RHReliableDatagram *manager;
     uint8_t errorstate = 0x0;
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t buf[30];
     uint8_t buflen;
     bool waitforreply = false;
+    command_reply response;
+    
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
-    command_reply response;
-    byte rcvdata[50];
     void findAddress();
     void arrayToCommandReply(byte* input);
     bool handleErrors();
@@ -45,6 +45,7 @@ class PDClient {
     char* getLensName();
     uint8_t getAddress();
     uint8_t getChannel();
+    void setChannel(uint8_t newchannel);
     uint8_t getErrorState();
 
 

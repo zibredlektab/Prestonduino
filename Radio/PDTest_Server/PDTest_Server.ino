@@ -8,9 +8,7 @@ PDServer *pd;
 
 void setup() {
   // put your setup code here, to run once:
-  pd = new PDServer();
-  Serial.print("My address is 0x");
-  Serial.println(pd->getAddress(), HEX);
+  pd = new PDServer(0xA, Serial1);
  // oled.begin();
 }
 
