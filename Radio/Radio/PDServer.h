@@ -5,11 +5,12 @@
 #ifndef PDServer_h
 #define PDServer_h
 
+
 /*
  * First byte of message will always be uint8_t describing the type of the message:
  * 0x0 = Command reply
  * 0x1 = PrestonPacket
- * 0x2 = Requesting data (see bit map for data byte)
+ * 0x2 = Requesting data, first byte is data type (see bit map below), second byte is whether to subscribe or not
  * 0x3 = ACK from mdr
  * 0x4 = uint16_t data (2 bytes)
  * 0x5 = uint32_t data (4 bytes)
@@ -34,6 +35,11 @@
  * 0xF = other error
  */
 
+struct subscription {
+  uint8_t client_address;
+  uint8_t data_descriptor;
+};
+
 class PDServer {
   private:
     uint8_t channel = 0xA; //hard-coded for now, will eventually be determined by pot
@@ -44,7 +50,15 @@ class PDServer {
     RHReliableDatagram *manager;
     uint8_t buf[30];
     uint8_t buflen;
+    uint8_t lastfrom;
+    subscription subs[16];
+    uint8_t subcount = 0;
+    unsigned long lastupdate = 0;
 
+    uint8_t getData(uint8_t datatype, char* databuf);
+    void subscribe(uint8_t addr, uint8_t desc);
+    bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
+    bool updateSubs(); // returns false if a message failed to send
     uint8_t* replyToArray(command_reply input);
 
   public:

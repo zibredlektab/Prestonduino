@@ -5,10 +5,14 @@
 #define MED_FONT u8g2_font_helvB12_tf
 #define SMALL_FONT u8g2_font_pcsenior_8f
 
+unsigned long long timenow = 0;
+int wait = 4000;
 
 PDClient *pd;
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R1);
+
+int count = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -30,13 +34,17 @@ void setup() {
 }
 
 void loop() {
-
   /*uint8_t newch = readSwitch(0);
   if (newch != pd->getChannel()) {
     pd->setChannel(newch);
   }*/
   
   pd->onLoop();
+  if (count == 0) {
+    pd->subAperture();
+    count++;
+  }
+
   drawScreen();
   
 }
@@ -50,7 +58,7 @@ void drawScreen() {
   }
   Serial.println();*/
 
-  uint16_t ap = pd->getAperture();
+ /* uint16_t ap = pd->getAperture();
   uint16_t fl = 40;//pd->getFocalLength();
   uint32_t fd = 40;//pd->getFocusDistance();
   uint8_t ch = pd->getChannel();
@@ -114,9 +122,9 @@ void drawScreen() {
           break;
         default: // Other?
           break;
-      }*/
+      }
     }
-  } while(oled.nextPage());
+  } while(oled.nextPage());*/
 }
 
 void drawError(uint8_t errorstate) {

@@ -14,13 +14,18 @@ PDClient::PDClient(int chan) {
     Serial.println(F("RH manager init failed"));
   } else {
     Serial.println(F("RH manager initialized"));
+    this->manager->setRetries(NUMRETRIES);
+    this->manager->setTimeout(10);
   }
+
+  //this->driver.setPromiscuous(false);
 
   if (!this->driver.setFrequency(915.0)) {
     Serial.println(F("Driver failed to set frequency"));
   }
-  this->driver.setModemConfig(RH_RF95::Bw500Cr45Sf128);
-
+  if (!this->driver.setModemConfig(RH_RF95::Bw500Cr45Sf128)) {
+    Serial.println(F("Driver failed to configure modem"));
+  }
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t data) {
@@ -36,15 +41,12 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
   }
 
   Serial.print(F("Sending message: "));
-  Serial.print(type);
-  Serial.print(F(" "));
-  for (int i = 0; i < datalen; i++) {
-    Serial.print(data[i]);
+  for (int i = 0; i < datalen+1; i++) {
+    Serial.print(tosend[i]);
     Serial.print(F(" "));
   }
   Serial.print(F(" to server at 0x"));
   Serial.println(this->server_address, HEX);
-  
   if(this->manager->sendtoWait(tosend, datalen+1, this->server_address)) {
     // Got an acknowledgement of our message
     Serial.println(F("Message was received"));
@@ -58,6 +60,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
       // A reply is expected, let's wait for it
       Serial.println(F("Awaiting reply"));
       if (this->manager->waitAvailableTimeout(2000)) {
+        Serial.println(F("Reply is available"));
         // got a message
         uint8_t len = sizeof(this->buf);
         uint8_t from;
@@ -117,7 +120,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
     // Did not get an acknowledgement of message
     return false;
   }
-
+  
   
 }
 
@@ -166,9 +169,23 @@ uint16_t PDClient::getAperture() {
   this->waitforreply = true;
   if (this->sendMessage(2, 1)) {
     // Message acknowledged
-    Serial.println((char*)buf);
-    Serial.println(atoi(buf));
-    return strtol(buf, NULL, 10);
+    return atoi(buf);
+  }
+}
+
+
+bool PDClient::subAperture() {
+  this->waitforreply = false;
+  uint8_t data[2] = {2, 1};
+  if (this->sendMessage(2, data, 2)) {
+    Serial.println(F("Sent subscription request"));
+  }
+}
+
+bool PDClient::unsub() {
+  this->waitforreply = false;
+  if (this->sendMessage(2, 0)) {
+    Serial.println(F("Sent unsubscription request"));
   }
 }
 
@@ -177,7 +194,7 @@ uint16_t PDClient::getFocalLength() {
   this->waitforreply = true;
   if (this->sendMessage(2, 4)) {
     // Message acknowledged
-    return strtoul(buf, NULL, 10);
+    return atoi(buf);
   }
 }
 
@@ -192,19 +209,26 @@ char* PDClient::getLensName() {
 void PDClient::onLoop() {
   if (!this->final_address) {
     this->findAddress();
-  }
-  if (this->manager->available()) {
-    Serial.println();
-    Serial.println(F("Message available"));
-    this->buflen = sizeof(this->buf);
-    uint8_t from;
-    if (manager->recvfromAck(this->buf, &this->buflen, &from)) {
-      // Do nothing for now, all we need is the acknowledgment of the ping
+  } else {
+    if (this->manager->available()) {
+      Serial.println();
+      Serial.print(F("Message available, this long: "));
+      uint8_t from;
+      this->buflen = sizeof(this->buf);
+      if (manager->recvfrom(this->buf, &this->buflen, &from)) {
+        
+        Serial.println(this->buflen);
+      
+        for (int i = 0; i < this->buflen; i++) {
+          Serial.print((char)this->buf[i]);
+        }
+        Serial.println();
+      }
     }
-  }
-
-  if (this->errorstate > 0) {
-    this->handleErrors();
+  
+    if (this->errorstate > 0) {
+      this->handleErrors();
+    }
   }
 }
 
@@ -242,17 +266,20 @@ void PDClient::findAddress() {
   for (int i = 1; i <= 0xF; i++) {
     Serial.print(F("Trying address 0x"));
     Serial.println(this->server_address + i, HEX);
-    if (!this->manager->sendtoWait("", 0, this->server_address + i)) {
+    this->manager->setRetries(2);
+    if (!this->manager->sendtoWait("ping", 4, this->server_address + i)) {
       Serial.println(F("Didn't get a response from this address, taking it for myself"));
       // Did not get an ack from this address, so this address is available
       this->address = this->server_address + i;
-      this->manager->setThisAddress(this->address );
+      this->manager->setThisAddress(this->address);
       this->final_address = true;
+      this->manager->setRetries(NUMRETRIES);
       break;
     }
     Serial.println(F("Got a reply, trying the next address"));
   }
 
+  this->manager->setRetries(NUMRETRIES);
   Serial.print(F("My final address is 0x"));
   Serial.println(this->address, HEX);
 }

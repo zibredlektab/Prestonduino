@@ -5,6 +5,8 @@
 #ifndef PDClient_h
 #define PDClient_h
 
+#define NUMRETRIES 500
+
 struct command_reply {
   uint8_t replystatus;
   byte* data;
@@ -42,6 +44,8 @@ class PDClient {
     uint32_t getFocusDistance();
     uint16_t getAperture();
     uint16_t getFocalLength();
+    bool subAperture();
+    bool unsub();
     char* getLensName();
     uint8_t getAddress();
     uint8_t getChannel();
