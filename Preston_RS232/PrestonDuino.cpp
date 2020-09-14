@@ -282,6 +282,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Return an array of the reply, first element of which is an indicator of the reply type
   int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
   reply.replystatus = stat;
+  reply.data = NULL;
   
   //Serial.print("Immediate response to command is ");
   //Serial.println(stat);
@@ -432,12 +433,18 @@ command_reply PrestonDuino::dist(byte type, int dist) {
 byte* PrestonDuino::getLensData() {
   command_reply reply = this->ld();
 
-  //Serial.println("Lens data:");
-  for (int i = 0; i < reply.replystatus; i++) {
-    //Serial.println(reply.data[i], HEX);
+  if (reply.replystatus > 0) {
+    //Serial.print(F("Got valid lens data: "));
+    for (int i = 0; i < reply.replystatus; i++) {
+      //Serial.print(reply.data[i], HEX);
+      //Serial.print(" ");
+    }
+    //Serial.println();
+    return reply.data;
+  } else {
+    //Serial.println(F("Didn't get valid lens data this time either"));
+    return this->dummydata;
   }
-  //Serial.println("----");
-  return reply.data;
 }
 
 
@@ -491,6 +498,11 @@ int PrestonDuino::getFocalLength() {
 int PrestonDuino::getAperture() {
   byte* lensdata = this->getLensData();
   byte iris[2];
+  //Serial.print(F("Lens data as reported: "));
+  for (int i = 0; i < 7; i++) {
+    //Serial.print(lensdata[i]);
+  }
+  //Serial.println();
 
 
   //Serial.println("Iris data:");

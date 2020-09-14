@@ -5,16 +5,16 @@
 #ifndef PDServer_h
 #define PDServer_h
 
+#define REFRESHRATE 5;
+
 
 /*
  * First byte of message will always be uint8_t describing the type of the message:
  * 0x0 = Command reply
  * 0x1 = PrestonPacket
- * 0x2 = Requesting data, first byte is data type (see bit map below), second byte is whether to subscribe or not
+ * 0x2 = Requesting data, second byte is data type (see bit map below), third byte is whether to subscribe or not
  * 0x3 = ACK from mdr
- * 0x4 = uint16_t data (2 bytes)
- * 0x5 = uint32_t data (4 bytes)
- * 0x6 = char* data (length stored in first index)
+ * 0x4 = Raw data, second byte is data type
  * 
  * 0xF = error, second byte determines error type
  * 
@@ -54,6 +54,9 @@ class PDServer {
     subscription subs[16];
     uint8_t subcount = 0;
     unsigned long lastupdate = 0;
+    uint16_t iris = 0;
+    uint16_t zoom = 0;
+    uint32_t focus = 0;
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);

@@ -33,6 +33,10 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
+    uint16_t iris;
+    uint16_t flength;
+    uint32_t focus;
+
 
   public:
     PDClient(int chan = 0);

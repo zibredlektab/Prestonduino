@@ -218,9 +218,15 @@ void PDClient::onLoop() {
       if (manager->recvfrom(this->buf, &this->buflen, &from)) {
         
         Serial.println(this->buflen);
-      
+          
         for (int i = 0; i < this->buflen; i++) {
-          Serial.print((char)this->buf[i]);
+          if (i < 2) {
+            Serial.print(F("0x"));
+            Serial.print(this->buf[i], HEX);
+            Serial.print(F(" "));
+          } else {
+            Serial.print((char)this->buf[i]);
+          }
         }
         Serial.println();
       }

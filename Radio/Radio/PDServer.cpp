@@ -118,93 +118,71 @@ void PDServer::onLoop() {
 }
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
-  uint8_t sendlen;
-  
-  if (datatype == 1 || datatype == 2 || datatype == 4) {
-    Serial.println(F("Only one type of data is needed"));
-    uint32_t mdrdata;
-    switch(datatype) {
-      case 1:
-        databuf[0] = 4;
-        mdrdata = mdr->getAperture();
-        Serial.print(F("Aperture is "));
-        break;
-      case 2:
-        databuf[0] = 5;
-        Serial.print(F("Focus distance is "));
-        mdrdata = mdr->getFocusDistance();
-        break;
-      case 4:
-        databuf[0] = 4;
-        Serial.print(F("Zoom is "));
-        mdrdata = mdr->getFocalLength();
-        break;
-    }
-    Serial.println(mdrdata);
-    
-    sendlen = snprintf(databuf+1, sizeof(databuf)+1 , "%lu", (unsigned long)mdrdata) + 1;
-
-  } else if (datatype == 7) {
-    Serial.println(F("Full FIZ data is being requested"));
-    databuf[0] = 6;
-    sendlen = 8;
-    uint8_t* fizdata = mdr->getLensData();
-    for (int i = 0; i < sendlen-1; i++) {
-      databuf[i+1] = fizdata[i];
+  uint8_t sendlen = 2; // first two bytes are 0x4 and data type
+  databuf[0] = 0x4;
+  databuf[1] = datatype;
+  if (millis() > this->lastupdate + 5) {
+    this->iris = mdr->getAperture();
+    this->focus = mdr->getFocusDistance();
+    this->zoom = mdr->getFocalLength();
+    this->lastupdate = millis();
+    if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
+      databuf[0] = 0xF;
+      databuf[1] = 0x2;
+      return sendlen;
     }
   }
 
+  Serial.print(F("Getting following data: "));
+  
+  if (datatype & 0b000001) {
+    Serial.print(F("iris "));
+    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->iris);
+  }
+  if (datatype & 0b000010) {
+    Serial.print(F("focus "));
+    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->focus);
+  }
+  if (datatype & 0b000100) {
+    Serial.print(F("zoom "));
+    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->zoom);
+  }
+  if (datatype & 0b001000) {
+    Serial.print(F("aux (we don't do that yet) "));
+  }
+  if (datatype & 0b010000) {
+    Serial.print(F("distance (we don't do that yet) "));
+  }
+  if (sendlen > 0) {
+    Serial.println();
+    databuf[sendlen++] = "\0";
+  } else {
+    Serial.println(F("...nothing?"));
+  }
+  for (int i = 0; i < sendlen; i++) {
+    Serial.print((char)databuf[i]);
+  }
+  Serial.println();
+  
   return sendlen;
 }
 
 
 
 bool PDServer::updateSubs() {
-  this->lastupdate = millis();
   char tosend[20];
   uint8_t sendlen = 0;
-  uint32_t focus;
-  uint16_t iris;
-  uint16_t zoom;
-
+  
   if (subcount > 0) {
     Serial.println(F("Subscriptions are being updated..."));
     Serial.print(subcount);
     Serial.println(F(" total sub(s)"));
-    focus = mdr->getFocusDistance();
-    iris = mdr->getAperture();
-    zoom = mdr->getFocalLength();
     for (int i = 0; i < this->subcount; i++) {
       uint8_t desc = this->subs[i].data_descriptor;
-      Serial.print(F("Client 0x"));
+      Serial.print(F("Updating client 0x"));
       Serial.print(this->subs[i].client_address, HEX);
-      Serial.print(F(" is subscribed to "));
-      if (desc & 0b000001) {
-        Serial.print(F("iris "));
-        sendlen += snprintf(&tosend[sendlen], 20, "%lu", (unsigned long)iris);
-      }
-      if (desc & 0b000010) {
-        Serial.print(F("focus "));
-        sendlen += snprintf(&tosend[sendlen], 20, "%lu", (unsigned long)focus);
-      }
-      if (desc & 0b000100) {
-        Serial.print(F("zoom "));
-        sendlen += snprintf(&tosend[sendlen], 20, "%lu", (unsigned long)zoom);
-      }
-      if (desc & 0b001000) {
-        Serial.print(F("aux (we don't do that yet) "));
-      }
-      if (desc & 0b010000) {
-        Serial.print(F("distance (we don't do that yet) "));
-      }
-      if (sendlen > 0) {
-        Serial.println();
-        tosend[sendlen++] = "\0";
-      }
-      for (int i = 0; i < sendlen; i++) {
-        Serial.print((char)tosend[i]);
-      }
       Serial.println();
+      sendlen = this->getData(desc, tosend);
       if (!this->manager->sendto((char*)tosend, sendlen, this->subs[i].client_address)) {
         Serial.println(F("Failed to send message"));
         return false;
