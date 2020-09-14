@@ -161,25 +161,34 @@ uint32_t PDClient::getFocusDistance() {
   this->waitforreply = true;
   if (this->sendMessage(2, 2)) {
     // Message acknowledged
-    return strtoul(buf, NULL, 10);
+    return strtoul(this->buf, NULL, 10);
   }
 }
 
 uint16_t PDClient::getAperture() {
-  this->waitforreply = true;
-  if (this->sendMessage(2, 1)) {
-    // Message acknowledged
-    return atoi(buf);
+  return this->iris;
+}
+
+bool PDClient::subscribe(uint8_t type) {
+  this->waitforreply = false;
+  uint8_t data[2] = {type, 1};
+  if (this->sendMessage(2, data, 2)) {
+    Serial.print(F("Sent subscription request for "));
+    Serial.println(type);
   }
 }
 
 
 bool PDClient::subAperture() {
-  this->waitforreply = false;
-  uint8_t data[2] = {2, 1};
-  if (this->sendMessage(2, data, 2)) {
-    Serial.println(F("Sent subscription request"));
-  }
+  this->subscribe(7);
+}
+
+bool PDClient::subFocus() {
+  this->subscribe(2);
+}
+
+bool PDClient::subZoom() {
+  this->subscribe(4);
 }
 
 bool PDClient::unsub() {
@@ -194,7 +203,7 @@ uint16_t PDClient::getFocalLength() {
   this->waitforreply = true;
   if (this->sendMessage(2, 4)) {
     // Message acknowledged
-    return atoi(buf);
+    return atoi(this->buf);
   }
 }
 
@@ -218,7 +227,7 @@ void PDClient::onLoop() {
       if (manager->recvfrom(this->buf, &this->buflen, &from)) {
         
         Serial.println(this->buflen);
-          
+        
         for (int i = 0; i < this->buflen; i++) {
           if (i < 2) {
             Serial.print(F("0x"));
@@ -228,7 +237,11 @@ void PDClient::onLoop() {
             Serial.print((char)this->buf[i]);
           }
         }
+        
         Serial.println();
+        
+        this->parseMessage();
+
       }
     }
   
@@ -237,6 +250,90 @@ void PDClient::onLoop() {
     }
   }
 }
+
+byte* PDClient::parseMessage() {
+  // Determine message type
+  uint8_t messagetype = this->buf[0];
+  Serial.print(F("Message is of type 0x"));
+  Serial.println(messagetype, HEX);
+  switch (messagetype) {
+    case 0xF:
+      Serial.print(F("Message is an error, of type 0x"));
+      this->errorstate = this->buf[1];
+      Serial.println(this->errorstate);
+      return;
+      
+    case 0x0:
+      // Raw data reply from MDR
+      break;
+    case 0x1:
+      // Single-time data reply
+      break;
+    case 0x2:
+      // Subscription update
+
+      uint8_t datatype = this->buf[1];
+      uint8_t index = 2;
+      
+      if (datatype & 0b00000001) {
+        Serial.println(F("Received data includes iris"));
+        byte data[5];
+        for (int i = 0; i < 4; i++) {
+          data[i] = this->buf[index + i];
+          Serial.print(data[i]);
+          Serial.print(F(" "));
+        }
+        data[4] = "\0";
+        Serial.println();
+        this->iris = atoi(data);
+        Serial.print(F("Iris is "));
+        Serial.println(this->iris);
+        index += 4;
+      }
+
+      if (datatype & 0b00000010) {
+        Serial.println(F("Received data includes focus"));
+        byte data[9];
+        for (int i = 0; i < 8; i++) {
+          data[i] = this->buf[index + i];
+          Serial.print(data[i]);
+          Serial.print(F(" "));
+        }
+        data[8] = "\0";
+        Serial.println();
+        this->focus = strtoul(data, NULL, 10);
+        Serial.print(F("Focus is "));
+        Serial.println(this->focus);
+        index += 8;
+        
+      }
+
+      if (datatype & 0b0000100) {
+        Serial.println(F("Received data includes zoom"));
+        byte data[5];
+        for (int i = 0; i < 4; i++) {
+          data[i] = this->buf[index + i];
+          Serial.print(data[i]);
+          Serial.print(F(" "));
+        }
+        data[4] = "\0";
+        Serial.println();
+        this->flength = atoi(data);
+        Serial.print(F("Zoom is "));
+        Serial.println(this->flength);
+        index += 4;
+      }
+      break;
+      
+
+    default:
+      return;
+  }
+  // Determine data type, if data
+  
+  // Determine error type, if error
+}
+
 
 bool PDClient::handleErrors() {
   Serial.print(F("Error! 0x"));

@@ -119,7 +119,7 @@ void PDServer::onLoop() {
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   uint8_t sendlen = 2; // first two bytes are 0x4 and data type
-  databuf[0] = 0x4;
+  databuf[0] = 0x2;
   databuf[1] = datatype;
   if (millis() > this->lastupdate + 5) {
     this->iris = mdr->getAperture();
@@ -135,22 +135,22 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
 
   Serial.print(F("Getting following data: "));
   
-  if (datatype & 0b000001) {
+  if (datatype & 0b00000001) {
     Serial.print(F("iris "));
-    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->iris);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
   }
-  if (datatype & 0b000010) {
+  if (datatype & 0b00000010) {
     Serial.print(F("focus "));
-    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->focus);
+    sendlen += snprintf(&databuf[sendlen], 20, "%08lu", (unsigned long)this->focus);
   }
-  if (datatype & 0b000100) {
+  if (datatype & 0b00000100) {
     Serial.print(F("zoom "));
-    sendlen += snprintf(&databuf[sendlen], 20, "%lu", (unsigned long)this->zoom);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
   }
-  if (datatype & 0b001000) {
+  if (datatype & 0b00001000) {
     Serial.print(F("aux (we don't do that yet) "));
   }
-  if (datatype & 0b010000) {
+  if (datatype & 0b00010000) {
     Serial.print(F("distance (we don't do that yet) "));
   }
   if (sendlen > 0) {

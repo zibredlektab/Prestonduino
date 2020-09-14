@@ -9,12 +9,10 @@
 
 
 /*
- * First byte of message will always be uint8_t describing the type of the message:
- * 0x0 = Command reply
- * 0x1 = PrestonPacket
- * 0x2 = Requesting data, second byte is data type (see bit map below), third byte is whether to subscribe or not
- * 0x3 = ACK from mdr
- * 0x4 = Raw data, second byte is data type
+ * First byte of message will always be uint8_t describing the mode of the message:
+ * 0x0 = Raw data request/reply
+ * 0x1 = Single-time data request, second byte is data type (see bit map below)
+ * 0x3 = Subscription data request, second byte same as 0x1
  * 
  * 0xF = error, second byte determines error type
  * 
@@ -32,6 +30,7 @@
  * 0x2 = MDR not responding
  * 0x3 = NAK from MDR
  * 0x4 = ERR from MDR (error data follows)
+ * 0x5 = Not subscribed to requested data
  * 0xF = other error
  */
 

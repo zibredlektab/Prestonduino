@@ -36,6 +36,8 @@ class PDClient {
     uint16_t iris;
     uint16_t flength;
     uint32_t focus;
+    byte* parseMessage();
+    void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
 
 
   public:
@@ -55,6 +57,10 @@ class PDClient {
     uint8_t getChannel();
     void setChannel(uint8_t newchannel);
     uint8_t getErrorState();
+
+    bool subscribe(uint8_t type);
+    bool subFocus();
+    bool subZoom();
 
 
   
