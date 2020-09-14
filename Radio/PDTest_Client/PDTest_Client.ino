@@ -1,9 +1,9 @@
 #include <PDClient.h>
 #include <U8g2lib.h>
 
-#define LARGE_FONT u8g2_font_logisoso18_tf
-#define MED_FONT u8g2_font_helvB12_tf
-#define SMALL_FONT u8g2_font_pcsenior_8f
+#define LARGE_FONT u8g2_font_logisoso18_tr
+#define MED_FONT u8g2_font_helvB12_tr
+#define SMALL_FONT u8g2_font_pcsenior_8r
 
 unsigned long long timenow = 0;
 int wait = 4000;
@@ -41,7 +41,7 @@ void loop() {
   
   pd->onLoop();
   if (count == 0) {
-    pd->subAperture();
+    pd->subscribe(7);
     count++;
   }
 
@@ -51,16 +51,10 @@ void loop() {
 
 void drawScreen() {
 
-  /*uint8_t* fizdata = pd->getFIZData();
-  for (int i = 0; i < 7; i++) {
-    Serial.print(fizdata[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();*/
 
- /* uint16_t ap = pd->getAperture();
-  uint16_t fl = 40;//pd->getFocalLength();
-  uint32_t fd = 40;//pd->getFocusDistance();
+  uint16_t ap = pd->getAperture();
+  uint16_t fl = pd->getFocalLength();
+  uint32_t fd = pd->getFocusDistance();
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
   
@@ -87,17 +81,30 @@ void drawScreen() {
       oled.setCursor(4, 84);
       oled.setFont(LARGE_FONT);
       oled.print(fd);
+
+      double irisbaserounded, irisfraction;
       
-      oled.setCursor(6, 110);
-      oled.setFont(MED_FONT);
-      oled.print(F("T"));
-      oled.setCursor(20, 110);
-      oled.setFont(LARGE_FONT);
-      oled.print(ap);
+      irisMath(ap, &irisbaserounded, &irisfraction);
       
-      oled.setCursor(8, 122);
+      oled.setCursor(0, 108);
       oled.setFont(SMALL_FONT);
-      oled.print(F("& 0/10"));
+      oled.print(F("T"));
+      oled.setCursor(8, 110);
+      oled.setFont(LARGE_FONT);
+      if (modf(irisbaserounded, NULL) > 0) {
+        oled.print((int)irisbaserounded);
+        oled.print(F("."));
+        oled.print((int)((modf(irisbaserounded, NULL)*10)+.1));
+      } else {
+        oled.print((int)irisbaserounded);
+      }
+      
+      oled.setCursor(44, 98);
+      oled.setFont(SMALL_FONT);
+      oled.print((int)(irisfraction*10));
+      oled.drawHLine(38, 102, 18);
+      oled.setCursor(40, 110); 
+      oled.print(F("10"));
   
       /*
       oled.setFont(MED_FONT);
@@ -122,14 +129,14 @@ void drawScreen() {
           break;
         default: // Other?
           break;
-      }
+      }*/
     }
-  } while(oled.nextPage());*/
+  } while(oled.nextPage());
 }
 
 void drawError(uint8_t errorstate) {
   oled.setFont(MED_FONT);
-  oled.setCursor(10,30);
+  oled.setCursor(0,30);
   
   switch (errorstate) {
     case 0: // no errors, why are we here
@@ -137,7 +144,9 @@ void drawError(uint8_t errorstate) {
       oled.print(F("No Tx?"));
       break;
     case 2: // mdr communication error
-      oled.print(F("No MDR?"));
+      oled.print(F("No"));
+      oled.setCursor(0,44);
+      oled.print(F("MDR?"));
       break;
     case 3: // mdr NAK
       oled.print(F("NAK: check MDR request"));
@@ -183,6 +192,25 @@ uint8_t readSwitch(uint8_t which) {
   return state;
 }
 
-uint8_t readChannel() {
-  
+
+
+void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
+  double irisdec, irisbase, avnumber, avbase;
+
+  irisdec = (double)iris/100;
+  avnumber = log(sq(irisdec))/log(2); // AV number for iris (number of stops)
+
+  avnumber = roundf(avnumber*10);
+  avnumber /= 10;
+
+  *irisfraction = modf(avnumber, &avbase); // Fractional part of AV number (aka 10ths of stop)
+  irisbase = sqrt(pow(2.0, avbase)); // Convert AV number back to F stop
+
+  irisbase += 0.001; // Fudge some rounding errors
+
+  if (irisbase >= 10) { // T stops above 10 are rounded to 0 decimal places
+    *irisbaserounded = floor(irisbase);
+  } else { // T stops below 10 are rounded to 1 place
+    *irisbaserounded = floor(irisbase*10) / 10;
+  }
 }

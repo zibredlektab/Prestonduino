@@ -148,7 +148,7 @@ command_reply PDClient::sendCommand(uint8_t command) {
 }
 
 
-uint8_t* PDClient::getFIZData() {
+uint8_t* PDClient::getFIZDataOnce() {
   this->waitforreply = true;
   if (this->sendMessage(2, 7)) {
     // Message acknowledged
@@ -156,7 +156,7 @@ uint8_t* PDClient::getFIZData() {
   }
 }
 
-uint32_t PDClient::getFocusDistance() {
+uint32_t PDClient::getFocusDistanceOnce() {
   Serial.println(F("Asking for focus distance"));
   this->waitforreply = true;
   if (this->sendMessage(2, 2)) {
@@ -169,6 +169,40 @@ uint16_t PDClient::getAperture() {
   return this->iris;
 }
 
+uint16_t PDClient::getFocalLength() {
+  return this->flength;
+}
+
+uint32_t PDClient::getFocusDistance() {
+  return this->focus;
+}
+
+uint16_t PDClient::getApertureOnce() {
+  this->waitforreply = true;
+  if (this->sendMessage(1, 1)) {
+    // Message acknowledged
+    return atoi(this->buf);
+  }
+}
+
+uint16_t PDClient::getFocalLengthOnce() {
+  this->waitforreply = true;
+  if (this->sendMessage(1, 4)) {
+    // Message acknowledged
+    return atoi(this->buf);
+  }
+}
+
+char* PDClient::getLensNameOnce() {
+  this->waitforreply = true;
+  if (this->sendMessage(1, 16)) {
+    // Message acknowledged
+    return (char*)buf;
+  }
+}
+
+
+
 bool PDClient::subscribe(uint8_t type) {
   this->waitforreply = false;
   uint8_t data[2] = {type, 1};
@@ -178,9 +212,8 @@ bool PDClient::subscribe(uint8_t type) {
   }
 }
 
-
 bool PDClient::subAperture() {
-  this->subscribe(7);
+  this->subscribe(1);
 }
 
 bool PDClient::subFocus() {
@@ -199,21 +232,6 @@ bool PDClient::unsub() {
 }
 
 
-uint16_t PDClient::getFocalLength() {
-  this->waitforreply = true;
-  if (this->sendMessage(2, 4)) {
-    // Message acknowledged
-    return atoi(this->buf);
-  }
-}
-
-char* PDClient::getLensName() {
-  this->waitforreply = true;
-  if (this->sendMessage(2, 16)) {
-    // Message acknowledged
-    return (char*)buf;
-  }
-}
 
 void PDClient::onLoop() {
   if (!this->final_address) {
@@ -225,7 +243,7 @@ void PDClient::onLoop() {
       uint8_t from;
       this->buflen = sizeof(this->buf);
       if (manager->recvfrom(this->buf, &this->buflen, &from)) {
-        
+        this->errorstate = 0x0;
         Serial.println(this->buflen);
         
         for (int i = 0; i < this->buflen; i++) {
@@ -329,9 +347,6 @@ byte* PDClient::parseMessage() {
     default:
       return;
   }
-  // Determine data type, if data
-  
-  // Determine error type, if error
 }
 
 
@@ -340,10 +355,11 @@ bool PDClient::handleErrors() {
   Serial.println(this->errorstate);
   switch (this->errorstate) {
     default:
-      this->errorstate = 0;
+      //this->errorstate = 0;
       return true;
   }
 }
+
 
 uint8_t PDClient::getAddress() {
   return this->address;
@@ -353,6 +369,7 @@ uint8_t PDClient::getChannel() {
   return this->channel;
 }
 
+
 void PDClient::setChannel(uint8_t newchannel) {
   this->channel = newchannel;
   this->server_address = this->channel * 0x10;
@@ -361,9 +378,11 @@ void PDClient::setChannel(uint8_t newchannel) {
   this->final_address = false;
 }
 
+
 uint8_t PDClient::getErrorState() {
   return this->errorstate;
 }
+
 
 void PDClient::findAddress() {
   for (int i = 1; i <= 0xF; i++) {

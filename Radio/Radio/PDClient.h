@@ -46,21 +46,24 @@ class PDClient {
     command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
     command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return
     command_reply sendCommand(uint8_t command); // Same as above, for commands with no arguments
-    uint8_t* getFIZData(); // Ask for FIZ data
+    uint8_t* getFIZDataOnce(); // Ask for FIZ data
     uint32_t getFocusDistance();
     uint16_t getAperture();
     uint16_t getFocalLength();
-    bool subAperture();
-    bool unsub();
-    char* getLensName();
+    uint32_t getFocusDistanceOnce();
+    uint16_t getApertureOnce();
+    uint16_t getFocalLengthOnce();
+    char* getLensNameOnce();
     uint8_t getAddress();
     uint8_t getChannel();
     void setChannel(uint8_t newchannel);
     uint8_t getErrorState();
 
     bool subscribe(uint8_t type);
+    bool subAperture();
     bool subFocus();
     bool subZoom();
+    bool unsub();
 
 
   
