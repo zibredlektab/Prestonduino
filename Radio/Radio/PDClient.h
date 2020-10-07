@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include <stdint.h> 
 #include <PrestonPacket.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
@@ -22,7 +23,7 @@ class PDClient {
     RH_RF95 driver;
     RHReliableDatagram *manager;
     uint8_t errorstate = 0x0;
-    uint8_t buf[30];
+    char buf[30];
     uint8_t buflen;
     bool waitforreply = false;
     command_reply response;
@@ -36,7 +37,14 @@ class PDClient {
     uint16_t iris;
     uint16_t flength;
     uint32_t focus;
+    char fulllensname[25];
+    char* lensbrand;
+    char* lensseries;
+    char* lensname;
+    char* lensnote;
+    
     byte* parseMessage();
+    bool processLensName(char* newname, uint8_t len);
     void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
 
 

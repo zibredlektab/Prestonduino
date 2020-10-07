@@ -21,7 +21,7 @@
  * 2 = Focus
  * 4 = Zoom
  * 8 = Aux
- * 16 = Lens Name
+ * 16 = Lens Name (first byte is length)
  * 32 = Distance
  * 
  * Error states:
@@ -56,6 +56,8 @@ class PDServer {
     uint16_t iris = 0;
     uint16_t zoom = 0;
     uint32_t focus = 0;
+    char* fulllensname;
+    bool updatelensname = false;
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
@@ -64,7 +66,7 @@ class PDServer {
     uint8_t* replyToArray(command_reply input);
 
   public:
-    PDServer(int chan = 0, HardwareSerial& mdrserial = Serial);
+    PDServer(int chan = 0, HardwareSerial& mdrserial = Serial0);
     void onLoop();
     uint8_t getAddress();
   
