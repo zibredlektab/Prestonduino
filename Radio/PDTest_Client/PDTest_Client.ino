@@ -77,14 +77,27 @@ void drawScreen() {
       oled.print(fl);
       oled.setFont(MED_FONT);
       oled.print(F("mm"));
+
+
+      unsigned int ft, in;
+      focusMath(fd, &ft, &in);
       
       oled.setCursor(4, 84);
       oled.setFont(LARGE_FONT);
-      oled.print(fd);
+
+      if (ft < 1000) {
+        oled.print(ft);
+        oled.print(F("'"));
+        oled.print(in);
+        oled.print(F("\""));
+      } else {
+        oled.print(F("INF"));
+      }
+
 
       double irisbaserounded, irisfraction;
-      
       irisMath(ap, &irisbaserounded, &irisfraction);
+      uint8_t fractionoffset = 0;
       
       oled.setCursor(0, 108);
       oled.setFont(SMALL_FONT);
@@ -95,15 +108,16 @@ void drawScreen() {
         oled.print((int)irisbaserounded);
         oled.print(F("."));
         oled.print((int)((modf(irisbaserounded, NULL)*10)+.1));
+        fractionoffset = 20;
       } else {
         oled.print((int)irisbaserounded);
       }
       
-      oled.setCursor(44, 98);
+      oled.setCursor(25 + fractionoffset, 98);
       oled.setFont(SMALL_FONT);
       oled.print((int)(irisfraction*10));
-      oled.drawHLine(38, 102, 18);
-      oled.setCursor(40, 110); 
+      oled.drawHLine(20 + fractionoffset, 102, 18);
+      oled.setCursor(22 + fractionoffset, 110); 
       oled.print(F("10"));
   
       /*
@@ -199,6 +213,8 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
 
   irisdec = (double)iris/100;
   avnumber = log(sq(irisdec))/log(2); // AV number for iris (number of stops)
+  Serial.print(F("AV is "));
+  Serial.println(avnumber);
 
   avnumber = roundf(avnumber*10);
   avnumber /= 10;
@@ -213,4 +229,15 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
   } else { // T stops below 10 are rounded to 1 place
     *irisbaserounded = floor(irisbase*10) / 10;
   }
+}
+
+void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
+  double focusft = (double)focus / 305.0; // mm to ft
+  
+  double focusin, focusbase;
+  focusin = modf(focusft, &focusbase); // separate whole ft from fractional ft
+  focusin *= 12; // fractional ft to in
+
+  *ft = focusbase+.1; // make sure the casting always rounds properly
+  *in = focusin+.1;
 }
