@@ -536,23 +536,20 @@ char* PrestonDuino::getLensName() {
   //Serial.print("Lens name is this long: ");
   //Serial.println(lensnamelen);
   
-  static char lensname[100];
-  int lastnotwhitespace = 0;
-  for (int i = 0; i < lensnamelen; i++) {
-    lensname[i] = lensinfo.data[i+2];
-    if (!isspace(lensname[i])) {
-      lastnotwhitespace = i;
-    }
+  char lensname[50];
+  lensname[0] = lensnamelen;
+  for (int i = 1; i < lensnamelen; i++) {
+
+    lensname[i] = lensinfo.data[i+1];
   }
 
-  lensname[lastnotwhitespace+1] = 0;
 
 
-  //Serial.println("Lens name follows");
+  //Serial.print("Lens name: ");
   for (int i = 0; i < lensnamelen; i++) {
-    //Serial.println(lensname[i]);
+    //Serial.print(lensname[i]);
   }
-  //Serial.println("End of lens name");
+  //Serial.println();
   
   return lensname;
 }
