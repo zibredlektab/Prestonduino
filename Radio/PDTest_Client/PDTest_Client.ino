@@ -10,12 +10,15 @@ int wait = 4000;
 
 PDClient *pd;
 
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R1);
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R3);
 
 int count = 0;
 
 void setup() {
-  Serial.begin(115200);
+  SerialUSB.begin(115200);
+  while(!Serial);
+  SerialUSB.println("hello");
+  
   oled.begin();
 
   oled.setFont(LARGE_FONT);
@@ -213,8 +216,8 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
 
   irisdec = (double)iris/100;
   avnumber = log(sq(irisdec))/log(2); // AV number for iris (number of stops)
-  Serial.print(F("AV is "));
-  Serial.println(avnumber);
+  SerialUSB.print(F("AV is "));
+  SerialUSB.println(avnumber);
 
   avnumber = roundf(avnumber*10);
   avnumber /= 10;
@@ -234,10 +237,10 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
 void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
   double focusft = (double)focus / 305.0; // mm to ft
   
-  double focusin, focusbase;
-  focusin = modf(focusft, &focusbase); // separate whole ft from fractional ft
+  double focusin, focase;
+  focusin = modf(focusft, &focase); // separate whole ft from fractional ft
   focusin *= 12; // fractional ft to in
 
-  *ft = focusbase+.1; // make sure the casting always rounds properly
+  *ft = focase+.1; // make sure the casting always rounds properly
   *in = focusin+.1;
 }
