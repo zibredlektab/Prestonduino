@@ -1,5 +1,4 @@
 #include "Arduino.h"
-#include <stdint.h> 
 #include <PrestonPacket.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
@@ -20,10 +19,10 @@ class PDClient {
     uint8_t channel = 0x3; // hard-coded for now, eventually determined by pot
     uint8_t server_address = 0x0;
     bool final_address = false;
-    RH_RF95 driver;
+    RH_RF95 *driver;
     RHReliableDatagram *manager;
     uint8_t errorstate = 0x0;
-    char buf[30];
+    unsigned char buf[30];
     uint8_t buflen;
     bool waitforreply = false;
     command_reply response;

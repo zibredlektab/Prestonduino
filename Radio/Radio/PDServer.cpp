@@ -166,15 +166,18 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     //Serial.print(F("name "));
     if (this->updatelensname) {
       char* lensname = this->fulllensname;
-      int i = 0;
-      for (sendlen; sendlen < 20; sendlen++) {
-        databuf[sendlen] = lensname[i++];
+      
+      int i;
+      for (i = 0; i < 20; i++) {
+        databuf[sendlen+i] = lensname[i];
       }
+      sendlen += i;
+      this->updatelensname = false;
     }
   }
   if (sendlen > 0) {
     //Serial.println();
-    databuf[sendlen++] = (uint8_t)'\0';
+    databuf[sendlen++] = '\0';
   } else {
     //Serial.println(F("...nothing?"));
   }
