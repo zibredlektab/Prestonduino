@@ -2,8 +2,11 @@
 #include <PrestonPacket.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+
+
 #ifndef PDClient_h
 #define PDClient_h
+
 
 #define NUMRETRIES 500
 
@@ -36,7 +39,7 @@ class PDClient {
     uint16_t iris;
     uint16_t flength;
     uint32_t focus;
-    char fulllensname[25];
+    char fulllensname[50];
     char* lensbrand;
     char* lensseries;
     char* lensname;

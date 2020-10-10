@@ -13,7 +13,7 @@ U8G2_SSD1306_128X64_NONAME_2_HW_I2C oled (U8G2_R0);
 void setup() {
 
   oled.begin();
-  mdr = new PrestonDuino(Serial);
+  mdr = new PrestonDuino(Serial1);
   
   delay(100);
 

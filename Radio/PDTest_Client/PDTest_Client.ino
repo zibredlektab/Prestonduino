@@ -10,14 +10,15 @@ int wait = 4000;
 
 PDClient *pd;
 
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R3);
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R1);
 
 int count = 0;
 
 void setup() {
-  SerialUSB.begin(115200);
+  Serial.begin(115200);
   while(!Serial);
-  SerialUSB.println("hello");
+
+  pd = new PDClient(0xA);
   
   oled.begin();
 
@@ -32,7 +33,6 @@ void setup() {
   pinMode(5, INPUT_PULLUP);
   pinMode(6, INPUT_PULLUP);
   
-  pd = new PDClient(0xA);
 
 }
 
@@ -44,7 +44,7 @@ void loop() {
   
   pd->onLoop();
   if (count == 0) {
-    pd->subscribe(7);
+    pd->subscribe(32);
     count++;
   }
 
@@ -216,8 +216,8 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
 
   irisdec = (double)iris/100;
   avnumber = log(sq(irisdec))/log(2); // AV number for iris (number of stops)
-  SerialUSB.print(F("AV is "));
-  SerialUSB.println(avnumber);
+  //Serial.print(F("AV is "));
+  //Serial.println(avnumber);
 
   avnumber = roundf(avnumber*10);
   avnumber /= 10;

@@ -8,7 +8,7 @@ PDServer *pd;
 
 void setup() {
   // put your setup code here, to run once:
-  pd = new PDServer(0xA, Serial);
+  pd = new PDServer(0xA, Serial1);
  // oled.begin();
 }
 

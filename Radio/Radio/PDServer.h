@@ -5,6 +5,8 @@
 #ifndef PDServer_h
 #define PDServer_h
 
+
+
 #define REFRESHRATE 5;
 
 
@@ -12,7 +14,7 @@
  * First byte of message will always be uint8_t describing the mode of the message:
  * 0x0 = Raw data request/reply
  * 0x1 = Single-time data request, second byte is data type (see bit map below)
- * 0x3 = Subscription data request, second byte same as 0x1
+ * 0x2 = Subscription data request, second byte same as 0x1
  * 
  * 0xF = error, second byte determines error type
  * 
@@ -57,7 +59,7 @@ class PDServer {
     uint16_t zoom = 0;
     uint32_t focus = 0;
     char* fulllensname;
-    bool updatelensname = false;
+    char prevlensname[50];
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
@@ -66,7 +68,7 @@ class PDServer {
     uint8_t* replyToArray(command_reply input);
 
   public:
-    PDServer(int chan = 0, HardwareSerial& mdrserial = Serial0);
+    PDServer(int chan, HardwareSerial& mdrserial);
     void onLoop();
     uint8_t getAddress();
   

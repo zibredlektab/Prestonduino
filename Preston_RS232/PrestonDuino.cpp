@@ -281,15 +281,15 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
   // Return an array of the reply, first element of which is an indicator of the reply type
   int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
-  reply.replystatus = stat;
-  reply.data = NULL;
+  this->reply.replystatus = stat;
+  this->reply.data = NULL;
   
   //Serial.print("Immediate response to command is ");
   //Serial.println(stat);
 
   if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
     // Either: timeout, NAK, or ACK for a command that doesn't need a reply
-    return reply;
+    return this->reply;
   } else if (stat == -1 && withreply) {
     // Packet was acknowledged by MDR, but we still need a reply
   
@@ -300,7 +300,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
       stat = this->parseRcv(); // MDR's response to the command packet
       //Serial.print("Status of reply packet is ");
       //Serial.println(stat);
-      reply.replystatus = stat;
+      this->reply.replystatus = stat;
     } else {
       //Serial.println("Reply packet never came");
     }
@@ -313,9 +313,9 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   }
   //Serial.println("End of reply array");
 
-  reply.data = this->rcvpacket->getData();
+  this->reply.data = this->rcvpacket->getData();
 
-  return reply;
+  return this->reply;
 }
 
 
@@ -536,22 +536,20 @@ char* PrestonDuino::getLensName() {
   //Serial.print("Lens name is this long: ");
   //Serial.println(lensnamelen);
   
-  char lensname[50];
-  lensname[0] = lensnamelen;
+  this->lensname[0] = lensnamelen+1; // first index is length of name
   for (int i = 1; i < lensnamelen; i++) {
-
-    lensname[i] = lensinfo.data[i+1];
+    this->lensname[i] = lensinfo.data[i+1];
   }
 
 
 
   //Serial.print("Lens name: ");
   for (int i = 0; i < lensnamelen; i++) {
-    //Serial.print(lensname[i]);
+    //Serial.print(this->lensname[i]);
   }
   //Serial.println();
   
-  return lensname;
+  return this->lensname;
 }
 
 
