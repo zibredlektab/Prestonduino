@@ -25,7 +25,7 @@ class PDClient {
     RH_RF95 *driver;
     RHReliableDatagram *manager;
     uint8_t errorstate = 0x0;
-    unsigned char buf[30];
+    unsigned char buf[50];
     uint8_t buflen;
     bool waitforreply = false;
     command_reply response;

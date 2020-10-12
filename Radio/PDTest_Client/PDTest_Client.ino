@@ -48,7 +48,7 @@ void loop() {
     count++;
   }
 
-  drawScreen();
+  //drawScreen();
   
 }
 

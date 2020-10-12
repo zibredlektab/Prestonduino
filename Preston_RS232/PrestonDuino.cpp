@@ -531,20 +531,23 @@ int PrestonDuino::getAperture() {
 char* PrestonDuino::getLensName() {
   command_reply lensinfo = this->info(0x1);
 
-  int lensnamelen = lensinfo.replystatus-2; //first two bytes in the reply to info() are the type of info
+  int lensnamelen = lensinfo.replystatus-1; //first two bytes in the reply to info() are the type of info
 
   //Serial.print("Lens name is this long: ");
   //Serial.println(lensnamelen);
   
   this->lensname[0] = lensnamelen+1; // first index is length of name
   for (int i = 1; i < lensnamelen; i++) {
-    this->lensname[i] = lensinfo.data[i+1];
+    this->lensname[i] = lensinfo.data[i+1]; //1+1 ensures that we skip the first two elements of data, which are the info type
   }
 
 
 
   //Serial.print("Lens name: ");
-  for (int i = 0; i < lensnamelen; i++) {
+  //Serial.print("[0x");
+  //Serial.print(this->lensname[0], HEX);
+  //Serial.print("]");
+  for (int i = 1; i < lensnamelen; i++) {
     //Serial.print(this->lensname[i]);
   }
   //Serial.println();
