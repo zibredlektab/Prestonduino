@@ -48,7 +48,7 @@ void loop() {
     count++;
   }
 
-  //drawScreen();
+  drawScreen();
   
 }
 
@@ -60,6 +60,10 @@ void drawScreen() {
   uint32_t fd = pd->getFocusDistance();
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
+  char* br = pd->getLensBrand();
+  char* sr = pd->getLensSeries();
+  char* nm = pd->getLensName();
+  char* nt = pd->getLensNote();
   
   oled.firstPage();
   do {
@@ -71,9 +75,11 @@ void drawScreen() {
   
       
       oled.setCursor(0, 20);
-      oled.print(F("Primo Zm")); // Manufacturer OR series
+      oled.print(br); // Manufacturer OR series
       oled.setCursor(0, 30);
-      oled.print(F("24-275mm")); // Series OR focal length range
+      oled.print(nm); // Series OR focal length range
+      oled.print(F(" "));
+      oled.print(nt);
       
       oled.setCursor(6, 56);
       oled.setFont(LARGE_FONT);

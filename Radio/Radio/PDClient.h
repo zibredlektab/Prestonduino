@@ -64,6 +64,11 @@ class PDClient {
     uint16_t getApertureOnce();
     uint16_t getFocalLengthOnce();
     char* getLensNameOnce();
+    char* getFullLensName();
+    char* getLensBrand();
+    char* getLensSeries();
+    char* getLensName();
+    char* getLensNote();
     uint8_t getAddress();
     uint8_t getChannel();
     void setChannel(uint8_t newchannel);

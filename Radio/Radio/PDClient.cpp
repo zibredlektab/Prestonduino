@@ -454,3 +454,23 @@ void PDClient::findAddress() {
   //Serial.print(F("My final address is 0x"));
   //Serial.println(this->address, HEX);
 }
+
+char* PDClient::getFullLensName() {
+  return this->fulllensname;
+}
+
+char* PDClient::getLensBrand() {
+  return this->lensbrand;
+}
+
+char* PDClient::getLensSeries() {
+  return this->lensseries;
+}
+
+char* PDClient::getLensName() {
+  return this->lensname;
+}
+
+char* PDClient::getLensNote() {
+  return this->lensnote;
+}
