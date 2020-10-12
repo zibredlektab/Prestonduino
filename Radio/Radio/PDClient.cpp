@@ -474,3 +474,11 @@ char* PDClient::getLensName() {
 char* PDClient::getLensNote() {
   return this->lensnote;
 }
+
+bool PDClient::isZoom() {
+  if (strchr(this->lensname, '-')) {
+    return true;
+  } else {
+    return false;
+  }
+}

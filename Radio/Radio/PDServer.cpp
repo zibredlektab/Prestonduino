@@ -122,9 +122,9 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   databuf[0] = 0x2;
   databuf[1] = datatype;
   if (millis() > this->lastupdate + 5) {
-   // this->iris = mdr->getAperture();
-   // this->focus = mdr->getFocusDistance();
-   // this->zoom = mdr->getFocalLength();
+    this->iris = mdr->getAperture();
+    this->focus = mdr->getFocusDistance();
+    this->zoom = mdr->getFocalLength();
     this->fulllensname = mdr->getLensName();
     //Serial.print(F("New lens name: "));
     for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
@@ -141,11 +141,11 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
 
     
     this->lastupdate = millis();
-    /*if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
+    if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
       databuf[0] = 0xF;
       databuf[1] = 0x2;
       return sendlen;
-    }*/
+    }
   }
 
   //Serial.print(F("Getting following data: "));

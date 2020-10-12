@@ -44,7 +44,7 @@ void loop() {
   
   pd->onLoop();
   if (count == 0) {
-    pd->subscribe(32);
+    pd->subscribe(39);
     count++;
   }
 
@@ -75,11 +75,17 @@ void drawScreen() {
   
       
       oled.setCursor(0, 20);
-      oled.print(br); // Manufacturer OR series
-      oled.setCursor(0, 30);
-      oled.print(nm); // Series OR focal length range
-      oled.print(F(" "));
-      oled.print(nt);
+      if (pd->isZoom()) {
+        // Zoom displays series name & focal range
+        oled.print(sr);
+        oled.setCursor(0, 30);
+        oled.print(nm);
+      } else {
+        // Prime displays brand & series name
+        oled.print(br);
+        oled.setCursor(0, 30);
+        oled.print(sr);
+      }
       
       oled.setCursor(6, 56);
       oled.setFont(LARGE_FONT);
@@ -120,6 +126,10 @@ void drawScreen() {
         fractionoffset = 20;
       } else {
         oled.print((int)irisbaserounded);
+      }
+
+      if (irisbaserounded > 10) {
+        fractionoffset = 15;
       }
       
       oled.setCursor(25 + fractionoffset, 98);

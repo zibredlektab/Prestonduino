@@ -69,6 +69,7 @@ class PDClient {
     char* getLensSeries();
     char* getLensName();
     char* getLensNote();
+    bool isZoom();
     uint8_t getAddress();
     uint8_t getChannel();
     void setChannel(uint8_t newchannel);
