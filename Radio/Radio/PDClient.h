@@ -10,6 +10,14 @@
 
 #define NUMRETRIES 500
 
+#ifdef MOTEINO_M0
+  #define SSPIN A2
+  #define INTPIN 9
+#else
+  #define SSPIN SS
+  #define INTPIN 2
+#endif
+
 struct command_reply {
   uint8_t replystatus;
   byte* data;

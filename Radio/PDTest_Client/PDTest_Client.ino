@@ -10,20 +10,22 @@ int wait = 4000;
 
 PDClient *pd;
 
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C oled (U8G2_R1);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled (U8G2_R3);
 
-int count = 0;
+uint8_t count = 0;
 
 void setup() {
   Serial.begin(115200);
   while(!Serial);
+  Serial.println();
 
   pd = new PDClient(0xA);
   
   oled.begin();
 
   oled.setFont(LARGE_FONT);
-  
+
+  /*
   pinMode(14, INPUT_PULLUP);
   pinMode(15, INPUT_PULLUP);
   pinMode(16, INPUT_PULLUP);
@@ -32,7 +34,7 @@ void setup() {
   pinMode(4, INPUT_PULLUP);
   pinMode(5, INPUT_PULLUP);
   pinMode(6, INPUT_PULLUP);
-  
+  */
 
 }
 
@@ -65,106 +67,106 @@ void drawScreen() {
   char* nm = pd->getLensName();
   char* nt = pd->getLensNote();
   
-  oled.firstPage();
-  do {
-    drawChannel(ch);
+  oled.clearBuffer();
+
+  drawChannel(ch);
+  
+  if (er > 0) {
+    drawError(er);
+  } else {
+
     
-    if (er > 0) {
-      drawError(er);
+    oled.setCursor(0, 20);
+    if (pd->isZoom()) {
+      // Zoom displays series name & focal range
+      oled.print(sr);
+      oled.setCursor(0, 30);
+      oled.print(nm);
     } else {
-  
-      
-      oled.setCursor(0, 20);
-      if (pd->isZoom()) {
-        // Zoom displays series name & focal range
-        oled.print(sr);
-        oled.setCursor(0, 30);
-        oled.print(nm);
-      } else {
-        // Prime displays brand & series name
-        oled.print(br);
-        oled.setCursor(0, 30);
-        oled.print(sr);
-      }
-      
-      oled.setCursor(6, 56);
-      oled.setFont(LARGE_FONT);
-      oled.print(fl);
-      oled.setFont(MED_FONT);
-      oled.print(F("mm"));
-
-
-      unsigned int ft, in;
-      focusMath(fd, &ft, &in);
-      
-      oled.setCursor(4, 84);
-      oled.setFont(LARGE_FONT);
-
-      if (ft < 1000) {
-        oled.print(ft);
-        oled.print(F("'"));
-        oled.print(in);
-        oled.print(F("\""));
-      } else {
-        oled.print(F("INF"));
-      }
-
-
-      double irisbaserounded, irisfraction;
-      irisMath(ap, &irisbaserounded, &irisfraction);
-      uint8_t fractionoffset = 0;
-      
-      oled.setCursor(0, 108);
-      oled.setFont(SMALL_FONT);
-      oled.print(F("T"));
-      oled.setCursor(8, 110);
-      oled.setFont(LARGE_FONT);
-      if (modf(irisbaserounded, NULL) > 0) {
-        oled.print((int)irisbaserounded);
-        oled.print(F("."));
-        oled.print((int)((modf(irisbaserounded, NULL)*10)+.1));
-        fractionoffset = 20;
-      } else {
-        oled.print((int)irisbaserounded);
-      }
-
-      if (irisbaserounded > 10) {
-        fractionoffset = 15;
-      }
-      
-      oled.setCursor(25 + fractionoffset, 98);
-      oled.setFont(SMALL_FONT);
-      oled.print((int)(irisfraction*10));
-      oled.drawHLine(20 + fractionoffset, 102, 18);
-      oled.setCursor(22 + fractionoffset, 110); 
-      oled.print(F("10"));
-  
-      /*
-      oled.setFont(MED_FONT);
-      oled.setCursor(5,20);
-      //oled.print(pd->getLensName());
-      uint8_t datamode = readSwitch(0);
-      switch (datamode) {
-        case 0: // Iris
-        oled.print("Iris");
-          break;
-        case 1: // Focus
-        oled.print("Focus");
-          break;
-        case 2: // Zoom
-        oled.print("Zoom");
-          break;
-        case 3: // Aux
-        oled.print("Aux");
-          break;
-        case 4: // Distance
-        oled.print("Dist");
-          break;
-        default: // Other?
-          break;
-      }*/
+      // Prime displays brand & series name
+      oled.print(br);
+      oled.setCursor(0, 30);
+      oled.print(sr);
     }
-  } while(oled.nextPage());
+    
+    oled.setCursor(6, 56);
+    oled.setFont(LARGE_FONT);
+    oled.print(fl);
+    oled.setFont(MED_FONT);
+    oled.print(F("mm"));
+
+
+    unsigned int ft, in;
+    focusMath(fd, &ft, &in);
+    
+    oled.setCursor(4, 84);
+    oled.setFont(LARGE_FONT);
+
+    if (ft < 1000) {
+      oled.print(ft);
+      oled.print(F("'"));
+      oled.print(in);
+      oled.print(F("\""));
+    } else {
+      oled.print(F("INF"));
+    }
+
+
+    double irisbaserounded, irisfraction;
+    irisMath(ap, &irisbaserounded, &irisfraction);
+    uint8_t fractionoffset = 0;
+    
+    oled.setCursor(0, 108);
+    oled.setFont(SMALL_FONT);
+    oled.print(F("T"));
+    oled.setCursor(8, 110);
+    oled.setFont(LARGE_FONT);
+    if (modf(irisbaserounded, NULL) > 0) {
+      oled.print((int)irisbaserounded);
+      oled.print(F("."));
+      oled.print((int)((modf(irisbaserounded, NULL)*10)+.1));
+      fractionoffset = 20;
+    } else {
+      oled.print((int)irisbaserounded);
+    }
+
+    if (irisbaserounded > 10) {
+      fractionoffset = 15;
+    }
+    
+    oled.setCursor(25 + fractionoffset, 98);
+    oled.setFont(SMALL_FONT);
+    oled.print((int)(irisfraction*10));
+    oled.drawHLine(20 + fractionoffset, 102, 18);
+    oled.setCursor(22 + fractionoffset, 110); 
+    oled.print(F("10"));
+
+    /*
+    oled.setFont(MED_FONT);
+    oled.setCursor(5,20);
+    //oled.print(pd->getLensName());
+    uint8_t datamode = readSwitch(0);
+    switch (datamode) {
+      case 0: // Iris
+      oled.print("Iris");
+        break;
+      case 1: // Focus
+      oled.print("Focus");
+        break;
+      case 2: // Zoom
+      oled.print("Zoom");
+        break;
+      case 3: // Aux
+      oled.print("Aux");
+        break;
+      case 4: // Distance
+      oled.print("Dist");
+        break;
+      default: // Other?
+        break;
+    }*/
+  }
+  oled.sendBuffer();
 }
 
 void drawError(uint8_t errorstate) {
