@@ -9,6 +9,18 @@
 
 #define REFRESHRATE 5;
 
+#ifdef MOTEINO_M0
+  #define SSPIN A2
+  #define INTPIN 9
+#elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
+  #define SSPIN 4
+  #define INTPIN 2
+#else
+  #define SSPIN SS
+  #define INTPIN 2
+#endif
+
+
 
 /*
  * First byte of message will always be uint8_t describing the mode of the message:

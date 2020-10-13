@@ -8,7 +8,7 @@ PDServer::PDServer(int chan, HardwareSerial& mdrserial) {
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
-  this->driver = new RH_RF95(4);
+  this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
   //Serial.println(F("Manager created, initializing"));
   if (!this->manager->init()) {
