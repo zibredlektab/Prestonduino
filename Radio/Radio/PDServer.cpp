@@ -1,10 +1,10 @@
 #include "PDServer.h"
 
-PDServer::PDServer(int chan, HardwareSerial& mdrserial) {
+PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
   //Serial.begin(115200);
   this->channel = chan;
   this->address = chan * 0x10;
-  this->ser = &mdrserial;
+  this->ser = &mdrSerial;
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
@@ -213,7 +213,7 @@ bool PDServer::updateSubs() {
       //Serial.print(F("Sending "));
       //Serial.print(sendlen);
       //Serial.println(F(" bytes"));
-      if (!this->manager->sendto((uint8_t*)tosend, sendlen, this->subs[i].client_address)) {
+      if (!this->manager->sendto((char*)tosend, sendlen, this->subs[i].client_address)) {
         //Serial.println(F("Failed to send message"));
         return false;
       }

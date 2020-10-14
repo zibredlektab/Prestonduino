@@ -10,7 +10,7 @@ PDClient::PDClient(int chan) {
   Serial.println(this->address, HEX);
   
   this->manager = new RHReliableDatagram(*this->driver, this->address);
-  Serial.println(F("Manager created, initializing"));
+  Serial.println(F("Maspnager created, initializing"));
   if (!this->manager->init()) {
     Serial.println(F("RH manager init failed"));
   } else {
@@ -209,6 +209,9 @@ bool PDClient::subscribe(uint8_t type) {
   if (this->sendMessage(2, data, 2)) {
     Serial.print(F("Sent subscription request for "));
     Serial.println(type);
+    return true;
+  } else {
+    return false;
   }
 }
 

@@ -79,7 +79,7 @@ class PDServer {
     uint8_t* replyToArray(command_reply input);
 
   public:
-    PDServer(int chan, HardwareSerial& mdrserial);
+    PDServer(int chan = 0xA, HardwareSerial& mdrserial = Serial);
     void onLoop();
     uint8_t getAddress();
   
