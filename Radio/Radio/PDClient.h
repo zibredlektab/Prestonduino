@@ -30,8 +30,8 @@ struct command_reply {
 class PDClient {
   private:
     uint8_t address = 0xF; // start address
-    uint8_t channel = 0x3; // hard-coded for now, eventually determined by pot
-    uint8_t server_address = 0x0;
+    uint8_t channel;
+    uint8_t server_address;
     bool final_address = false;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
@@ -62,7 +62,7 @@ class PDClient {
 
 
   public:
-    PDClient(int chan = 0);
+    PDClient(int chan = 0xA);
     void onLoop();
     command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
     command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return
@@ -83,7 +83,7 @@ class PDClient {
     bool isZoom();
     uint8_t getAddress();
     uint8_t getChannel();
-    void setChannel(uint8_t newchannel);
+    bool setChannel(uint8_t newchannel);
     uint8_t getErrorState();
 
     bool subscribe(uint8_t type);

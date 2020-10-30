@@ -10,47 +10,44 @@ int wait = 4000;
 
 PDClient *pd;
 
-U8G2_SSD1322_NHD_128X64_1_3W_HW_SPI oled(U8G2_R3, 4, 3);
+U8G2_SSD1322_NHD_128X64_1_3W_HW_SPI oled(U8G2_R3, 3, 2);
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled (U8G2_R3);
 
-uint8_t count = 0;
 
 void setup() {
+  
+  oled.begin();
+
+  oled.firstPage();
+  do {
+    oled.setFont(MED_FONT);
+    oled.setCursor(0, 30);
+    oled.print(F("Starting..."));
+  } while(oled.nextPage());
+  
+  pinMode(4, INPUT_PULLUP);
+  pinMode(5, INPUT_PULLUP);
+  pinMode(6, INPUT_PULLUP);
+  pinMode(7, INPUT_PULLUP);
+  
   Serial.begin(115200);
   while(!Serial);
   Serial.println();
 
-  pd = new PDClient(0xA);
+  pd = new PDClient(readSwitch(0));
   
-  oled.begin();
 
-  oled.setFont(LARGE_FONT);
-
-  /*
-  pinMode(14, INPUT_PULLUP);
-  pinMode(15, INPUT_PULLUP);
-  pinMode(16, INPUT_PULLUP);
-  pinMode(17, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(5, INPUT_PULLUP);
-  pinMode(6, INPUT_PULLUP);
-  */
+  pd->subscribe(39);
 
 }
 
 void loop() {
-  /*uint8_t newch = readSwitch(0);
-  if (newch != pd->getChannel()) {
-    pd->setChannel(newch);
-  }*/
+  if (readSwitch(0) != pd->getChannel()) {
+    delay(200);
+    changeChannel(readSwitch(0));
+  }
   
   pd->onLoop();
-  if (count == 0) {
-    //pd->subscribe(39);
-    Serial.println(F("Subscribed."));
-    count++;
-  }
 
   drawScreen();
   
@@ -61,12 +58,16 @@ void drawScreen() {
   uint16_t ap = 460;//pd->getAperture();
   uint16_t fl = 30;//pd->getflstr();
   uint32_t fd = 21900;//pd->getFocusDistance();
-  uint8_t ch = 0xA;//pd->getChannel();
-  uint8_t er = 0x0;//pd->getErrorState();
+  uint8_t ch = pd->getChannel();
+  uint8_t er = pd->getErrorState();
   const char* br = "Panavision";//pd->getLensBrand();
   const char* sr = "Primo Zoom";//pd->getLensSeries();
   const char* nm = "24-250mm";//pd->getLensName();
   const char* nt = "foo";//pd->getLensNote();
+
+  if (br == "Other" || sr == "Other") {
+    sr = nt; // If brand or series == other, use note instead of series
+  }
   
   //oled.clearBuffer();
   oled.firstPage();
@@ -78,7 +79,7 @@ void drawScreen() {
     } else {
   
       
-      if (0){//pd->isZoom()) {
+      if (1){//pd->isZoom()) {
         // Zoom displays series name & focal range
         oled.setCursor(getCenteredX(sr), 20);
         oled.print(sr);
@@ -218,7 +219,7 @@ uint8_t readSwitch(uint8_t which) {
   // read state of a rotary switch
   if (which == 0) {
     // CH
-    which += 14;
+    which += 4;
   } else if (which == 1) {
     // MODE
     which += 2;
@@ -261,17 +262,33 @@ void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
 }
 
 void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
-  double focusft = (double)focus / 305.0; // mm to ft
+  double focusft = (double)focus / 305.0; // mm to fractional ft
   
-  double focusin, focase;
-  focusin = modf(focusft, &focase); // separate whole ft from fractional ft
+  double focusin, focusbase;
+  focusin = modf(focusft, &focusbase); // separate whole ft from fractional ft
   focusin *= 12; // fractional ft to in
 
-  *ft = focase+.1; // make sure the casting always rounds properly
+  *ft = focusbase+.1; // make sure the casting always rounds properly
   *in = focusin+.1;
 }
 
 uint8_t getCenteredX(char* str) {
   uint8_t width = oled.getStrWidth(str);
   return (64-width)/2;
+}
+
+void changeChannel(uint8_t newch) {
+  oled.firstPage();
+  do {
+    oled.setCursor(getCenteredX("Changing"),30);
+    oled.print(F("Changing"));
+    oled.setCursor(getCenteredX("channel..."),45);
+    oled.print(F("channel..."));
+  } while(oled.nextPage());
+  pd->unsub();
+  if (pd->setChannel(newch)) {
+    pd->subscribe(39);
+  } else {
+    Serial.println(F("failed to set new channel"));
+  }
 }

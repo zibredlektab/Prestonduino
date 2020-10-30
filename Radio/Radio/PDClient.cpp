@@ -1,9 +1,14 @@
 #include "PDClient.h"
 
 
-PDClient::PDClient(int chan) {
+PDClient::PDClient(int chan = 0xA) {
   this->driver = new RH_RF95(SSPIN,INTPIN);
-  this->setChannel(chan);
+  this->channel = chan;
+  Serial.print(F("channel is "));
+  Serial.println(this->channel, HEX);
+  this->server_address = this->channel * 0x10;
+  Serial.print(F("server address is "));
+  Serial.println(this->server_address, HEX);
   this->address += this->server_address;
 
   Serial.print(F("My start address is 0x"));
@@ -27,6 +32,9 @@ PDClient::PDClient(int chan) {
   if (!this->driver->setModemConfig(RH_RF95::Bw500Cr45Sf128)) {
     Serial.println(F("Driver failed to configure modem"));
   }
+
+  
+  this->setChannel(chan);
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t data) {
@@ -231,6 +239,10 @@ bool PDClient::unsub() {
   this->waitforreply = false;
   if (this->sendMessage(2, 0)) {
     Serial.println(F("Sent unsubscription request"));
+    return true;
+  } else {
+    Serial.println(F("Failed to send unsub request"));
+    return false;
   }
 }
 
@@ -421,12 +433,13 @@ uint8_t PDClient::getChannel() {
 }
 
 
-void PDClient::setChannel(uint8_t newchannel) {
+bool PDClient::setChannel(uint8_t newchannel) {
   this->channel = newchannel;
   this->server_address = this->channel * 0x10;
   Serial.print("Server address is 0x");
   Serial.println(this->server_address, HEX);
-  this->final_address = false;
+  this->findAddress();
+  return true;
 }
 
 
