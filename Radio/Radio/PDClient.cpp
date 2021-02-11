@@ -7,7 +7,7 @@ PDClient::PDClient(int chan = 0xA) {
   Serial.print(F("channel is "));
   Serial.println(this->channel, HEX);
   this->server_address = this->channel * 0x10;
-  Serial.print(F("server address is "));
+  Serial.print(F("server address is 0x"));
   Serial.println(this->server_address, HEX);
   this->address += this->server_address;
 
@@ -15,7 +15,7 @@ PDClient::PDClient(int chan = 0xA) {
   Serial.println(this->address, HEX);
   
   this->manager = new RHReliableDatagram(*this->driver, this->address);
-  Serial.println(F("Maspnager created, initializing"));
+  Serial.println(F("Manager created, initializing"));
   if (!this->manager->init()) {
     Serial.println(F("RH manager init failed"));
   } else {
@@ -51,7 +51,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
 
   Serial.print(F("Sending message: "));
   for (int i = 0; i < datalen+1; i++) {
-    Serial.print(tosend[i]);
+    Serial.print((char)tosend[i]);
     Serial.print(F(" "));
   }
   Serial.print(F(" to server at 0x"));
@@ -142,12 +142,14 @@ void PDClient::arrayToCommandReply(byte* input) {
 
 command_reply PDClient::sendPacket(PrestonPacket *pak) {
   if (this->sendMessage(1, pak->getPacket(), pak->getPacketLen())){
+    delete pak;
     return this->response;
   }
 }
 
 command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
   PrestonPacket *pak = new PrestonPacket(command, args, len);
+  Serial.println("Packet created");
   return this->sendPacket(pak);
 }
 

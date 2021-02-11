@@ -26,7 +26,7 @@ PrestonPacket::PrestonPacket(byte cmd_mode) {
 
 PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
-  
+  //Serial.println("Making a packet");
   this->mode = cmd_mode;
 
   for (int i = 0; i < cmd_datalen; i++) {
