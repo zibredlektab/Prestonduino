@@ -31,83 +31,102 @@ PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
   
 }
 
+
 void PDServer::onLoop() {
-  if (this->manager->waitAvailableTimeout(15)) {
+  if (this->manager->available()) {
     //Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
-    if (this->manager->recvfromAck(this->buf, &this->buflen, &this->lastfrom)) {
-      //Serial.print(F("got request of "));
+    if (this->manager->recvfrom(this->buf, &this->buflen, &this->lastfrom)) {
+      //Serial.print(F("got message of "));
       //Serial.print(this->buflen);
       //Serial.print(F(" characters from 0x"));
       //Serial.print(this->lastfrom, HEX);
       //Serial.print(": ");
       for (int i = 0; i < this->buflen; i++) {
         //Serial.print(this->buf[i]);
+        //Serial.print(" ");
       }
       //Serial.println();
       
-      if (this->buf[0] == 1) {
-        // This message contains a PrestonPacket (deprecated)
-        /*PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
-        int replystat = this->mdr->sendToMDR(pak);
-        if (replystat == -1) {
-          // MDR acknowledged the packet, didn't send any other data
-          if(!this->manager->sendtoWait((uint8_t*)3, 1, from)) { // 0x3 is ack
-            //Serial.println(F("failed to send reply"));
+      int type = this->buf[0];
+      //Serial.print("type of message is ");
+      //Serial.println(type);
+      
+      switch (type) {
+        case 1:
+          // This message contains raw data for the MDR
+          //Serial.println("This is data for the MDR");
+          PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
+          int replystat = this->mdr->sendToMDR(pak);
+          if (replystat == -1) {
+            //Serial.println(F("MDR acknowledged the packet"));
+            // MDR acknowledged the packet, didn't send any other data
+            /*if(!this->manager->sendtoWait((uint8_t*)3, 1, &this->lastfrom)) { // 0x3 is ack
+              //Serial.println(F("failed to send reply"));
+            } else {
+              //Serial.println("reply sent");
+            }*/
+          } else if (replystat > 0) {
+            // MDR sent data
+            //Serial.println(F("got data back from MDR"));
+            command_reply reply = this->mdr->getReply();
+            if(!this->manager->sendtoWait(this->commandReplyToArray(reply), reply.replystatus + 1, &this->lastfrom)) {
+              //Serial.println(F("failed to send reply"));
+            } else {
+              //Serial.println("reply sent");
+            }
+          } else if (replystat == 0) {
+            // MDR didn't respond
+            //Serial.println(F("MDR didn't respond..."));
+            uint8_t err[] = {0xF, 0x2};
+            if (!this->manager->sendtoWait(err, 2, &this->lastfrom)) {
+              //Serial.println(F("failed to send reply"));
+            } else {
+              //Serial.println("reply sent");
+            }
           }
-        } else if (replystat > 0) {
-          // MDR sent data
-          command_reply reply = this->mdr->getReply();
-          if(!this->manager->sendtoWait(this->replyToArray(reply), reply.replystatus + 1, from)) {
-            //Serial.println(F("failed to send reply"));
+          break;
+        case 2:
+          // This message is requesting data
+          //Serial.println(F("Data is being requested"));
+          uint8_t datatype = this->buf[1];
+          if (datatype == 0) {
+            //Serial.println(F("Actually, unsubscription is being requested."));
+            this->unsubscribe(this->lastfrom);
+            return;
           }
-        } else if (replystat == 0) {
-          // MDR didn't respond
-          uint8_t err[] = {0xF, 0x2};
-          if (!this->manager->sendtoWait(err, 2, from)) {
-            //Serial.println(F("failed to send reply"));
+          bool subscribe = false;
+          if (this->buflen > 2) {
+            subscribe = this->buf[2];
           }
-        }*/
-      } else if (this->buf[0] == 2) {
-        // This message is requesting data
-        //Serial.println(F("Data is being requested"));
-        uint8_t datatype = this->buf[1];
-        if (datatype == 0) {
-          //Serial.println(F("Actually, unsubscription is being requested."));
-          this->unsubscribe(this->lastfrom);
-          return;
-        }
-        bool subscribe = false;
-        if (this->buflen > 2) {
-          subscribe = this->buf[2];
-        }
-        
-        if (!subscribe) {
-          // Client only wants this data once, now
-          char tosend[20];
-          uint8_t sendlen = getData(datatype, tosend);
           
-  
-          //Serial.print(F("Sending "));
-          for (int i = 0; i <= sendlen; i++) {
-            //Serial.print(tosend[i]);
-          }
-          //Serial.print(F(" back to 0x"));
-          //Serial.println(this->lastfrom, HEX);
-          if(!this->manager->sendto((uint8_t*)tosend, sendlen, this->lastfrom)) {
-            //Serial.println(F("Failed to send reply"));
+          if (!subscribe) {
+            // Client only wants this data once, now
+            char tosend[20];
+            uint8_t sendlen = getData(datatype, tosend);
+            
+    
+            //Serial.print(F("Sending "));
+            for (int i = 0; i <= sendlen; i++) {
+              //Serial.print(tosend[i]);
+            }
+            //Serial.print(F(" back to 0x"));
+            //Serial.println(this->lastfrom, HEX);
+            if(!this->manager->sendto((uint8_t*)tosend, sendlen, this->lastfrom)) {
+              //Serial.println(F("Failed to send reply"));
+            } else {
+              //Serial.println(F("Reply sent"));
+            }
           } else {
-            //Serial.println(F("Reply sent"));
+            // Client wants to subscribe to this data
+            //Serial.print(F("Subscribing client at 0x"));
+            //Serial.print(this->lastfrom, HEX);
+            //Serial.print(F(" to receive data of type (binary) "));
+            //Serial.print(datatype, BIN);
+            //Serial.println(F(" every loop"));
+            this->subscribe(this->lastfrom, datatype);
           }
-        } else {
-          // Client wants to subscribe to this data
-          //Serial.print(F("Subscribing client at 0x"));
-          //Serial.print(this->lastfrom, HEX);
-          //Serial.print(F(" to receive data of type (binary) "));
-          //Serial.print(datatype, BIN);
-          //Serial.println(F(" every loop"));
-          this->subscribe(this->lastfrom, datatype);
-        }
+          break;
       }
     }
   }
@@ -248,7 +267,7 @@ bool PDServer::unsubscribe(uint8_t addr) {
   return false;
 }
 
-uint8_t* PDServer::replyToArray(command_reply input) {
+uint8_t* PDServer::commandReplyToArray(command_reply input) {
   uint8_t output[input.replystatus + 2];
   output[0] = 0;
   output[1] = input.replystatus;

@@ -47,6 +47,15 @@ PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   
   this->packetlen = len;
   this->parseInput(inputbuffer, len);
+  
+  this->compilePacket();
+
+  //Serial.print ("Packet is as follows: ");
+  for (int i = 0; i < this->packetlen; i++) {
+    //Serial.print(this->packet_ascii[i]);
+    //Serial.print(" ");
+  }
+  //Serial.println();
 }
 
 
@@ -250,6 +259,7 @@ void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
 
     output[i] = strtol(holder, NULL, 16);
   }
+  //Serial.println();
 }
 
 

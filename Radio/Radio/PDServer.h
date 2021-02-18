@@ -76,7 +76,7 @@ class PDServer {
     void subscribe(uint8_t addr, uint8_t desc);
     bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
     bool updateSubs(); // returns false if a message failed to send
-    uint8_t* replyToArray(command_reply input);
+    uint8_t* commandReplyToArray(command_reply input);
 
   public:
     PDServer(int chan = 0xA, HardwareSerial& mdrserial = Serial);

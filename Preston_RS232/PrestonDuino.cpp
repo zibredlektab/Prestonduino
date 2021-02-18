@@ -52,7 +52,7 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 
   for (int i = 0; i < len; i++) {
     //Serial.print("Sending ");
-    //Serial.println(char(tosend[i]));
+    //Serial.println(tosend[i]);
     ser->write(tosend[i]);
     ser->flush(); // wait for byte to finish sending
   }

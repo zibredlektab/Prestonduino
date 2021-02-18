@@ -1,5 +1,5 @@
 #include <PDClient.h>
-#define SAMPLES 100
+#define SAMPLES 3
 
 PDClient *pd;
 int count;
