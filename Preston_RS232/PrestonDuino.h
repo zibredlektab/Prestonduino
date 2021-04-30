@@ -85,7 +85,7 @@ class PrestonDuino {
     // Lens data requires lens to be calibrated (mapped) from the hand unit
 
     // Getters
-    byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
+    const byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
     uint32_t getFocusDistance(); // Focus distance, in mm (1mm precision)
     int getFocalLength(); // Focal length, in mm (1mm precision)
     int getAperture(); // Aperture (*100, ex T-5.6 returns as 560)

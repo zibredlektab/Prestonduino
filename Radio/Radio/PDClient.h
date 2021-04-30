@@ -13,6 +13,9 @@
 #ifdef MOTEINO_M0
   #define SSPIN A2
   #define INTPIN 9
+#elif defined(ARDUINO_SAMD_ZERO)
+  #define SSPIN 8
+  #define INTPIN 3
 #elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
   #define SSPIN 4
   #define INTPIN 2

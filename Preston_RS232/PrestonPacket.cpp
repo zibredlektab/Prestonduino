@@ -169,7 +169,7 @@ void PrestonPacket::compilePacket() {
 
   // Compute sum, encode sum
   int coresum = this->computeSum(coreascii, coreasciilen);
-  byte sumascii[3];
+  char sumascii[3];
   sprintf(sumascii, "%02X", coresum);
   // Finished with sum
 
@@ -222,7 +222,7 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
    */
   
   for (int i = 0; i < len ; i++) {
-    byte holder[3]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte) (with a trailing 0)
+    char holder[3]; // 2-byte intermediate array to hold newly-formatted number (one digit per byte) (with a trailing 0)
     
     sprintf(holder, "%02X", input[i]);
     

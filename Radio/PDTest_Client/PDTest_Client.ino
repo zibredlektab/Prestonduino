@@ -1,34 +1,41 @@
+#include <SPI.h>
+#include <Wire.h>
 #include <PDClient.h>
-#include <U8g2lib.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
+#include <Fonts/Roboto_Condensed_10.h>
+#include <Fonts/Roboto_Medium_26.h>
+#include <Fonts/Roboto_Condensed_12.h>
 
-#define LARGE_FONT u8g2_font_profont22_tr
-#define MED_FONT u8g2_font_profont12_tr
-#define SMALL_FONT u8g2_font_profont12_tr
+#define LARGE_FONT &Roboto_Medium_26
+#define MED_FONT &Roboto_Condensed_12
+#define SMALL_FONT &Roboto_Condensed_10
 
 unsigned long long timenow = 0;
 int wait = 4000;
 
 PDClient *pd;
 
-U8G2_SSD1322_NHD_128X64_1_3W_HW_SPI oled(U8G2_R3, 3, 2);
-//U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled (U8G2_R3);
+Adafruit_SH110X oled = Adafruit_SH110X(64, 128, &Wire);
 
 
 void setup() {
   
-  oled.begin();
-
-  oled.firstPage();
-  do {
-    oled.setFont(MED_FONT);
-    oled.setCursor(0, 30);
-    oled.print(F("Starting..."));
-  } while(oled.nextPage());
-  
+  oled.begin(0x3C, true);
+  //delay(1000);
+  oled.setRotation(2);
+  oled.clearDisplay();
+  oled.setTextColor(SH110X_WHITE);
+  oled.setFont(MED_FONT);
+  oled.setCursor(0, 30);
+  oled.print("Starting...");
+  oled.display();
+  //delay(1000);
+  /* todo
   pinMode(4, INPUT_PULLUP);
   pinMode(5, INPUT_PULLUP);
   pinMode(6, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);
+  pinMode(7, INPUT_PULLUP);*/
   
   Serial.begin(115200);
   while(!Serial);
@@ -69,114 +76,111 @@ void drawScreen() {
     sr = nt; // If brand or series == other, use note instead of series
   }
   
-  //oled.clearBuffer();
-  oled.firstPage();
-  do {
-    drawChannel(ch);
+  oled.clearDisplay();
+  drawChannel(ch);
+  
+  if (er > 0) {
+    drawError(er);
+  } else {
+
     
-    if (er > 0) {
-      drawError(er);
+    if (1){//pd->isZoom()) {
+      // Zoom displays series name & focal range
+      oled.setCursor(getCenteredX(sr), 20);
+      oled.print(sr);
+      oled.setCursor(getCenteredX(nm), 30);
+      oled.print(nm);
     } else {
-  
-      
-      if (1){//pd->isZoom()) {
-        // Zoom displays series name & focal range
-        oled.setCursor(getCenteredX(sr), 20);
-        oled.print(sr);
-        oled.setCursor(getCenteredX(nm), 30);
-        oled.print(nm);
-      } else {
-        // Prime displays brand & series name
-        oled.setCursor(getCenteredX(br), 20);
-        oled.print(br);
-        oled.setCursor(getCenteredX(sr), 30);
-        oled.print(sr);
-      }
-      
-      oled.setFont(LARGE_FONT);
-      
-      char flstr[10];
-      sprintf(flstr, "%d", fl);
-      uint8_t flx = oled.getStrWidth(flstr);
-      
-      flx += 12;
-      flx = 64-flx;
-      flx /= 2;
-      
-      oled.setCursor(flx, 56);
-      oled.print(fl);
-      oled.setFont(MED_FONT);
-      oled.print(F("mm"));
-  
- 
-      unsigned int ft, in;
-      focusMath(fd, &ft, &in);
-      
-      oled.setFont(LARGE_FONT);
-  
-      if (ft < 1000) {
-
-        char fdstr[10];
-        sprintf(fdstr, "%d%d", ft, in);
-        uint8_t fdx = oled.getStrWidth(fdstr);
-        fdx += 9;
-        fdx = 64-fdx;
-        fdx /= 2;
-
-        
-        oled.setFontPosTop();
-        oled.setCursor(fdx, 66);
-        oled.print(ft);
-        oled.setFont(SMALL_FONT);
-        oled.print(F("'"));
-        oled.setFont(LARGE_FONT);
-        oled.print(in);
-        oled.setFont(SMALL_FONT);
-        oled.print(F("\""));
-        oled.setFontPosBaseline();
-      } else {
-        
-        oled.setCursor(getCenteredX("INF"), 82);
-        oled.print(F("INF"));
-      }
-  
-
-
-  
-      double irisbaserounded, irisfraction;
-      irisMath(ap, &irisbaserounded, &irisfraction);
-
-      uint8_t iriswidth = 32; //T, one digit, fraction
-      char irislabel[4];
-      double temp; // temporary place to store the (unused) fractional part of iris
-
-      if (modf(irisbaserounded, &temp) > 0) {
-        iriswidth += 24;
-        sprintf(irislabel, "%d.%d", (int)irisbaserounded, (int)((modf(irisbaserounded, &temp)*10)+.1));
-      } else {
-        sprintf(irislabel, "%d", (int)irisbaserounded);
-      }
-      
-      uint8_t irisx = (64-iriswidth)/2;
-      
-      oled.setCursor(irisx, 108);
-      oled.setFont(SMALL_FONT);
-      oled.print(F("T")); //5pix
-      oled.setCursor(irisx + 8, 110);
-      oled.setFont(LARGE_FONT);
-      oled.print(irislabel);
-
-      uint8_t fractionx = irisx + iriswidth - 12;
-      
-      oled.setCursor(fractionx + 5, 101);
-      oled.setFont(SMALL_FONT);
-      oled.print((int)(irisfraction*10));
-      oled.drawHLine(fractionx, 102, 16); //16pix
-      oled.setCursor(fractionx + 2, 112); 
-      oled.print(F("10"));
+      // Prime displays brand & series name
+      oled.setCursor(getCenteredX(br), 20);
+      oled.print(br);
+      oled.setCursor(getCenteredX(sr), 30);
+      oled.print(sr);
     }
-  } while(oled.nextPage());
-  //oled.sendBuffer();
+    
+    oled.setFont(LARGE_FONT);
+    
+    char flstr[10];
+    sprintf(flstr, "%d", fl);
+    uint8_t flx = getGFXStrWidth(flstr);
+    
+    flx += 12;
+    flx = 64-flx;
+    flx /= 2;
+    
+    oled.setCursor(flx, 56);
+    oled.print(fl);
+    oled.setFont(MED_FONT);
+    oled.print(F("mm"));
+
+
+    unsigned int ft, in;
+    focusMath(fd, &ft, &in);
+    
+    oled.setFont(LARGE_FONT);
+
+    if (ft < 1000) {
+
+      char fdstr[10];
+      sprintf(fdstr, "%d%d", ft, in);
+      uint8_t fdx = getGFXStrWidth(fdstr);
+      fdx += 9;
+      fdx = 64-fdx;
+      fdx /= 2;
+
+      
+      //oled.setFontPosTop();
+      oled.setCursor(fdx, 82);
+      oled.print(ft);
+      oled.setFont(MED_FONT);
+      oled.print(F("'"));
+      oled.setFont(LARGE_FONT);
+      oled.print(in);
+      oled.setFont(MED_FONT);
+      oled.print(F("\""));
+      //oled.setFontPosBaseline();
+    } else {
+      
+      oled.setCursor(getCenteredX("INF"), 82);
+      oled.print(F("INF"));
+    }
+
+
+
+
+    double irisbaserounded, irisfraction;
+    irisMath(ap, &irisbaserounded, &irisfraction);
+
+    uint8_t iriswidth = 32; //T, one digit, fraction
+    char irislabel[4];
+    double temp; // temporary place to store the (unused) fractional part of iris
+
+    if (modf(irisbaserounded, &temp) > 0) {
+      iriswidth += 24;
+      sprintf(irislabel, "%d.%d", (int)irisbaserounded, (int)((modf(irisbaserounded, &temp)*10)+.1));
+    } else {
+      sprintf(irislabel, "%d", (int)irisbaserounded);
+    }
+    
+    uint8_t irisx = (64-iriswidth)/2;
+    
+    oled.setCursor(irisx, 108);
+    oled.setFont(SMALL_FONT);
+    oled.print(F("T")); //5pix
+    oled.setCursor(irisx + 8, 110);
+    oled.setFont(LARGE_FONT);
+    oled.print(irislabel);
+
+    uint8_t fractionx = irisx + iriswidth - 12;
+    
+    oled.setCursor(fractionx + 5, 101);
+    oled.setFont(SMALL_FONT);
+    oled.print((int)(irisfraction*10));
+    oled.drawFastHLine(fractionx, 102, 16, SH110X_WHITE); //16pix
+    oled.setCursor(fractionx + 2, 112); 
+    oled.print(F("10"));
+  }
+  oled.display();
 }
 
 void drawError(uint8_t errorstate) {
@@ -208,7 +212,7 @@ void drawError(uint8_t errorstate) {
 
 void drawChannel(uint8_t channel) {
   //draw a square in the upper-right corner, then in the square:
-  oled.drawHLine(0, 10, 64);
+  oled.drawFastHLine(0, 10, 64, SH110X_WHITE);
   oled.setFont(SMALL_FONT);
   oled.setCursor(getCenteredX("Camera Z"), 8);
   oled.print(F("Camera "));
@@ -272,19 +276,25 @@ void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
   *in = focusin+.1;
 }
 
-uint8_t getCenteredX(char* str) {
-  uint8_t width = oled.getStrWidth(str);
+uint8_t getCenteredX(const char* str) {
+  uint8_t width = getGFXStrWidth(str);
   return (64-width)/2;
 }
 
+uint16_t getGFXStrWidth(const char* str) {
+  uint16_t width = 0;
+  oled.getTextBounds(str, oled.getCursorX(), oled.getCursorY(), NULL, NULL, &width, NULL);
+  return width;
+}
+
 void changeChannel(uint8_t newch) {
-  oled.firstPage();
-  do {
-    oled.setCursor(getCenteredX("Changing"),30);
-    oled.print(F("Changing"));
-    oled.setCursor(getCenteredX("channel..."),45);
-    oled.print(F("channel..."));
-  } while(oled.nextPage());
+  oled.clearDisplay();
+  oled.setCursor(getCenteredX("Changing"),30);
+  oled.print(F("Changing"));
+  oled.setCursor(getCenteredX("channel..."),45);
+  oled.print(F("channel..."));
+  oled.display();
+  
   pd->unsub();
   if (pd->setChannel(newch)) {
     pd->subscribe(39);

@@ -396,7 +396,7 @@ command_reply PrestonDuino::mstat(byte motor) {
 }
 
 command_reply PrestonDuino::r_s(bool rs) {
-  PrestonPacket *pak = new PrestonPacket(0x0A, byte(rs), 1);
+  PrestonPacket *pak = new PrestonPacket(0x0A, (byte*)rs, 1);
   return this->sendCommand(pak, false);
 }
 
@@ -430,7 +430,7 @@ command_reply PrestonDuino::dist(byte type, int dist) {
  */
 
 
-byte* PrestonDuino::getLensData() {
+const byte* PrestonDuino::getLensData() {
   command_reply reply = this->ld();
 
   if (reply.replystatus > 0) {
@@ -450,7 +450,7 @@ byte* PrestonDuino::getLensData() {
 
 
 uint32_t PrestonDuino::getFocusDistance() {
-  byte* lensdata = this->getLensData();
+  const byte* lensdata = this->getLensData();
   static uint32_t distint;
   byte dist[4];
   dist[3] = 0;
@@ -467,7 +467,7 @@ uint32_t PrestonDuino::getFocusDistance() {
 
 
 int PrestonDuino::getFocalLength() {
-  byte* lensdata = this->getLensData();
+  const byte* lensdata = this->getLensData();
   byte flength[2];
 
 
@@ -496,7 +496,7 @@ int PrestonDuino::getFocalLength() {
 
 
 int PrestonDuino::getAperture() {
-  byte* lensdata = this->getLensData();
+  const byte* lensdata = this->getLensData();
   byte iris[2];
   //Serial.print(F("Lens data as reported: "));
   for (int i = 0; i < 7; i++) {
