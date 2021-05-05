@@ -22,6 +22,7 @@ Adafruit_SH110X oled = Adafruit_SH110X(64, 128, &Wire);
 void setup() {
   
   oled.begin(0x3C, true);
+  oled.setTextWrap(false);
   //delay(1000);
   oled.setRotation(2);
   oled.clearDisplay();
@@ -55,36 +56,35 @@ void loop() {
   }
   
   pd->onLoop();
-
   drawScreen();
   
 }
 
 void drawScreen() {
   
-  uint16_t ap = 460;//pd->getAperture();
-  uint16_t fl = 30;//pd->getflstr();
-  uint32_t fd = 21900;//pd->getFocusDistance();
+  uint16_t ap = pd->getAperture();
+  uint16_t fl = pd->getFocalLength();
+  uint32_t fd = pd->getFocusDistance();
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
-  const char* br = "Panavision";//pd->getLensBrand();
-  const char* sr = "Primo Zoom";//pd->getLensSeries();
-  const char* nm = "24-250mm";//pd->getLensName();
-  const char* nt = "foo";//pd->getLensNote();
-
+  const char* br = pd->getLensBrand();
+  const char* sr = pd->getLensSeries();
+  const char* nm = pd->getLensName();
+  const char* nt = pd->getLensNote();
   if (br == "Other" || sr == "Other") {
     sr = nt; // If brand or series == other, use note instead of series
   }
   
   oled.clearDisplay();
   drawChannel(ch);
-  
+
   if (er > 0) {
     drawError(er);
   } else {
 
+  
     
-    if (1){//pd->isZoom()) {
+    if (pd->isZoom()) {
       // Zoom displays series name & focal range
       oled.setCursor(getCenteredX(sr), 20);
       oled.print(sr);
@@ -97,6 +97,7 @@ void drawScreen() {
       oled.setCursor(getCenteredX(sr), 30);
       oled.print(sr);
     }
+
     
     oled.setFont(LARGE_FONT);
     
@@ -113,7 +114,7 @@ void drawScreen() {
     oled.setFont(MED_FONT);
     oled.print(F("mm"));
 
-
+    
     unsigned int ft, in;
     focusMath(fd, &ft, &in);
     
@@ -162,16 +163,16 @@ void drawScreen() {
       sprintf(irislabel, "%d", (int)irisbaserounded);
     }
     
-    uint8_t irisx = (64-iriswidth)/2;
+    uint8_t irisx = 2;
     
     oled.setCursor(irisx, 108);
     oled.setFont(SMALL_FONT);
     oled.print(F("T")); //5pix
-    oled.setCursor(irisx + 8, 110);
+    oled.setCursor(irisx + 6, 110);
     oled.setFont(LARGE_FONT);
     oled.print(irislabel);
 
-    uint8_t fractionx = irisx + iriswidth - 12;
+    uint8_t fractionx = 45;
     
     oled.setCursor(fractionx + 5, 101);
     oled.setFont(SMALL_FONT);
@@ -180,6 +181,7 @@ void drawScreen() {
     oled.setCursor(fractionx + 2, 112); 
     oled.print(F("10"));
   }
+  
   oled.display();
 }
 
@@ -203,6 +205,9 @@ void drawError(uint8_t errorstate) {
     case 4: // mdr ERR
       oled.print(F("ERR: check MDR request"));
       break;
+    case 6: // no data
+      oled.print(F("ERR: no data recieved"));
+      break;
     default: // other error
       oled.print(F("Unknown error: 0x"));
       oled.print(errorstate, HEX);
@@ -220,6 +225,7 @@ void drawChannel(uint8_t channel) {
 }
 
 uint8_t readSwitch(uint8_t which) {
+  return 0xA;/*
   // read state of a rotary switch
   if (which == 0) {
     // CH
@@ -237,7 +243,7 @@ uint8_t readSwitch(uint8_t which) {
       bitSet(state, i);
     }
   }
-  return state;
+  return state;*/
 }
 
 
@@ -276,8 +282,8 @@ void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
   *in = focusin+.1;
 }
 
-uint8_t getCenteredX(const char* str) {
-  uint8_t width = getGFXStrWidth(str);
+int8_t getCenteredX(const char* str) {
+  int8_t width = getGFXStrWidth(str);
   return (64-width)/2;
 }
 

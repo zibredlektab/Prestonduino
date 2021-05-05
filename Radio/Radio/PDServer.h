@@ -45,6 +45,7 @@
  * 0x3 = NAK from MDR
  * 0x4 = ERR from MDR (error data follows)
  * 0x5 = Not subscribed to requested data
+ * 0x6 = server error (no data supplied)
  * 0xF = other error
  */
 
@@ -61,7 +62,7 @@ class PDServer {
     PrestonDuino *mdr;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t buf[30];
+    uint8_t buf[75];
     uint8_t buflen;
     uint8_t lastfrom;
     subscription subs[16];

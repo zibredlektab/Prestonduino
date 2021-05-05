@@ -38,11 +38,12 @@ class PDClient {
     bool final_address = false;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t errorstate = 0x0;
-    unsigned char buf[50];
+    uint8_t errorstate = 0x1;
+    unsigned char buf[75];
     uint8_t buflen;
     bool waitforreply = false;
     command_reply response;
+    bool havedata = false;
     
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
@@ -59,7 +60,7 @@ class PDClient {
     char* lensname;
     char* lensnote;
     
-    byte* parseMessage();
+    void parseMessage();
     bool processLensName(char* newname, uint8_t len);
     void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
 

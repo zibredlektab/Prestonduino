@@ -36,7 +36,7 @@ void PDServer::onLoop() {
   if (this->manager->available()) {
     //Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
-    if (this->manager->recvfrom(this->buf, &this->buflen, &this->lastfrom)) {
+    if (this->manager->recvfromAck(this->buf, &this->buflen, &this->lastfrom)) {
       //Serial.print(F("got message of "));
       //Serial.print(this->buflen);
       //Serial.print(F(" characters from 0x"));
@@ -53,7 +53,7 @@ void PDServer::onLoop() {
       //Serial.println(type);
       
       switch (type) {
-        case 1:
+        case 1: {
           // This message contains raw data for the MDR
           //Serial.println("This is data for the MDR");
           PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
@@ -86,7 +86,8 @@ void PDServer::onLoop() {
             }
           }
           break;
-        case 2:
+        }
+        case 2: {
           // This message is requesting data
           //Serial.println(F("Data is being requested"));
           uint8_t datatype = this->buf[1];
@@ -127,6 +128,7 @@ void PDServer::onLoop() {
             this->subscribe(this->lastfrom, datatype);
           }
           break;
+        }
       }
     }
   }
