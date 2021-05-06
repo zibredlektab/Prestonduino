@@ -1,5 +1,9 @@
+#ifndef PDServer_h
+  #define PDServer_h  
+  
 #include "Arduino.h"
 #include <PrestonDuino.h>
+#define RH_ENABLE_EXPLICIT_RETRY_DEDUP 1 // Tell RH that we will explicitly flag retries
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 
@@ -22,9 +26,6 @@
   #define INTPIN 2
 #endif
 
-
-#ifndef PDServer_h
-  #define PDServer_h
 
 /*
  * Last byte of message is a random int, 0-255, to allow for repeated otherwise identical messages

@@ -237,6 +237,7 @@ bool PDServer::updateSubs() {
         Serial.print(this->subs[i].client_address, HEX);
         Serial.println(" has expired");
         unsubscribe(this->subs[i].client_address);
+        continue;
       }
       uint8_t desc = this->subs[i].data_descriptor;
       Serial.print(F("Updating client 0x"));
