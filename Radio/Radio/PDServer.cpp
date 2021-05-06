@@ -1,7 +1,7 @@
 #include "PDServer.h"
 
 PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
-  //Serial.begin(115200);
+  Serial.begin(115200);
   this->channel = chan;
   this->address = chan * 0x10;
   this->ser = &mdrSerial;
@@ -10,89 +10,89 @@ PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
-  //Serial.println(F("Manager created, initializing"));
+  Serial.println(F("Manager created, initializing"));
   if (!this->manager->init()) {
-    //Serial.println(F("RH manager init failed"));
+    Serial.println(F("RH manager init failed"));
   } else {
-    //Serial.println(F("RH manager initialized"));
+    Serial.println(F("RH manager initialized"));
   }
 
   if (!this->driver->setFrequency(915.0)) {
-    //Serial.println(F("Driver failed to set frequency"));
+    Serial.println(F("Driver failed to set frequency"));
   }
   if (!this->driver->setModemConfig(RH_RF95::Bw500Cr45Sf128)) {
-    //Serial.println(F("Driver failed to configure modem"));
+    Serial.println(F("Driver failed to configure modem"));
   }
 
   this->driver->setPromiscuous(false);
   
-  //Serial.print(F("Done with setup, my address is 0x"));
-  //Serial.println(this->address, HEX);
+  Serial.print(F("Done with setup, my address is 0x"));
+  Serial.println(this->address, HEX);
   
 }
 
 
 void PDServer::onLoop() {
   if (this->manager->available()) {
-    //Serial.println(F("Message available"));
+    Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
     if (this->manager->recvfromAck(this->buf, &this->buflen, &this->lastfrom)) {
-      //Serial.print(F("got message of "));
-      //Serial.print(this->buflen);
-      //Serial.print(F(" characters from 0x"));
-      //Serial.print(this->lastfrom, HEX);
-      //Serial.print(": ");
+      Serial.print(F("got message of "));
+      Serial.print(this->buflen);
+      Serial.print(F(" characters from 0x"));
+      Serial.print(this->lastfrom, HEX);
+      Serial.print(": ");
       for (int i = 0; i < this->buflen; i++) {
-        //Serial.print(this->buf[i]);
-        //Serial.print(" ");
+        Serial.print(this->buf[i]);
+        Serial.print(" ");
       }
-      //Serial.println();
+      Serial.println();
       
       int type = this->buf[0];
-      //Serial.print("type of message is ");
-      //Serial.println(type);
+      Serial.print("type of message is ");
+      Serial.println(type);
       
       switch (type) {
         case 1: {
           // This message contains raw data for the MDR
-          //Serial.println("This is data for the MDR");
-          PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-1);
+          Serial.println("This is data for the MDR");
+          PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-2);
           int replystat = this->mdr->sendToMDR(pak);
           if (replystat == -1) {
-            //Serial.println(F("MDR acknowledged the packet"));
+            Serial.println(F("MDR acknowledged the packet"));
             // MDR acknowledged the packet, didn't send any other data
             /*if(!this->manager->sendtoWait((uint8_t*)3, 1, &this->lastfrom)) { // 0x3 is ack
-              //Serial.println(F("failed to send reply"));
+              Serial.println(F("failed to send reply"));
             } else {
-              //Serial.println("reply sent");
+              Serial.println("reply sent");
             }*/
           } else if (replystat > 0) {
             // MDR sent data
-            //Serial.println(F("got data back from MDR"));
+            Serial.println(F("got data back from MDR"));
             command_reply reply = this->mdr->getReply();
             if(!this->manager->sendtoWait(this->commandReplyToArray(reply), reply.replystatus + 1, &this->lastfrom)) {
-              //Serial.println(F("failed to send reply"));
+              Serial.println(F("failed to send reply"));
             } else {
-              //Serial.println("reply sent");
+              Serial.println("reply sent");
             }
           } else if (replystat == 0) {
-            // MDR didn't respond
-            //Serial.println(F("MDR didn't respond..."));
+            // MDR didn't respond, something has gone wrong
+            Serial.println(F("MDR didn't respond..."));
             uint8_t err[] = {0xF, 0x2};
             if (!this->manager->sendtoWait(err, 2, &this->lastfrom)) {
-              //Serial.println(F("failed to send reply"));
+              Serial.println(F("failed to send reply"));
             } else {
-              //Serial.println("reply sent");
+              Serial.println("reply sent");
             }
           }
           break;
         }
         case 2: {
-          // This message is requesting data
-          //Serial.println(F("Data is being requested"));
+          // This message is requesting processed data
+          Serial.println(F("Data is being requested"));
           uint8_t datatype = this->buf[1];
           if (datatype == 0) {
-            //Serial.println(F("Actually, unsubscription is being requested."));
+            Serial.println(F("Actually, unsubscription is being requested."));
             this->unsubscribe(this->lastfrom);
             return;
           }
@@ -107,34 +107,40 @@ void PDServer::onLoop() {
             uint8_t sendlen = getData(datatype, tosend);
             
     
-            //Serial.print(F("Sending "));
+            Serial.print(F("Sending "));
             for (int i = 0; i <= sendlen; i++) {
-              //Serial.print(tosend[i]);
+              Serial.print(tosend[i]);
             }
-            //Serial.print(F(" back to 0x"));
-            //Serial.println(this->lastfrom, HEX);
+            Serial.print(F(" back to 0x"));
+            Serial.println(this->lastfrom, HEX);
             if(!this->manager->sendto((uint8_t*)tosend, sendlen, this->lastfrom)) {
-              //Serial.println(F("Failed to send reply"));
+              Serial.println(F("Failed to send reply"));
             } else {
-              //Serial.println(F("Reply sent"));
+              Serial.println(F("Reply sent"));
             }
           } else {
             // Client wants to subscribe to this data
-            //Serial.print(F("Subscribing client at 0x"));
-            //Serial.print(this->lastfrom, HEX);
-            //Serial.print(F(" to receive data of type (binary) "));
-            //Serial.print(datatype, BIN);
-            //Serial.println(F(" every loop"));
+            Serial.print(F("Subscribing client at 0x"));
+            Serial.print(this->lastfrom, HEX);
+            Serial.print(F(" to receive data of type (binary) "));
+            Serial.print(datatype, BIN);
+            Serial.println(F(" every loop"));
             this->subscribe(this->lastfrom, datatype);
           }
           break;
         }
+        case 3: {
+          // Ping to keep subscription alive
+          this->ping(this->lastfrom);
+        }
       }
+    } else {
+      Serial.println("Couldn't recieve message?");
     }
   }
 
   if(!this->updateSubs()) {
-    //Serial.println(F("Failed to update all subscriptions"));
+    Serial.println(F("Failed to update all subscriptions"));
   }
 }
 
@@ -147,18 +153,18 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     this->focus = mdr->getFocusDistance();
     this->zoom = mdr->getFocalLength();
     this->fulllensname = mdr->getLensName();
-    //Serial.print(F("New lens name: "));
+    Serial.print(F("New lens name: "));
     for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
       if (i == 0) {
-        //Serial.print(F("[0x"));
-        //Serial.print(this->fulllensname[i], HEX);
-        //Serial.print(F("]"));
+        Serial.print(F("[0x"));
+        Serial.print(this->fulllensname[i], HEX);
+        Serial.print(F("]"));
       } else {
-        //Serial.print(this->fulllensname[i]);
+        Serial.print(this->fulllensname[i]);
       }
-      //Serial.print(" ");
+      Serial.print(" ");
     }
-    //Serial.println();
+    Serial.println();
 
     
     this->lastupdate = millis();
@@ -169,28 +175,28 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     }
   }
 
-  //Serial.print(F("Getting following data: "));
+  Serial.print(F("Getting following data: "));
   
   if (datatype & 0b00000001) {
-    //Serial.print(F("iris "));
+    Serial.print(F("iris "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
   }
   if (datatype & 0b00000010) {
-    //Serial.print(F("focus "));
+    Serial.print(F("focus "));
     sendlen += snprintf(&databuf[sendlen], 20, "%08lu", (unsigned long)this->focus);
   }
   if (datatype & 0b00000100) {
-    //Serial.print(F("zoom "));
+    Serial.print(F("zoom "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
   }
   if (datatype & 0b00001000) {
-    //Serial.print(F("aux (we don't do that yet) "));
+    Serial.print(F("aux (we don't do that yet) "));
   }
   if (datatype & 0b00010000) {
-    //Serial.print(F("distance (we don't do that yet) "));
+    Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & 0b00100000) {
-    //Serial.print(F("name "));
+    Serial.print(F("name "));
     char* lensname = this->fulllensname;
     
     int i;
@@ -200,17 +206,17 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     sendlen += i;
   }
   if (sendlen > 0) {
-    //Serial.println();
+    Serial.println();
     databuf[sendlen++] = '\0';
   } else {
-    //Serial.println(F("...nothing?"));
+    Serial.println(F("...nothing?"));
   }
   for (int i = 0; i < sendlen; i++) {
-    //Serial.print(F("0x"));
-    //Serial.print(databuf[i], HEX);
-    //Serial.print(F(" "));
+    Serial.print(F("0x"));
+    Serial.print(databuf[i], HEX);
+    Serial.print(F(" "));
   }
-  //Serial.println();
+  Serial.println();
   
   return sendlen;
 }
@@ -222,20 +228,26 @@ bool PDServer::updateSubs() {
   uint8_t sendlen = 0;
   
   if (subcount > 0) {
-    //Serial.println(F("Subscriptions are being updated..."));
-    //Serial.print(subcount);
-    //Serial.println(F(" total sub(s)"));
+    Serial.println(F("Subscriptions are being updated..."));
+    Serial.print(subcount);
+    Serial.println(F(" total sub(s)"));
     for (int i = 0; i < this->subcount; i++) {
+      if (this->subs[i].keepalive + SUBLIFE < millis()) {
+        Serial.print("Subscription of client at 0x");
+        Serial.print(this->subs[i].client_address, HEX);
+        Serial.println(" has expired");
+        unsubscribe(this->subs[i].client_address);
+      }
       uint8_t desc = this->subs[i].data_descriptor;
-      //Serial.print(F("Updating client 0x"));
-      //Serial.print(this->subs[i].client_address, HEX);
-      //Serial.println();
+      Serial.print(F("Updating client 0x"));
+      Serial.print(this->subs[i].client_address, HEX);
+      Serial.println();
       sendlen = this->getData(desc, tosend);
-      //Serial.print(F("Sending "));
-      //Serial.print(sendlen);
-      //Serial.println(F(" bytes"));
+      Serial.print(F("Sending "));
+      Serial.print(sendlen);
+      Serial.println(F(" bytes"));
       if (!this->manager->sendto((char*)tosend, sendlen, this->subs[i].client_address)) {
-        //Serial.println(F("Failed to send message"));
+        Serial.println(F("Failed to send message"));
         return false;
       }
     }
@@ -247,13 +259,28 @@ bool PDServer::updateSubs() {
 void PDServer::subscribe(uint8_t addr, uint8_t desc) {
   this->subs[subcount].client_address = addr;
   this->subs[subcount].data_descriptor = desc;
+  this->subs[subcount].keepalive = millis();
+  Serial.print("Subscribed client at address 0x");
+  Serial.print(this->subs[subcount].client_address);
+  Serial.print(" to data of type ");
+  Serial.print(this->subs[subcount].data_descriptor, BIN);
   subcount++;
 }
 
+void PDServer::ping(uint8_t addr) {
+  if (this->subcount > 0) {
+    for (int i = 0; i < subcount; i++) {
+      if (this->subs[i].client_address == addr) {
+        this->subs[i].keepalive = millis();
+      }
+    }
+  }
+}
+
 bool PDServer::unsubscribe(uint8_t addr) {
-  //Serial.print(F("0x"));
-  //Serial.print(addr, HEX);
-  //Serial.println(F(" wants to be unsubscribed."));
+  Serial.print(F("0x"));
+  Serial.print(addr, HEX);
+  Serial.println(F(" wants to be unsubscribed."));
   for (int i = 0; i < subcount; i++) {
     if (this->subs[i].client_address == addr) {
       for (int j = i; j < subcount; j++) {
@@ -261,11 +288,11 @@ bool PDServer::unsubscribe(uint8_t addr) {
         this->subs[j].data_descriptor = this->subs[j+1].data_descriptor;
       }
       subcount--;
-      //Serial.println(F("Done unsubscribing."));
+      Serial.println(F("Done unsubscribing."));
       return true;
     }
   }
-  //Serial.println(F("Couldn't find that subscription!"));
+  Serial.println(F("Couldn't find that subscription!"));
   return false;
 }
 

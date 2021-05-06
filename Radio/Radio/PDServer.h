@@ -2,12 +2,14 @@
 #include <PrestonDuino.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
-#ifndef PDServer_h
-#define PDServer_h
 
+#ifdef RH_ENABLE_EXPLICIT_RETRY_DEDUP
+  #undef RH_ENABLE_EXPLICIT_RETRY_DEDUP
+  #define RH_ENABLE_EXPLICIT_RETRY_DEDUP 1 // Tell RH that we will explicitly flag retries
+#endif
 
-
-#define REFRESHRATE 5;
+#define REFRESHRATE 5
+#define SUBLIFE 10000
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -21,16 +23,22 @@
 #endif
 
 
+#ifndef PDServer_h
+  #define PDServer_h
 
 /*
+ * Last byte of message is a random int, 0-255, to allow for repeated otherwise identical messages
+ *  (ie resubscribing the same node to the same data after unsusbscribing)
  * First byte of message will always be uint8_t describing the mode of the message:
  * 0x0 = Raw data request/reply
  * 0x1 = Single-time data request, second byte is data type (see bit map below)
  * 0x2 = Subscription data request, second byte same as 0x1
+ * 0x3 = Ping (keep the subscription active)
  * 
  * 0xF = error, second byte determines error type
  * 
  * Data request bits as follows:
+ * 0 = Unsubscription
  * 1 = Iris
  * 2 = Focus
  * 4 = Zoom
@@ -52,6 +60,7 @@
 struct subscription {
   uint8_t client_address;
   uint8_t data_descriptor;
+  long long unsigned int keepalive;
 };
 
 class PDServer {
@@ -75,6 +84,7 @@ class PDServer {
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
+    void ping(uint8_t addr);
     bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
     bool updateSubs(); // returns false if a message failed to send
     uint8_t* commandReplyToArray(command_reply input);

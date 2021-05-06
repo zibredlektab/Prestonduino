@@ -9,6 +9,7 @@
 
 
 #define NUMRETRIES 500
+#define PING 5000
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -44,6 +45,7 @@ class PDClient {
     bool waitforreply = false;
     command_reply response;
     bool havedata = false;
+    long long unsigned int lastmessage;
     
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);

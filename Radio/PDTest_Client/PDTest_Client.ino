@@ -11,8 +11,27 @@
 #define MED_FONT &Roboto_Condensed_12
 #define SMALL_FONT &Roboto_Condensed_10
 
+#define BUTTON_A  9
+#define BUTTON_B  6
+#define BUTTON_C  5
+
 unsigned long long timenow = 0;
 int wait = 4000;
+
+int displaymode = 0x00; 
+/*
+ * Display modes:
+ *  high byte:
+ *    0 - no name display
+ *    1 - camera name
+ *    2 - camera & lens name
+ *  low byte:
+ *    0 - Vertical, FIZ (always has full display)
+ *    1 - Horizontal, F
+ *    2 - H, I
+ *    3 - H, Z
+ *    4 - H, Distance (won't show lens name)
+ */
 
 PDClient *pd;
 
@@ -21,9 +40,12 @@ Adafruit_SH110X oled = Adafruit_SH110X(64, 128, &Wire);
 
 void setup() {
   
+  pinMode(BUTTON_A, INPUT_PULLUP);
+  pinMode(BUTTON_B, INPUT_PULLUP);
+  pinMode(BUTTON_C, INPUT_PULLUP);
+  
   oled.begin(0x3C, true);
   oled.setTextWrap(false);
-  //delay(1000);
   oled.setRotation(2);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
@@ -31,7 +53,6 @@ void setup() {
   oled.setCursor(0, 30);
   oled.print("Starting...");
   oled.display();
-  //delay(1000);
   /* todo
   pinMode(4, INPUT_PULLUP);
   pinMode(5, INPUT_PULLUP);
@@ -45,7 +66,7 @@ void setup() {
   pd = new PDClient(readSwitch(0));
   
 
-  pd->subscribe(39);
+  pd->subscribe(B100111); //FIZ data + lens name, for default display
 
 }
 
@@ -53,6 +74,10 @@ void loop() {
   if (readSwitch(0) != pd->getChannel()) {
     delay(200);
     changeChannel(readSwitch(0));
+  }
+
+  if(!digitalRead(BUTTON_A)) {
+    pd->unsub();
   }
   
   pd->onLoop();
