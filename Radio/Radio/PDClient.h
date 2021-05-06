@@ -45,7 +45,8 @@ class PDClient {
     bool waitforreply = false;
     command_reply response;
     bool havedata = false;
-    long long unsigned int lastmessage;
+    unsigned long lastmessage = 0;
+    unsigned long lastping = 0;
     
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
@@ -97,7 +98,7 @@ class PDClient {
     bool subFocus();
     bool subZoom();
     bool unsub();
-
+    bool ping();
 
   
 };

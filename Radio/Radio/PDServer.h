@@ -3,17 +3,11 @@
   
 #include "Arduino.h"
 #include <PrestonDuino.h>
-#define RH_ENABLE_EXPLICIT_RETRY_DEDUP 1 // Tell RH that we will explicitly flag retries
-#include <RHReliableDatagram.h>
+#include <RHReliableDatagram.h> // RH_ENABLE_EXPLICIT_RETRY_DEDUP must be redefined as 1 in this file
 #include <RH_RF95.h>
 
-#ifdef RH_ENABLE_EXPLICIT_RETRY_DEDUP
-  #undef RH_ENABLE_EXPLICIT_RETRY_DEDUP
-  #define RH_ENABLE_EXPLICIT_RETRY_DEDUP 1 // Tell RH that we will explicitly flag retries
-#endif
-
 #define REFRESHRATE 5
-#define SUBLIFE 10000
+#define SUBLIFE 6000
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -85,7 +79,7 @@ class PDServer {
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
-    void ping(uint8_t addr);
+    bool registerping(uint8_t addr);
     bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
     bool updateSubs(); // returns false if a message failed to send
     uint8_t* commandReplyToArray(command_reply input);
