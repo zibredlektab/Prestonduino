@@ -41,7 +41,7 @@
  * 16 = Lens Name (first byte is length)
  * 32 = Distance
  * 
- * Error states:
+ * OLD error states:
  * 0x0 = no error
  * 0x1 = server not responding
  * 0x2 = MDR not responding
@@ -50,6 +50,16 @@
  * 0x5 = Not subscribed to requested data
  * 0x6 = server error (no data supplied)
  * 0xF = other error
+ * 
+ * 
+ * Errors are set using the bit number as the error code
+ * 
+ * Error bit flags:
+ * 1 = server not responding
+ * 2 = no data from server
+ * 4 = mdr not responding
+ * 8 = nak or err from mdr
+ * 16 = not subscribed
  */
 
 struct subscription {

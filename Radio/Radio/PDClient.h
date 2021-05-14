@@ -30,6 +30,12 @@ struct command_reply {
   byte* data;
 };
 
+struct message {
+  uint8_t type;
+  uint8_t data[3]; //arbitrary
+  uint8_t datalen;
+};
+
 
 class PDClient {
   private:
@@ -39,33 +45,39 @@ class PDClient {
     bool final_address = false;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t errorstate = 0x1;
+    uint8_t errorstate = 0b11; //start with the assumption that the server is not responding and we have no data
     unsigned char buf[75];
     uint8_t buflen;
     bool waitforreply = false;
     command_reply response;
-    bool havedata = false;
-    unsigned long lastmessage = 0;
+    unsigned long timeoflastmessagefromserver = 0;
     unsigned long lastping = 0;
+    message lastsent;
+    uint8_t substate = 0;
     
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
+    bool resend();
     void findAddress();
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris;
-    uint16_t flength;
-    uint32_t focus;
-    char fulllensname[50];
+    uint16_t iris = 0;
+    uint16_t flength = 0;
+    uint32_t focus = 0;
+    char fulllensname[50] = "0DEFAULTBRAND|DEFAULTSERIES|0mm DEFAULTNOTE";
     char* lensbrand;
     char* lensseries;
     char* lensname;
     char* lensnote;
     
     void parseMessage();
-    bool processLensName(char* newname, uint8_t len);
+    bool processLensName();
     void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
+    bool haveData();
+    bool addError(uint8_t err); // true if error successfully added
+    bool subError(uint8_t err);
+    void resetError();
 
 
   public:

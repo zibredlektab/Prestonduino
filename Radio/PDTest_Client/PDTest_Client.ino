@@ -17,6 +17,7 @@
 
 unsigned long long timenow = 0;
 int wait = 4000;
+int currot = 2;
 
 int displaymode = 0x00; 
 /*
@@ -46,7 +47,7 @@ void setup() {
   
   oled.begin(0x3C, true);
   oled.setTextWrap(false);
-  oled.setRotation(2);
+  oled.setRotation(currot);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setFont(MED_FONT);
@@ -82,31 +83,33 @@ void loop() {
   
   pd->onLoop();
   drawScreen();
+  Serial.println("drawing complete");
   
 }
 
 void drawScreen() {
-  
-  uint16_t ap = pd->getAperture();
-  uint16_t fl = pd->getFocalLength();
-  uint32_t fd = pd->getFocusDistance();
+
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
-  const char* br = pd->getLensBrand();
-  const char* sr = pd->getLensSeries();
-  const char* nm = pd->getLensName();
-  const char* nt = pd->getLensNote();
-  if (br == "Other" || sr == "Other") {
-    sr = nt; // If brand or series == other, use note instead of series
-  }
   
   oled.clearDisplay();
   drawChannel(ch);
-
+  
   if (er > 0) {
     drawError(er);
   } else {
-
+  
+    uint16_t ap = pd->getAperture();
+    uint16_t fl = pd->getFocalLength();
+    uint32_t fd = pd->getFocusDistance();
+    const char* br = pd->getLensBrand();
+    const char* sr = pd->getLensSeries();
+    const char* nm = pd->getLensName();
+    const char* nt = pd->getLensNote();
+    
+    if (br == "Other" || sr == "Other") {
+      sr = nt; // If brand or series == other, use note instead of series
+    }
   
     
     if (pd->isZoom()) {
@@ -122,7 +125,6 @@ void drawScreen() {
       oled.setCursor(getCenteredX(sr), 30);
       oled.print(sr);
     }
-
     
     oled.setFont(LARGE_FONT);
     
@@ -142,6 +144,9 @@ void drawScreen() {
     
     unsigned int ft, in;
     focusMath(fd, &ft, &in);
+
+
+    Serial.println("Zoom drawn");
     
     oled.setFont(LARGE_FONT);
 
@@ -172,6 +177,7 @@ void drawScreen() {
     }
 
 
+    Serial.println("Focus drawn");
 
 
     double irisbaserounded, irisfraction;
@@ -205,6 +211,8 @@ void drawScreen() {
     oled.drawFastHLine(fractionx, 102, 16, SH110X_WHITE); //16pix
     oled.setCursor(fractionx + 2, 112); 
     oled.print(F("10"));
+    
+    Serial.println("Iris drawn");
   }
   
   oled.display();
@@ -212,32 +220,33 @@ void drawScreen() {
 
 void drawError(uint8_t errorstate) {
   oled.setFont(MED_FONT);
-  oled.setCursor(0,30);
   
-  switch (errorstate) {
-    case 0: // no errors, why are we here
-    case 1: // server communication error
-      oled.print(F("No Tx?"));
-      break;
-    case 2: // mdr communication error
-      oled.print(F("No"));
-      oled.setCursor(0,44);
-      oled.print(F("MDR?"));
-      break;
-    case 3: // mdr NAK
-      oled.print(F("NAK: check MDR request"));
-      break;
-    case 4: // mdr ERR
-      oled.print(F("ERR: check MDR request"));
-      break;
-    case 6: // no data
-      oled.print(F("ERR: no data recieved"));
-      break;
-    default: // other error
-      oled.print(F("Unknown error: 0x"));
-      oled.print(errorstate, HEX);
-      break;
+  oled.setRotation(3);
+  oled.setTextWrap(true);
+  oled.setCursor(15,15);
+
+  if (errorstate & 1) {
+    // server communication error
+    oled.print(F("No Tx?"));
+  } else if (errorstate & 2) {
+    // no data
+    oled.print(F("ERR: no data recieved"));
+  } else if (errorstate & 4) {
+    // mdr communication error
+    oled.print(F("No MDR?"));
+  } else if (errorstate & 8) {
+    // mdr NAK or ERR
+    oled.print(F("Check MDR request"));
+  } else {
+    // other error
+    oled.print(F("Unknown error: b"));
+    oled.print(errorstate, BIN);
   }
+
+  oled.setRotation(currot);
+  oled.setTextWrap(false);
+  
+  oled.display();
 }
 
 void drawChannel(uint8_t channel) {

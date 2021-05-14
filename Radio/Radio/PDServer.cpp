@@ -33,7 +33,7 @@ PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
 
 
 void PDServer::onLoop() {
-  while(!this->manager->waitPacketSent(10));
+  while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
     Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
@@ -123,7 +123,7 @@ void PDServer::onLoop() {
             // Client wants to subscribe to this data
             Serial.print(F("Subscribing client at 0x"));
             Serial.print(this->lastfrom, HEX);
-            Serial.print(F(" to receive data of type (binary) "));
+            Serial.print(F(" to receive data of type 0b"));
             Serial.print(datatype, BIN);
             Serial.println(F(" every loop"));
             this->subscribe(this->lastfrom, datatype);
@@ -135,7 +135,7 @@ void PDServer::onLoop() {
           Serial.println("Message is a ping");
           if (!this->registerping(this->lastfrom)) {
             Serial.println("Something went wrong registering the ping");
-            uint8_t err[] = {0xF, 0x5};
+            uint8_t err[] = {0xF, 4};
             if (!this->manager->sendtoWait(err, 2, this->lastfrom)) {
               Serial.println(F("failed to send reply"));
             } else {
@@ -166,50 +166,51 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     this->focus = mdr->getFocusDistance();
     this->zoom = mdr->getFocalLength();
     this->fulllensname = mdr->getLensName();
-    //Serial.print(F("New lens name: "));
+    Serial.print(F("New lens name: "));
     for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
       if (i == 0) {
-        //Serial.print(F("[0x"));
-        //Serial.print(this->fulllensname[i], HEX);
-        //Serial.print(F("]"));
+        Serial.print(F("[0x"));
+        Serial.print(this->fulllensname[i], HEX);
+        Serial.print(F("]"));
       } else {
-        //Serial.print(this->fulllensname[i]);
+        Serial.print(this->fulllensname[i]);
       }
-      //Serial.print(" ");
+      Serial.print(" ");
     }
-    //Serial.println();
+    Serial.println();
 
     
     this->lastupdate = millis();
     if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
+      // No data was recieved, return an error
       databuf[0] = 0xF;
       databuf[1] = 0x2;
       return sendlen;
     }
   }
 
-  //Serial.print(F("Getting following data: "));
+  Serial.print(F("Getting following data: "));
   
   if (datatype & 0b00000001) {
-    //Serial.print(F("iris "));
+    Serial.print(F("iris "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
   }
   if (datatype & 0b00000010) {
-    //Serial.print(F("focus "));
+    Serial.print(F("focus "));
     sendlen += snprintf(&databuf[sendlen], 20, "%08lu", (unsigned long)this->focus);
   }
   if (datatype & 0b00000100) {
-    //Serial.print(F("zoom "));
+    Serial.print(F("zoom "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
   }
   if (datatype & 0b00001000) {
-    //Serial.print(F("aux (we don't do that yet) "));
+    Serial.print(F("aux (we don't do that yet) "));
   }
   if (datatype & 0b00010000) {
-    //Serial.print(F("distance (we don't do that yet) "));
+    Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & 0b00100000) {
-    //Serial.print(F("name "));
+    Serial.print(F("name "));
     char* lensname = this->fulllensname;
     
     int i;
@@ -219,17 +220,17 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     sendlen += i;
   }
   if (sendlen > 0) {
-    //Serial.println();
+    Serial.println();
     databuf[sendlen++] = '\0';
   } else {
-    //Serial.println(F("...nothing?"));
+    Serial.println(F("...nothing?"));
   }
   for (int i = 0; i < sendlen; i++) {
-    //Serial.print(F("0x"));
-    //Serial.print(databuf[i], HEX);
-    //Serial.print(F(" "));
+    Serial.print(F("0x"));
+    Serial.print(databuf[i], HEX);
+    Serial.print(F(" "));
   }
-  //Serial.println();
+  Serial.println();
   
   return sendlen;
 }
@@ -241,9 +242,9 @@ bool PDServer::updateSubs() {
   uint8_t sendlen = 0;
   
   if (subcount > 0) {
-    //Serial.println(F("Subscriptions are being updated..."));
-    //Serial.print(subcount);
-    //Serial.println(F(" total sub(s)"));
+    Serial.println(F("Subscriptions are being updated..."));
+    Serial.print(subcount);
+    Serial.println(F(" total sub(s)"));
     for (int i = 0; i < this->subcount; i++) {
       if (this->subs[i].keepalive + SUBLIFE < millis()) {
         Serial.print("Subscription of client at 0x");
@@ -253,15 +254,15 @@ bool PDServer::updateSubs() {
         continue;
       }
       uint8_t desc = this->subs[i].data_descriptor;
-      //Serial.print(F("Updating client 0x"));
-      //Serial.print(this->subs[i].client_address, HEX);
-      //Serial.println();
+      Serial.print(F("Updating client 0x"));
+      Serial.print(this->subs[i].client_address, HEX);
+      Serial.println();
       sendlen = this->getData(desc, tosend);
-      //Serial.print(F("Sending "));
-      //Serial.print(sendlen);
-      //Serial.println(F(" bytes"));
+      Serial.print(F("Sending "));
+      Serial.print(sendlen);
+      Serial.println(F(" bytes"));
       if (!this->manager->sendto((char*)tosend, sendlen, this->subs[i].client_address)) {
-        //Serial.println(F("Failed to send message"));
+        Serial.println(F("Failed to send message"));
         return false;
       }
     }
@@ -274,10 +275,10 @@ void PDServer::subscribe(uint8_t addr, uint8_t desc) {
   this->subs[subcount].client_address = addr;
   this->subs[subcount].data_descriptor = desc;
   this->subs[subcount].keepalive = millis();
-  //Serial.print("Subscribed client at address 0x");
-  //Serial.print(this->subs[subcount].client_address);
-  //Serial.print(" to data of type ");
-  //Serial.print(this->subs[subcount].data_descriptor, BIN);
+  Serial.print("Subscribed client at address 0x");
+  Serial.print(this->subs[subcount].client_address);
+  Serial.print(" to data of type ");
+  Serial.println(this->subs[subcount].data_descriptor, BIN);
   subcount++;
 }
 
