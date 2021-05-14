@@ -130,22 +130,6 @@ void PDServer::onLoop() {
           }
           break;
         }
-        case 3: {
-          // Ping to keep subscription alive
-          Serial.println("Message is a ping");
-          if (!this->registerping(this->lastfrom)) {
-            Serial.println("Something went wrong registering the ping");
-            uint8_t err[] = {0xF, 4};
-            if (!this->manager->sendtoWait(err, 2, this->lastfrom)) {
-              Serial.println(F("failed to send reply"));
-            } else {
-              Serial.println("reply sent");
-            }
-          } else {
-            Serial.println("Done with ping");
-          }
-          break;
-        }
       }
     } else {
       Serial.println("Couldn't recieve message?");
@@ -240,80 +224,62 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
 bool PDServer::updateSubs() {
   char tosend[100];
   uint8_t sendlen = 0;
-  
-  if (subcount > 0) {
-    Serial.println(F("Subscriptions are being updated..."));
-    Serial.print(subcount);
-    Serial.println(F(" total sub(s)"));
-    for (int i = 0; i < this->subcount; i++) {
-      if (this->subs[i].keepalive + SUBLIFE < millis()) {
-        Serial.print("Subscription of client at 0x");
-        Serial.print(this->subs[i].client_address, HEX);
-        Serial.println(" has expired");
-        unsubscribe(this->subs[i].client_address);
-        continue;
-      }
-      uint8_t desc = this->subs[i].data_descriptor;
-      Serial.print(F("Updating client 0x"));
-      Serial.print(this->subs[i].client_address, HEX);
-      Serial.println();
-      sendlen = this->getData(desc, tosend);
-      Serial.print(F("Sending "));
-      Serial.print(sendlen);
-      Serial.println(F(" bytes"));
-      if (!this->manager->sendto((char*)tosend, sendlen, this->subs[i].client_address)) {
-        Serial.println(F("Failed to send message"));
-        return false;
-      }
+ 
+  for (int i = 0; i < 16; i++) {
+    sendlen = 0;
+    if (this->subs[i].data_descriptor == 0) {
+      continue;
     }
-  } else {
-    return true;
+    
+    if (this->subs[i].keepalive + SUBLIFE < millis()) {
+      Serial.print("Subscription of client at 0x");
+      Serial.print((this->channel * 0x10) + i, HEX);
+      Serial.println(" has expired");
+      unsubscribe((this->channel * 0x10)+i);
+      continue;
+    }
+    
+    uint8_t desc = this->subs[i].data_descriptor;
+    Serial.print(F("Updating client 0x"));
+    Serial.print((this->channel * 0x10) + i, HEX);
+    Serial.println();
+    sendlen = this->getData(desc, tosend);
+    Serial.print(F("Sending "));
+    Serial.print(sendlen);
+    Serial.println(F(" bytes"));
+    if (!this->manager->sendto((char*)tosend, sendlen, (this->channel * 0x10) + i)) {
+      Serial.println(F("Failed to send message"));
+      return false;
+    }
   }
+  return true;
 }
 
 void PDServer::subscribe(uint8_t addr, uint8_t desc) {
-  this->subs[subcount].client_address = addr;
-  this->subs[subcount].data_descriptor = desc;
-  this->subs[subcount].keepalive = millis();
+  uint8_t subaddr = addr - (this->channel * 0x10);
+  this->subs[subaddr].data_descriptor = desc;
+  this->subs[subaddr].keepalive = millis();
   Serial.print("Subscribed client at address 0x");
-  Serial.print(this->subs[subcount].client_address);
+  Serial.print((this->channel * 0x10) + subaddr, HEX);
   Serial.print(" to data of type ");
-  Serial.println(this->subs[subcount].data_descriptor, BIN);
-  subcount++;
-}
-
-bool PDServer::registerping(uint8_t addr) {
-  if (this->subcount > 0) {
-    for (int i = 0; i < this->subcount; i++) {
-      if (this->subs[i].client_address == addr) {
-        this->subs[i].keepalive = millis();
-        Serial.print("Registered ping from client 0x");
-        Serial.println(addr);
-        return true;
-      }
-    }
-  }
-  Serial.println("Could not register ping");
-  return false;
+  Serial.println(this->subs[subaddr].data_descriptor, BIN);
 }
 
 bool PDServer::unsubscribe(uint8_t addr) {
   Serial.print(F("0x"));
   Serial.print(addr, HEX);
   Serial.println(F(" wants to be unsubscribed"));
-  for (int i = 0; i < subcount; i++) {
-    if (this->subs[i].client_address == addr) {
-      for (int j = i; j < subcount; j++) {
-        this->subs[j].client_address = this->subs[j+1].client_address;
-        this->subs[j].data_descriptor = this->subs[j+1].data_descriptor;
-      }
-      subcount--;
-      Serial.println(F("Done unsubscribing"));
-      return true;
-    }
+  
+  uint8_t subaddr = addr - (this->channel * 0x10);
+  
+  if (this->subs[subaddr].data_descriptor) {
+    this->subs[subaddr].data_descriptor = 0;
+    Serial.println(F("Done unsubscribing"));
+    return true;
+  } else {
+    Serial.println(F("Couldn't find that subscription"));
+    return false;
   }
-  Serial.println(F("Couldn't find that subscription"));
-  return false;
 }
 
 uint8_t* PDServer::commandReplyToArray(command_reply input) {

@@ -83,7 +83,6 @@ void loop() {
   
   pd->onLoop();
   drawScreen();
-  Serial.println("drawing complete");
   
 }
 
@@ -145,8 +144,6 @@ void drawScreen() {
     unsigned int ft, in;
     focusMath(fd, &ft, &in);
 
-
-    Serial.println("Zoom drawn");
     
     oled.setFont(LARGE_FONT);
 
@@ -177,7 +174,6 @@ void drawScreen() {
     }
 
 
-    Serial.println("Focus drawn");
 
 
     double irisbaserounded, irisfraction;
@@ -212,7 +208,6 @@ void drawScreen() {
     oled.setCursor(fractionx + 2, 112); 
     oled.print(F("10"));
     
-    Serial.println("Iris drawn");
   }
   
   oled.display();

@@ -28,7 +28,6 @@
  * 0x0 = Raw data request/reply
  * 0x1 = Single-time data request, second byte is data type (see bit map below)
  * 0x2 = Subscription data request, second byte same as 0x1
- * 0x3 = Ping (keep the subscription active)
  * 
  * 0xF = error, second byte determines error type
  * 
@@ -63,9 +62,8 @@
  */
 
 struct subscription {
-  uint8_t client_address;
-  uint8_t data_descriptor;
-  long long unsigned int keepalive;
+  uint8_t data_descriptor = 0;
+  unsigned long keepalive = 0;
 };
 
 class PDServer {
@@ -80,7 +78,6 @@ class PDServer {
     uint8_t buflen;
     uint8_t lastfrom;
     subscription subs[16];
-    uint8_t subcount = 0;
     unsigned long lastupdate = 0;
     uint16_t iris = 0;
     uint16_t zoom = 0;
@@ -89,7 +86,6 @@ class PDServer {
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
-    bool registerping(uint8_t addr);
     bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
     bool updateSubs(); // returns false if a message failed to send
     uint8_t* commandReplyToArray(command_reply input);

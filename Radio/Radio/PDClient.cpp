@@ -179,8 +179,6 @@ command_reply PDClient::sendCommand(uint8_t command) {
 }
 
 void PDClient::onLoop() {
-  Serial.print("new loop, error state is 0b");
-  Serial.println(this->errorstate, BIN);
   
   if (!this->final_address) {
     this->findAddress();
@@ -192,9 +190,9 @@ void PDClient::onLoop() {
       uint8_t from;
       this->buflen = sizeof(this->buf);
       if (manager->recvfrom(this->buf, &this->buflen, &from)) {
+        Serial.println(this->buflen);
         this->timeoflastmessagefromserver = millis();
         this->subError(0); // Server is responding
-        Serial.println(this->buflen);
         
         for (int i = 0; i < this->buflen; i++) {
           if (i < 2) {
@@ -209,7 +207,6 @@ void PDClient::onLoop() {
         Serial.println();
         
         this->parseMessage();
-        Serial.println("Message parsed");
 
       }
     }
@@ -220,9 +217,9 @@ void PDClient::onLoop() {
       this->addError(1);
     }
 
-    if (this->lastping + 500 < millis()) {
-      Serial.println("Time to ping");
-      this->ping();
+    if (this->lastping + PING < millis()) {
+      Serial.println("Time to resubscribe");
+      this->subscribe(this->substate);
     }
   
     if (this->errorstate > 0) {
@@ -257,56 +254,56 @@ void PDClient::parseMessage() {
       uint8_t index = 2;
       
       if (datatype & 0b00000001) {
-        Serial.println(F("Received data includes iris"));
+        //Serial.println(F("Received data includes iris"));
         char data[5];
         for (int i = 0; i < 4; i++) {
           data[i] = this->buf[index + i];
-          Serial.print(data[i]);
-          Serial.print(F(" "));
+          //Serial.print(data[i]);
+          //Serial.print(F(" "));
         }
         data[4] = '\0';
-        Serial.println();
+        //Serial.println();
         this->iris = atoi(data);
-        Serial.print(F("Iris is "));
-        Serial.println(this->iris);
+        //Serial.print(F("Iris is "));
+        //Serial.println(this->iris);
         index += 4;
       }
 
       if (datatype & 0b00000010) {
-        Serial.println(F("Received data includes focus"));
+        //Serial.println(F("Received data includes focus"));
         char data[9];
         for (int i = 0; i < 8; i++) {
           data[i] = this->buf[index + i];
-          Serial.print(data[i]);
-          Serial.print(F(" "));
+          //Serial.print(data[i]);
+          //Serial.print(F(" "));
         }
         data[8] = '\0';
-        Serial.println();
+        //Serial.println();
         this->focus = strtoul(data, NULL, 10);
-        Serial.print(F("Focus is "));
-        Serial.println(this->focus);
+        //Serial.print(F("Focus is "));
+        //Serial.println(this->focus);
         index += 8;
         
       }
 
       if (datatype & 0b0000100) {
-        Serial.println(F("Received data includes zoom"));
+        //Serial.println(F("Received data includes zoom"));
         char data[5];
         for (int i = 0; i < 4; i++) {
           data[i] = this->buf[index + i];
-          Serial.print(data[i]);
-          Serial.print(F(" "));
+          //Serial.print(data[i]);
+          //Serial.print(F(" "));
         }
         data[4] = '\0';
-        Serial.println();
+        //Serial.println();
         this->flength = atoi(data);
-        Serial.print(F("Zoom is "));
-        Serial.println(this->flength);
+        //Serial.print(F("Zoom is "));
+        //Serial.println(this->flength);
         index += 4;
       }
 
       if (datatype & 0b00100000) {
-        Serial.println(F("Recieved data includes lens name"));
+        //Serial.println(F("Recieved data includes lens name"));
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
 
         
@@ -327,30 +324,30 @@ void PDClient::parseMessage() {
 
 bool PDClient::processLensName() {
   // Format of name is: [length of name][brand]|[series]|[name] [note]
-  Serial.print("full name is ");
-  Serial.println(this->fulllensname);
+  //Serial.print("full name is ");
+  //Serial.println(this->fulllensname);
   
   this->lensbrand = &this->fulllensname[1]; // first element of name is length of full name
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
   this->lensseries[-1] = '\0'; // null terminator for brand
   
-  Serial.print("brand is ");
-  Serial.println(this->lensbrand);
+  //Serial.print("brand is ");
+  //Serial.println(this->lensbrand);
   
   this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
   this->lensname[-1] = '\0'; // null terminator for series
   
-  Serial.print("series is ");
-  Serial.println(this->lensseries);
+  //Serial.print("series is ");
+  //Serial.println(this->lensseries);
   
   this->lensnote = strchr(this->lensname, ' ') + 1; // find separator between name and note
   this->lensnote[-1] = '\0'; // null terminator for name
 
   
-  Serial.print("name is ");
-  Serial.println(this->lensname);  
-  Serial.print("note is ");
-  Serial.println(this->lensnote);
+  //Serial.print("name is ");
+  //Serial.println(this->lensname);  
+  //Serial.print("note is ");
+  //Serial.println(this->lensnote);
   
   return true;
 }
@@ -361,8 +358,8 @@ bool PDClient::processLensName() {
 
 
 bool PDClient::addError(uint8_t err) {
-  Serial.print("Adding error flag 0b");
-  Serial.println((uint8_t)pow(2, err), BIN);
+  //Serial.print("Adding error flag 0b");
+  //Serial.println((uint8_t)pow(2, err), BIN);
   /*
   * Errors are set using the bit number as the error code
   * 
@@ -385,8 +382,8 @@ bool PDClient::addError(uint8_t err) {
 }
 
 bool PDClient::subError(uint8_t err) {
-  Serial.print("Subtracting error flag 0b");
-  Serial.println((uint8_t)pow(2, err), BIN);
+  //Serial.print("Subtracting error flag 0b");
+  //Serial.println((uint8_t)pow(2, err), BIN);
   uint8_t bitflag = pow(2, err);
   if (this->errorstate & bitflag) {
     this->errorstate -= bitflag;
@@ -487,18 +484,6 @@ bool PDClient::subscribe(uint8_t type) {
   } else {
     return false;
   }
-}
-
-bool PDClient::ping() {
-  this->waitforreply = false;
-  uint8_t data[1] = {0};
-  if (this->sendMessage(3, data, 1)) {
-    Serial.println("successfully pinged server");
-    this->lastping = millis();
-    return true;
-  }
-  Serial.println("failed to ping server");
-  return false;
 }
 
 bool PDClient::subAperture() {
@@ -608,10 +593,10 @@ char* PDClient::getLensNote() {
 
 bool PDClient::isZoom() {
   if (strchr(this->lensname, '-')) {
-    Serial.println("This is a zoom");
+    //Serial.println("This is a zoom");
     return true;
   } else {
-    Serial.println("This is not a zoom");
+    //Serial.println("This is not a zoom");
   }
 
   return false;

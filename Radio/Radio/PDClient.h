@@ -110,7 +110,6 @@ class PDClient {
     bool subFocus();
     bool subZoom();
     bool unsub();
-    bool ping();
 
   
 };
