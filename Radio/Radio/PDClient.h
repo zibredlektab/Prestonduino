@@ -8,7 +8,7 @@
 #define PDClient_h
 
 
-#define NUMRETRIES 500
+#define NUMRETRIES 0
 #define PING 5000
 
 #ifdef MOTEINO_M0
@@ -62,10 +62,10 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris = 0;
-    uint16_t flength = 0;
-    uint32_t focus = 0;
-    char fulllensname[50] = "0DEFAULTBRAND|DEFAULTSERIES|0mm DEFAULTNOTE";
+    uint16_t iris = 560;
+    uint16_t flength = 50;
+    uint32_t focus = 125900;
+    char fulllensname[50] = "0Zeiss|Master Prime|50mm 630";
     char* lensbrand;
     char* lensseries;
     char* lensname;

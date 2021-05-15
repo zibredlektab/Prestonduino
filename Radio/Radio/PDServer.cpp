@@ -8,6 +8,8 @@ PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
+  this->mdr->setMDRTimeout(10);
+
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
   Serial.println(F("Manager created, initializing"));
@@ -167,6 +169,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     this->lastupdate = millis();
     if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
       // No data was recieved, return an error
+      Serial.println("Didn't get any data from MDR");
       databuf[0] = 0xF;
       databuf[1] = 0x2;
       return sendlen;
@@ -246,7 +249,13 @@ bool PDServer::updateSubs() {
     sendlen = this->getData(desc, tosend);
     Serial.print(F("Sending "));
     Serial.print(sendlen);
-    Serial.println(F(" bytes"));
+    Serial.println(F(" bytes:"));
+    for (int i = 0; i < sendlen; i++) {
+      Serial.print("0x");
+      Serial.print(tosend[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
     if (!this->manager->sendto((char*)tosend, sendlen, (this->channel * 0x10) + i)) {
       Serial.println(F("Failed to send message"));
       return false;
