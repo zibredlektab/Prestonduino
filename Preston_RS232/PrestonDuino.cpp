@@ -601,3 +601,10 @@ command_reply PrestonDuino::setLensData(uint32_t dist, uint16_t aperture, uint16
   return this->data(newlensdata, 8);
   
 }
+
+
+
+
+void PrestonDuino::setMDRTimeout(int newtimeout) {
+  this->timeout = newtimeout;
+}

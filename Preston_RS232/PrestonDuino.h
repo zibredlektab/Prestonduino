@@ -8,6 +8,8 @@
 #ifndef PrestonDuino_h
 #define PrestonDuino_h
 
+#define DEFAULTTIMEOUT 2000
+
 struct command_reply {
   uint8_t replystatus;
   byte* data;
@@ -36,7 +38,7 @@ class PrestonDuino {
     
     unsigned long time_now = 0; // used for scheduling packets (Caution: this will overflow if the program runs for over 49.7 days. Remember to reboot once a month or so)
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
-    int timeout = 2000; // milliseconds to wait for a response
+    int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
 
 
     // methods
@@ -53,7 +55,7 @@ class PrestonDuino {
     int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error
     int sendToMDR(PrestonPacket* packet); // sends a constructed PrestonPacket to MDR, returns same as above. Does not retry on NAK
     int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
-    void setMDRTimeout(int timeout); // sets the timeout
+    void setMDRTimeout(int newtimeout); // sets the timeout
     bool readyToSend();
     command_reply getReply();
     
@@ -96,7 +98,6 @@ class PrestonDuino {
     command_reply setFocusDistance(uint32_t dist);
     command_reply setAperture(uint16_t aperture);
     command_reply setFocalLength(uint16_t flength);
-
 };
 
 #endif
