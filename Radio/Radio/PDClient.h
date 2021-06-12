@@ -2,6 +2,8 @@
 #include <PrestonPacket.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+#include <errorcodes.h>
+#include <datatypes.h>
 
 
 #ifndef PDClient_h
@@ -24,6 +26,7 @@
   #define SSPIN SS
   #define INTPIN 2
 #endif
+
 
 struct command_reply {
   uint8_t replystatus;
@@ -75,9 +78,8 @@ class PDClient {
     bool processLensName();
     void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
     bool haveData();
-    bool addError(uint8_t err); // true if error successfully added
-    bool subError(uint8_t err);
-    void resetError();
+    bool error(uint8_t err);
+    void clearError();
 
 
   public:

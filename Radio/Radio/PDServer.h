@@ -6,6 +6,9 @@
 #include <RHReliableDatagram.h> // RH_ENABLE_EXPLICIT_RETRY_DEDUP must be redefined as 1 in this file
 #include <RH_RF95.h>
 
+#include errorcodes.h
+#include datatypes.h
+
 #define REFRESHRATE 5
 #define SUBLIFE 6000
 
@@ -26,39 +29,10 @@
  *  (ie resubscribing the same node to the same data after unsusbscribing)
  * First byte of message will always be uint8_t describing the mode of the message:
  * 0x0 = Raw data request/reply
- * 0x1 = Single-time data request, second byte is data type (see bit map below)
+ * 0x1 = Single-time data request, second byte is data type (see datatypes.h)
  * 0x2 = Subscription data request, second byte same as 0x1
+ * 0xF = error, second byte determines error type (see errorcodes.h)
  * 
- * 0xF = error, second byte determines error type
- * 
- * Data request bits as follows:
- * 0 = Unsubscription
- * 1 = Iris
- * 2 = Focus
- * 4 = Zoom
- * 8 = Aux
- * 16 = Lens Name (first byte is length)
- * 32 = Distance
- * 
- * OLD error states:
- * 0x0 = no error
- * 0x1 = server not responding
- * 0x2 = MDR not responding
- * 0x3 = NAK from MDR
- * 0x4 = ERR from MDR (error data follows)
- * 0x5 = Not subscribed to requested data
- * 0x6 = server error (no data supplied)
- * 0xF = other error
- * 
- * 
- * Errors are set using the bit number as the error code
- * 
- * Error bit flags:
- * 1 = server not responding
- * 2 = no data from server
- * 4 = mdr not responding
- * 8 = nak or err from mdr
- * 16 = not subscribed
  */
 
 struct subscription {

@@ -81,7 +81,7 @@ void PDServer::onLoop() {
           } else if (replystat == 0) {
             // MDR didn't respond, something has gone wrong
             Serial.println(F("MDR didn't respond..."));
-            uint8_t err[] = {0xF, 0x2};
+            uint8_t err[] = {0xF, ERR_NOMDR};
             if (!this->manager->sendtoWait(err, 2, this->lastfrom)) {
               Serial.println(F("failed to send reply"));
             } else {
@@ -94,7 +94,7 @@ void PDServer::onLoop() {
           // This message is requesting processed data
           Serial.println(F("Data is being requested"));
           uint8_t datatype = this->buf[1];
-          if (datatype == 0) {
+          if (datatype == DATA_UNSUB) {
             Serial.println(F("Actually, unsubscription is being requested."));
             this->unsubscribe(this->lastfrom);
             return;
@@ -171,32 +171,32 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
       // No data was recieved, return an error
       Serial.println("Didn't get any data from MDR");
       databuf[0] = 0xF;
-      databuf[1] = 0x2;
+      databuf[1] = ERR_NOMDR;
       return sendlen;
     }
   }
 
   Serial.print(F("Getting following data: "));
   
-  if (datatype & 0b00000001) {
+  if (datatype & DATA_IRIS) {
     Serial.print(F("iris "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
   }
-  if (datatype & 0b00000010) {
+  if (datatype & DATA_FOCUS) {
     Serial.print(F("focus "));
     sendlen += snprintf(&databuf[sendlen], 20, "%08lu", (unsigned long)this->focus);
   }
-  if (datatype & 0b00000100) {
+  if (datatype & DATA_ZOOM) {
     Serial.print(F("zoom "));
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
   }
-  if (datatype & 0b00001000) {
+  if (datatype & DATA_AUX) {
     Serial.print(F("aux (we don't do that yet) "));
   }
-  if (datatype & 0b00010000) {
+  if (datatype & DATA_DIST) {
     Serial.print(F("distance (we don't do that yet) "));
   }
-  if (datatype & 0b00100000) {
+  if (datatype & DATA_NAME) {
     Serial.print(F("name "));
     char* lensname = this->fulllensname;
     

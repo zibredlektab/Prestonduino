@@ -19,6 +19,7 @@ PDClient::PDClient(int chan) {
   //Serial.println(F("Manager created, initializing"));
   if (!this->manager->init()) {
     //Serial.println(F("RH manager init failed"));
+    this->error(ERR_RADIO);
   } else {
     //Serial.println(F("RH manager initialized"));
     this->manager->setRetries(NUMRETRIES);
@@ -29,9 +30,11 @@ PDClient::PDClient(int chan) {
 
   if (!this->driver->setFrequency(915.0)) {
     //Serial.println(F("Driver failed to set frequency"));
+    this->error(ERR_RADIO);
   }
   if (!this->driver->setModemConfig(RH_RF95::Bw500Cr45Sf128)) {
     //Serial.println(F("Driver failed to configure modem"));
+    this->error(ERR_RADIO);
   }
 
   
@@ -64,18 +67,19 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
   }
 
 
-  //Serial.print(F("Sending message: "));
+  /*
+  Serial.print(F("Sending message: "));
   for (int i = 0; i < messagelength; i++) {
-    //Serial.print("0x");
-    //Serial.print(tosend[i], HEX);
-    //Serial.print(F(" "));
+    Serial.print("0x");
+    Serial.print(tosend[i], HEX);
+    Serial.print(F(" "));
   }
-  //Serial.print(F(" to server at 0x"));
-  //Serial.println(this->server_address, HEX);
+  Serial.print(F(" to server at 0x"));
+  Serial.println(this->server_address, HEX);
+  */
   
   if(this->manager->sendtoWait(tosend, messagelength, this->server_address)) {
     // Got an acknowledgement of our message
-    this->subError(0); // We know the server is responding, but nothing else
     //Serial.println(F("Message was received"));
     if (!this->waitforreply) {
       // Don't need a reply
@@ -125,8 +129,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
           } else {
             //Serial.print(F("Server sent back an error code: 0x"));
             //Serial.println(this->buf[1]);
-            this->addError(this->buf[1]);
-            //this->errorstate = this->buf[1];
+            this->error(this->buf[1]);
           }
           return true;
 
@@ -134,8 +137,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
       } else {
         //Serial.println(F("No reply received (timeout)"));
         // Reply was not received (timeout)
-        //this->errorstate = 0x1;
-        this->addError(0);
+        this->error(ERR_NOTX);
         return false;
       }
     }
@@ -143,8 +145,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t* data, uint8_t datalen) {
 
     
   } else {
-    //this->errorstate = 0x1;
-    this->addError(0); //server not responding
+    this->error(ERR_NOTX); //server not responding
     //Serial.println(F("Message was not received"));
     // Did not get an acknowledgement of message
     return false;
@@ -192,7 +193,7 @@ void PDClient::onLoop() {
       if (manager->recvfrom(this->buf, &this->buflen, &from)) {
         //Serial.println(this->buflen);
         this->timeoflastmessagefromserver = millis();
-        this->subError(0); // Server is responding
+        this->clearError(); // Server is responding
         
         for (int i = 0; i < this->buflen; i++) {
           if (i < 2) {
@@ -214,7 +215,7 @@ void PDClient::onLoop() {
 
     if (this->timeoflastmessagefromserver + PING < millis()) {
       //Serial.println("Haven't heard from the server in a while...");
-      this->addError(0);
+      this->error(ERR_NOTX);
     }
 
     if (this->lastping + PING < millis()) {
@@ -237,8 +238,7 @@ void PDClient::parseMessage() {
     case 0xF:
       //Serial.print(F("Message is an error, of type "));
       //Serial.println(this->buf[1]);
-      //this->errorstate = this->buf[1];
-      this->addError(this->buf[1]);
+      this->error(this->buf[1]);
       break;
       
     case 0x0:
@@ -249,11 +249,10 @@ void PDClient::parseMessage() {
       break;
     case 0x2:
       // Subscription update
-      this->subError(1);
       uint8_t datatype = this->buf[1];
       uint8_t index = 2;
       
-      if (datatype & 0b00000001) {
+      if (datatype & DATA_IRIS) {
         ////Serial.println(F("Received data includes iris"));
         char data[5];
         for (int i = 0; i < 4; i++) {
@@ -269,7 +268,7 @@ void PDClient::parseMessage() {
         index += 4;
       }
 
-      if (datatype & 0b00000010) {
+      if (datatype & DATA_FOCUS) {
         ////Serial.println(F("Received data includes focus"));
         char data[9];
         for (int i = 0; i < 8; i++) {
@@ -286,7 +285,7 @@ void PDClient::parseMessage() {
         
       }
 
-      if (datatype & 0b0000100) {
+      if (datatype & DATA_ZOOM) {
         ////Serial.println(F("Received data includes zoom"));
         char data[5];
         for (int i = 0; i < 4; i++) {
@@ -302,7 +301,7 @@ void PDClient::parseMessage() {
         index += 4;
       }
 
-      if (datatype & 0b00100000) {
+      if (datatype & DATA_NAME) {
         ////Serial.println(F("Recieved data includes lens name"));
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
 
@@ -357,62 +356,25 @@ bool PDClient::processLensName() {
  */
 
 
-bool PDClient::addError(uint8_t err) {
-  //Serial.print("Adding error flag 0b");
-  //Serial.println((uint8_t)pow(2, err), BIN);
-  /*
-  * Errors are set using the bit number as the error code
-  * 
-  * Error bit flags:
-  * 0 = no error
-  * 1 = server not responding
-  * 2 = no data from server
-  * 4 = mdr not responding
-  * 8 = nak or err from mdr
-  * 16 = not subscribed
-  */
-  uint8_t bitflag = pow(2, err);
-  //Serial.print("Error state was 0b");
-  //Serial.println(this->errorstate, BIN);
-  if (!this->errorstate & bitflag) {
-    this->errorstate += bitflag;
-    //Serial.print("Error state is now 0b");
-    //Serial.println(this->errorstate, BIN);
+bool PDClient::error(uint8_t err) {
+  if (this->errorstate == 0 || this->errorstate > err) { // only change error states if we aren't already flagging a more severe error
+    this->errorstate = err;
     return true;
   } else {
-    
-    //Serial.println("This error flag is already raised");
+    return false;
   }
-  return false;
 }
 
-bool PDClient::subError(uint8_t err) {
-  //Serial.print("Subtracting error flag 0b");
-  //Serial.println((uint8_t)pow(2, err), BIN);
-  uint8_t bitflag = pow(2, err);
-  //Serial.print("Error state was 0b");
-  //Serial.println(this->errorstate, BIN);
-  if (this->errorstate & bitflag) {
-    this->errorstate -= bitflag;
-    //Serial.print("Error state is now 0b");
-    //Serial.println(this->errorstate, BIN);
-    return true;
-  } else {
-    
-    //Serial.println("This error flag wasn't raised");
-  }
-  return false;
-}
-
-void PDClient::resetError() {
-  //Serial.println("Resetting error state to 0");
+void PDClient::clearError() {
   this->errorstate = 0;
 }
+
 
 bool PDClient::handleErrors() {
   //Serial.print(F("Error state is 0b"));
   //Serial.println(this->errorstate, BIN);
-  if (this->errorstate & 0) {
+  if (this->errorstate == ERR_NOTX) {
+    // If we don't have a valid tx, keep broadcasting the previous message
     //Serial.println("resending previous message");
     if (this->resend()) {
       return true;
@@ -475,7 +437,7 @@ void PDClient::findAddress() {
 
 
 bool PDClient::haveData() {
-  return !this->errorstate & 1;
+  return this->errorstate == 0;
 }
 
 /*

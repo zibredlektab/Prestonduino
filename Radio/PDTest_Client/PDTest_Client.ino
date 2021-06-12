@@ -77,7 +77,7 @@ void setup() {
   oled.print("PDClient initialized.\n");
   oled.display();
 
-  pd->subscribe(B100111); //FIZ data + lens name, for default display
+  pd->subscribe(DATA_FOCUS + DATA_IRIS + DATA_ZOOM + DATA_NAME); //FIZ data + lens name, for default display
 
   oled.setTextWrap(false);
 }
@@ -312,19 +312,22 @@ void drawError(uint8_t errorstate) {
   oled.setTextWrap(true);
   oled.setCursor(15,15);
 
-  if (errorstate & 1) {
+  if (errorstate == ERR_NOTX) {
     // server communication error
     oled.print(F("No Tx?"));
-  } else if (errorstate & 2) {
+  } else if (errorstate == ERR_NODATA) {
     // no data
     oled.print(F("ERR: no data recieved"));
-  } else if (errorstate & 4) {
+  } else if (errorstate == ERR_NOMDR) {
     // mdr communication error
     oled.print(F("No MDR?"));
-  } else if (errorstate & 8) {
+  } else if (errorstate == ERR_MDRERR) {
     // mdr NAK or ERR
     oled.print(F("Check MDR request"));
+  } else if (errorstate == ERR_RADIO) {
+    oled.print(F("Radio setup failed"));
   } else {
+  
     // other error
     oled.print(F("Unknown error: b"));
     oled.print(errorstate, BIN);
@@ -332,7 +335,6 @@ void drawError(uint8_t errorstate) {
 
   oled.setRotation(currot);
   oled.setTextWrap(false);
-  
 }
 
 void drawChannel(uint8_t channel) {
