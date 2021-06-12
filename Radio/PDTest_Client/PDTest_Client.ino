@@ -50,13 +50,13 @@ void setup() {
   pinMode(BUTTON_C, INPUT_PULLUP);
   
   oled.begin(0x3C, true);
-  oled.setTextWrap(false);
+  oled.setTextWrap(true);
   oled.setRotation(currot);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setFont(MED_FONT);
   oled.setCursor(0, 30);
-  oled.print("Starting...");
+  oled.print("Starting...\n");
   oled.display();
   /* todo
   pinMode(4, INPUT_PULLUP);
@@ -65,14 +65,21 @@ void setup() {
   pinMode(7, INPUT_PULLUP);*/
   
   Serial.begin(115200);
-  while(!Serial);
+  oled.print("Starting Serial...\n");
+  oled.display();
+  while(!Serial && millis() < 3000);
   Serial.println();
+  oled.print("Serial started, or timed out.\n");
+  oled.display();
 
   pd = new PDClient(readSwitch(0));
   
+  oled.print("PDClient initialized.\n");
+  oled.display();
 
   pd->subscribe(B100111); //FIZ data + lens name, for default display
 
+  oled.setTextWrap(false);
 }
 
 void loop() {
