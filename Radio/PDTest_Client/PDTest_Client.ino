@@ -119,7 +119,7 @@ void drawScreen() {
   
   oled.clearDisplay();
   
-  if (0){//er > 0) {
+  if (er > 0) {
     drawError(er);
   } else {
   
@@ -333,7 +333,6 @@ void drawError(uint8_t errorstate) {
   oled.setRotation(currot);
   oled.setTextWrap(false);
   
-  oled.display();
 }
 
 void drawChannel(uint8_t channel) {
