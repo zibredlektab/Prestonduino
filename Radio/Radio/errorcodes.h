@@ -4,4 +4,3 @@
 #define ERR_NOMDR 4
 #define ERR_MDRERR 5
 #define ERR_MDRNAK 6
-#define ERR_NOSUB 7

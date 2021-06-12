@@ -10,7 +10,7 @@
 #define PDClient_h
 
 
-#define NUMRETRIES 0
+#define RETRIES 0
 #define PING 5000
 
 #ifdef MOTEINO_M0

@@ -22,6 +22,8 @@ unsigned long long lastpush = 0;
 int wait = 4000;
 int currot = 2;
 
+bool ignoreerrors = false;
+
 int displaymode = 0x02;
 /*
  * Display modes:
@@ -48,6 +50,10 @@ void setup() {
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
+
+  if (!digitalRead(BUTTON_B)) {
+    ignoreerrors = true;
+  }
   
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
@@ -119,7 +125,7 @@ void drawScreen() {
   
   oled.clearDisplay();
   
-  if (er > 0) {
+  if (er > 0 && !ignoreerrors) {
     drawError(er);
   } else {
   

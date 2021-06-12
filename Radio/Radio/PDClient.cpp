@@ -22,7 +22,7 @@ PDClient::PDClient(int chan) {
     this->error(ERR_RADIO);
   } else {
     //Serial.println(F("RH manager initialized"));
-    this->manager->setRetries(NUMRETRIES);
+    this->manager->setRetries(RETRIES);
     this->manager->setTimeout(10);
   }
 
@@ -373,14 +373,16 @@ void PDClient::clearError() {
 bool PDClient::handleErrors() {
   //Serial.print(F("Error state is 0b"));
   //Serial.println(this->errorstate, BIN);
-  if (this->errorstate == ERR_NOTX) {
-    // If we don't have a valid tx, keep broadcasting the previous message
+  if (this->errorstate >= ERR_NOTX) {
+    // If the error is related to communicating with the server, resend the message until it works
     //Serial.println("resending previous message");
     if (this->resend()) {
       return true;
     } else {
       return false;
     }
+  } else {
+    // The error has to do with local hardware (todo)
   }
 
   return false;
@@ -422,13 +424,13 @@ void PDClient::findAddress() {
       this->address = this->server_address + i;
       this->manager->setThisAddress(this->address);
       this->final_address = true;
-      this->manager->setRetries(NUMRETRIES);
+      this->manager->setRetries(RETRIES);
       break;
     }
     //Serial.println(F("Got a reply, trying the next address"));
   }
 
-  this->manager->setRetries(NUMRETRIES);
+  this->manager->setRetries(RETRIES);
   //Serial.print(F("My final address is 0x"));
   //Serial.println(this->address, HEX);
 }
