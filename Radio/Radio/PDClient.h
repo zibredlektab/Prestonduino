@@ -67,7 +67,7 @@ class PDClient {
 
     uint16_t iris = 560;
     uint16_t flength = 50;
-    uint32_t focus = 125900;
+    uint32_t focus = 1254;
     char fulllensname[50] = "0Zeiss|Master Prime|50mm 630";
     char* lensbrand;
     char* lensseries;

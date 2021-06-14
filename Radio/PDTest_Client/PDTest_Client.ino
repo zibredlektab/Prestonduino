@@ -3,13 +3,13 @@
 #include <PDClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
-#include <Fonts/Roboto_Condensed_10.h>
+#include <Fonts/pixelmix4pt7b.h>
 #include <Fonts/Roboto_Medium_26.h>
-#include <Fonts/Roboto_Condensed_12.h>
+#include <Fonts/FreeSerifItalic9pt7b.h>
 
 #define LARGE_FONT &Roboto_Medium_26
-#define MED_FONT &Roboto_Condensed_12
-#define SMALL_FONT &Roboto_Condensed_10
+#define SMALL_FONT &pixelmix4pt7b
+#define CHAR_FONT &FreeSerifItalic9pt7b
 
 #define BUTTON_A  9
 #define BUTTON_B  6
@@ -22,7 +22,7 @@ unsigned long long lastpush = 0;
 int wait = 4000;
 int currot = 2;
 
-bool ignoreerrors = false;
+bool ignoreerrors = true;
 
 int displaymode = 0x02;
 /*
@@ -52,7 +52,7 @@ void setup() {
   pinMode(BUTTON_C, INPUT_PULLUP);
 
   if (!digitalRead(BUTTON_B)) {
-    ignoreerrors = true;
+    ignoreerrors = false;
   }
   
   oled.begin(0x3C, true);
@@ -60,7 +60,7 @@ void setup() {
   oled.setRotation(currot);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
-  oled.setFont(MED_FONT);
+  oled.setFont(SMALL_FONT);
   oled.setCursor(0, 30);
   oled.print("Starting...\n");
   oled.display();
@@ -158,7 +158,7 @@ void drawScreen() {
         
         oled.setCursor(flx, 56);
         oled.print(fl);
-        oled.setFont(MED_FONT);
+        oled.setFont(SMALL_FONT);
         oled.print(F("mm"));
     
         
@@ -174,7 +174,7 @@ void drawScreen() {
         currot = 3;
         oled.setRotation(currot);
 
-        oled.setFont(MED_FONT);
+        oled.setFont(SMALL_FONT);
         oled.setCursor(5, 45);
         oled.print("F");
 
@@ -189,7 +189,7 @@ void drawScreen() {
         currot = 3;
         oled.setRotation(currot);
 
-        oled.setFont(MED_FONT);
+        oled.setFont(SMALL_FONT);
         oled.setCursor(5, 45);
         oled.print("I");
 
@@ -232,7 +232,7 @@ void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
 
     case 1:
     case 3 : {
-      oled.setFont(MED_FONT);
+      oled.setFont(SMALL_FONT);
       oled.setCursor(5, 22);
       oled.print(sr);
       oled.print(" ");
@@ -252,24 +252,35 @@ void drawFocus(uint32_t fd, uint8_t y) {
   if (ft < 1000) {
 
     char fdstr[10];
-    sprintf(fdstr, "%d%d", ft, in);
-    int8_t fdx = getGFXStrWidth(fdstr);
-    fdx += 9;
+    int8_t fdx = 0;
+    
+    if (ft < 100) {
+      sprintf(fdstr, "%d%d", ft, in);
+      fdx += 9;
+    } else {
+      sprintf(fdstr, "%d", ft);
+      fdx += 5;
+    }
+    fdx += getGFXStrWidth(fdstr);
     fdx = oled.width()-fdx;
     fdx /= 2;
 
     
     oled.setCursor(fdx, y);
     oled.print(ft);
-    oled.setFont(MED_FONT);
-    oled.setCursor(oled.getCursorX(), oled.getCursorY()-10);
+    oled.setFont(CHAR_FONT);
+    oled.setCursor(oled.getCursorX()-2, oled.getCursorY()-8);
     oled.print(F("'"));
     oled.setFont(LARGE_FONT);
-    oled.setCursor(oled.getCursorX(), oled.getCursorY()+10);
-    oled.print(in);
-    oled.setFont(MED_FONT);
-    oled.setCursor(oled.getCursorX(), oled.getCursorY()-10);
-    oled.print(F("\""));
+    if (ft < 100) {
+      oled.setCursor(oled.getCursorX()+4, oled.getCursorY()+8);
+      oled.print(in);
+      oled.setFont(CHAR_FONT);
+      oled.setCursor(oled.getCursorX()-2, oled.getCursorY()-8);
+      oled.print(F("'"));
+      oled.setCursor(oled.getCursorX()-1, oled.getCursorY());
+      oled.print(F("'"));
+    }
   } else {
     
     oled.setCursor(getCenteredX("INF"), y);
@@ -294,25 +305,25 @@ void drawIris(uint16_t ap, uint8_t x, uint8_t y) {
   
   uint8_t irisx = x;
   
-  oled.setCursor(irisx, y); //108
+  oled.setCursor(irisx, y);
   oled.setFont(SMALL_FONT);
   oled.print(F("T")); //5pix
-  oled.setCursor(irisx + 6, y + 2); //110
+  oled.setCursor(irisx + 6, y + 2);
   oled.setFont(LARGE_FONT);
   oled.print(irislabel);
 
   uint8_t fractionx = irisx + 45;
   
-  oled.setCursor(fractionx + 5, y - 9); //101
+  oled.setCursor(fractionx + 5, y - 10);
   oled.setFont(SMALL_FONT);
   oled.print((int)(irisfraction*10));
   oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
-  oled.setCursor(fractionx + 2, y + 2); //112
+  oled.setCursor(fractionx + 3, y);
   oled.print(F("10"));
 }
 
 void drawError(uint8_t errorstate) {
-  oled.setFont(MED_FONT);
+  oled.setFont(SMALL_FONT);
   
   oled.setRotation(3);
   oled.setTextWrap(true);
