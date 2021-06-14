@@ -6,7 +6,9 @@
 #include <Fonts/pixelmix4pt7b.h>
 #include <Fonts/Roboto_Medium_26.h>
 #include <Fonts/FreeSerifItalic9pt7b.h>
+#include <Fonts/Roboto_34.h>
 
+#define XLARGE_FONT &Roboto_34
 #define LARGE_FONT &Roboto_Medium_26
 #define SMALL_FONT &pixelmix4pt7b
 #define CHAR_FONT &FreeSerifItalic9pt7b
@@ -16,28 +18,21 @@
 #define BUTTON_C  5
 
 #define BTNDELAY 250
+#define BIG true
+#define SMALL false
 
 unsigned long long timenow = 0;
 unsigned long long lastpush = 0;
 int wait = 4000;
-int currot = 2;
 
 bool ignoreerrors = true;
 
-int displaymode = 0x02;
+int displaymode = 0;
 /*
  * Display modes:
- *  high byte: (not implemented yet)
- *    0 - no name display
- *    1 - camera name
- *    2 - lens name
- *    3 - camera and lens name
- *  low byte:
- *    0 - Vertical, FIZ (always has full display)
- *    1 - Horizontal, F
- *    2 - H, I
- *    3 - H, Z
- *    4 - H, Distance (won't show lens name)
+ *  0 - F, zi
+ *  1 - I, fz
+ *  2 - Z, if
  */
 
 PDClient *pd;
@@ -57,18 +52,11 @@ void setup() {
   
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(currot);
+  oled.setRotation(3);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setFont(SMALL_FONT);
   oled.setCursor(0, 30);
-  oled.print("Starting...\n");
-  oled.display();
-  /* todo
-  pinMode(4, INPUT_PULLUP);
-  pinMode(5, INPUT_PULLUP);
-  pinMode(6, INPUT_PULLUP);
-  pinMode(7, INPUT_PULLUP);*/
   
   Serial.begin(115200);
   oled.print("Starting Serial...\n");
@@ -78,7 +66,7 @@ void setup() {
   oled.print("Serial started, or timed out.\n");
   oled.display();
 
-  pd = new PDClient(readSwitch(0));
+  pd = new PDClient(0xA);
   
   oled.print("PDClient initialized.\n");
   oled.display();
@@ -89,11 +77,6 @@ void setup() {
 }
 
 void loop() {
-  if (readSwitch(0) != pd->getChannel()) {
-    delay(200);
-    changeChannel(readSwitch(0));
-  }
-
   readButtons();
   
   pd->onLoop();
@@ -137,64 +120,28 @@ void drawScreen() {
     const char* nm = pd->getLensName();
     const char* nt = pd->getLensNote();
     
-    if (br == "Other" || sr == "Other") {
-      sr = nt; // If brand or series == other, use note instead of series
-    }
     switch (displaymode) {
       case 0 : {
-
-        currot = 2;
-        oled.setRotation(currot);
-        
-        oled.setFont(LARGE_FONT);
-        
-        char flstr[10];
-        sprintf(flstr, "%d", fl);
-        uint8_t flx = getGFXStrWidth(flstr);
-        
-        flx += 12;
-        flx = 64-flx;
-        flx /= 2;
-        
-        oled.setCursor(flx, 56);
-        oled.print(fl);
-        oled.setFont(SMALL_FONT);
-        oled.print(F("mm"));
-    
-        
-        drawFocus(fd, 85);
-    
-        drawIris(ap, 2, 115);
-
+        drawFocus(fd, BIG);
+       // drawZoom(fl, SMALL);
+       // drawIris(ap, SMALL);
         break;
       }
 
       
       case 1 : {
-        currot = 3;
-        oled.setRotation(currot);
-
-        oled.setFont(SMALL_FONT);
-        oled.setCursor(5, 45);
-        oled.print("F");
-
-        drawFocus(fd, 50);
-        
+        drawIris(ap, BIG);
+       // drawFocus(fd, SMALL);
+       // drawZoom(fl, SMALL);
         break;
       }
 
       
 
       case 2 : {
-        currot = 3;
-        oled.setRotation(currot);
-
-        oled.setFont(SMALL_FONT);
-        oled.setCursor(5, 45);
-        oled.print("I");
-
-        drawIris(ap, 40, 50);
-        
+        drawZoom(fl, BIG);
+        //drawIris(ap, SMALL);
+        //drawFocus(fd, SMALL);
         break;
         
       }
@@ -210,87 +157,73 @@ void drawScreen() {
 }
 
 void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
-  switch (currot) {
-    case 0:
-    case 2: {
-      oled.setFont(SMALL_FONT);
-      if (pd->isZoom()) {
-        // Zoom displays series name & focal range
-        oled.setCursor(getCenteredX(sr), 20);
-        oled.print(sr);
-        oled.setCursor(getCenteredX(nm), 30);
-        oled.print(nm);
-      } else {
-        // Prime displays brand & series name
-        oled.setCursor(getCenteredX(br), 20);
-        oled.print(br);
-        oled.setCursor(getCenteredX(sr), 30);
-        oled.print(sr);
-      }
-      break;
-    }
-
-    case 1:
-    case 3 : {
-      oled.setFont(SMALL_FONT);
-      oled.setCursor(5, 22);
-      oled.print(sr);
-      oled.print(" ");
-      oled.print(nm);
-      break;
-    }
-  }
+    oled.setFont(SMALL_FONT);
+    oled.setCursor(0, 8);
+    oled.print(sr);
+    oled.print(" ");
+    oled.print(nm);
+    oled.print(" ");
+    oled.print(nt);
 }
 
-void drawFocus(uint32_t fd, uint8_t y) {
+void drawFocus(uint32_t fd, bool big) {
+
+  uint8_t x, y;
+  
   unsigned int ft, in;
   focusMath(fd, &ft, &in);
 
+
+  if (big) {
+    x = 5;
+    y = 48;
+    oled.setFont(XLARGE_FONT);
   
-  oled.setFont(LARGE_FONT);
-
-  if (ft < 1000) {
-
-    char fdstr[10];
-    int8_t fdx = 0;
-    
-    if (ft < 100) {
-      sprintf(fdstr, "%d%d", ft, in);
-      fdx += 9;
+    if (ft < 1000) {
+  
+      char fdstr[10];
+      int8_t fdx = 0;
+      
+      if (ft < 100) {
+        sprintf(fdstr, "%d%d", ft, in);
+        fdx += 9;
+      } else {
+        sprintf(fdstr, "%d", ft);
+        fdx += 5;
+      }
+      fdx += getGFXStrWidth(fdstr);
+      fdx = oled.width()-fdx;
+      fdx /= 2;
+  
+      
+      oled.setCursor(x, y);
+      oled.print(ft);
+      oled.print(F("'"));
+      if (ft < 100) {
+        oled.print(in);
+        oled.print(F("\""));
+      }
     } else {
-      sprintf(fdstr, "%d", ft);
-      fdx += 5;
+      
+      oled.setCursor(getCenteredX("INF"), y);
+      oled.print(F("INF"));
     }
-    fdx += getGFXStrWidth(fdstr);
-    fdx = oled.width()-fdx;
-    fdx /= 2;
 
-    
-    oled.setCursor(fdx, y);
-    oled.print(ft);
-    oled.setFont(CHAR_FONT);
-    oled.setCursor(oled.getCursorX()-2, oled.getCursorY()-8);
-    oled.print(F("'"));
-    oled.setFont(LARGE_FONT);
-    if (ft < 100) {
-      oled.setCursor(oled.getCursorX()+4, oled.getCursorY()+8);
-      oled.print(in);
-      oled.setFont(CHAR_FONT);
-      oled.setCursor(oled.getCursorX()-2, oled.getCursorY()-8);
-      oled.print(F("'"));
-      oled.setCursor(oled.getCursorX()-1, oled.getCursorY());
-      oled.print(F("'"));
-    }
+
+
   } else {
     
-    oled.setCursor(getCenteredX("INF"), y);
-    oled.print(F("INF"));
   }
 }
 
-void drawIris(uint16_t ap, uint8_t x, uint8_t y) {
+void drawIris(uint16_t ap, bool big) {
+
+  uint8_t x = 10;
+  uint8_t y = 48;
+  
   double irisbaserounded, irisfraction;
   irisMath(ap, &irisbaserounded, &irisfraction);
+
 
   uint8_t iriswidth = 32; //T, one digit, fraction
   char irislabel[4];
@@ -308,11 +241,11 @@ void drawIris(uint16_t ap, uint8_t x, uint8_t y) {
   oled.setCursor(irisx, y);
   oled.setFont(SMALL_FONT);
   oled.print(F("T")); //5pix
-  oled.setCursor(irisx + 6, y + 2);
-  oled.setFont(LARGE_FONT);
+  oled.setCursor(irisx + 8, y);
+  oled.setFont(XLARGE_FONT);
   oled.print(irislabel);
 
-  uint8_t fractionx = irisx + 45;
+  uint8_t fractionx = oled.getCursorX() + 1;
   
   oled.setCursor(fractionx + 5, y - 10);
   oled.setFont(SMALL_FONT);
@@ -322,10 +255,40 @@ void drawIris(uint16_t ap, uint8_t x, uint8_t y) {
   oled.print(F("10"));
 }
 
+
+void drawZoom(uint8_t fl, bool big) {
+
+  uint8_t x = 5;
+  uint8_t y = 45;
+  
+  oled.setFont(XLARGE_FONT);
+        
+  char flstr[10];
+  sprintf(flstr, "%d", fl);
+  uint8_t flx = getGFXStrWidth(flstr) + x;
+  
+  flx += 12;
+  flx = 64-flx;
+  flx /= 2;
+  
+  oled.setCursor(x, y);
+  oled.print(fl);
+  oled.setFont(SMALL_FONT);
+  oled.print(F("mm"));
+
+  if (pd->isZoom()) {
+    oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
+    uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
+    oled.drawLine(zoompos, y + 4, zoompos, y + 9, SH110X_WHITE); // pointer
+  }
+}
+
+
+
+
+
 void drawError(uint8_t errorstate) {
   oled.setFont(SMALL_FONT);
-  
-  oled.setRotation(3);
   oled.setTextWrap(true);
   oled.setCursor(15,15);
 
@@ -349,42 +312,17 @@ void drawError(uint8_t errorstate) {
     oled.print(F("Unknown error: b"));
     oled.print(errorstate, BIN);
   }
-
-  oled.setRotation(currot);
   oled.setTextWrap(false);
 }
 
 void drawChannel(uint8_t channel) {
-  oled.drawFastHLine(0, 10, oled.width(), SH110X_WHITE);
+  oled.setTextColor(SH110X_BLACK);
+  oled.fillRect(115, 0, 12, 12, SH110X_WHITE);
   oled.setFont(SMALL_FONT);
-  oled.setCursor(getCenteredX("Camera Z"), 8);
-  oled.print(F("Camera "));
+  oled.setCursor(118, 8);
   oled.print(channel, HEX);
+  oled.setTextColor(SH110X_WHITE);
 }
-
-uint8_t readSwitch(uint8_t which) {
-  return 0xA;/*
-  // read state of a rotary switch
-  if (which == 0) {
-    // CH
-    which += 4;
-  } else if (which == 1) {
-    // MODE
-    which += 2;
-  }
-  byte state = 0;
-  for (int i = 0; i < 4; i++) {
-    if (digitalRead(i+which)) {
-      // note that logic is inverted bc of pullup resistors
-      bitClear(state, i);
-    } else {
-      bitSet(state, i);
-    }
-  }
-  return state;*/
-}
-
-
 
 void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
   double irisdec, irisbase, avnumber, avbase;

@@ -347,9 +347,22 @@ bool PDClient::processLensName() {
   ////Serial.println(this->lensname);  
   ////Serial.print("note is ");
   ////Serial.println(this->lensnote);
+
+  //this->abbreviateName();
+  
+  if (this->isZoom()) {
+    long int w, t, i;
+    sscanf (this->lensname, "%lu-%lumm %lu", &w, &t, &i);
+    this->wfl = w;
+    this->tfl = t;
+  } else {
+    this->wfl = this->flength;
+    this->tfl = this->flength;
+  }
   
   return true;
 }
+
 
 /*
  * Error handling
@@ -539,6 +552,14 @@ uint16_t PDClient::getAperture() {
 
 uint16_t PDClient::getFocalLength() {
   return this->flength;
+}
+
+uint16_t PDClient::getWFl() {
+  return this->wfl;
+}
+
+uint16_t PDClient::getTFl() {
+  return this->tfl;
 }
 
 uint32_t PDClient::getFocusDistance() {

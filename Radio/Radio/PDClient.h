@@ -65,10 +65,12 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris = 560;
-    uint16_t flength = 50;
-    uint32_t focus = 1254;
-    char fulllensname[50] = "0Zeiss|Master Prime|50mm 630";
+    uint16_t iris = 410;
+    uint16_t flength = 240;
+    uint32_t focus = 12863;
+    uint16_t wfl = 0;
+    uint16_t tfl = 0;
+    char fulllensname[50] = "0Zeiss|Master Prime|12-300mm 630";
     char* lensbrand;
     char* lensseries;
     char* lensname;
@@ -92,6 +94,8 @@ class PDClient {
     uint32_t getFocusDistance();
     uint16_t getAperture();
     uint16_t getFocalLength();
+    uint16_t getWFl();
+    uint16_t getTFl();
     uint32_t getFocusDistanceOnce();
     uint16_t getApertureOnce();
     uint16_t getFocalLengthOnce();
