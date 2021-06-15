@@ -70,7 +70,7 @@ class PDClient {
     uint32_t focus = 12863;
     uint16_t wfl = 0;
     uint16_t tfl = 0;
-    char fulllensname[50] = "0Angenieux|Optimo|24-290mm 630";
+    char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";
     char* lensbrand;
     char* lensseries;
     char* lensname;
@@ -78,6 +78,7 @@ class PDClient {
     
     void parseMessage();
     bool processLensName();
+    void abbreviateName();
     void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
     bool haveData();
     bool error(uint8_t err);

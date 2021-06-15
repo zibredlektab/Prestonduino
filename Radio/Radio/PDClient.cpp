@@ -348,7 +348,7 @@ bool PDClient::processLensName() {
   ////Serial.print("note is ");
   ////Serial.println(this->lensnote);
 
-  //this->abbreviateName();
+  this->abbreviateName();
   
   if (this->isZoom()) {
     long int w, t, i;
@@ -363,6 +363,20 @@ bool PDClient::processLensName() {
   return true;
 }
 
+#define SWAPCT 6
+void PDClient::abbreviateName() {
+  char* swaps[SWAPCT][2] = {{"Panavision", "PV\0"}, {"Angenieux", "Ang\0"}, {"Servicevision", "SV"}, {"Prime", "Pr\0"}, {"Zoom", "Zm\0"}, {"Other", "\0"}};
+
+  for (int i = 0; i < SWAPCT; i++) {
+
+    char* ptr = strstr(this->lensbrand, swaps[i][0]);
+    if (!ptr) ptr = strstr(this->lensseries, swaps[i][0]);
+    if (ptr) {
+      memcpy(ptr, swaps[i][1], sizeof(swaps[i][1]));
+      i--;
+    }
+  }
+}
 
 /*
  * Error handling

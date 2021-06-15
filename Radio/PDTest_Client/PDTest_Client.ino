@@ -22,7 +22,7 @@
 #define SMALL false
 #define X_OFFSET_SMALL 90
 #define Y_OFFSET_BTM 15
-#define Y_OFFSET_TOP 24
+#define Y_OFFSET_TOP 30
 
 
 unsigned long long timenow = 0;
@@ -166,7 +166,7 @@ void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
     oled.print(sr);
     oled.print(" ");
     oled.print(nm);
-    oled.print(" ");
+    oled.print("\n");
     oled.print(nt);
 }
 
@@ -271,7 +271,7 @@ void drawZoom(uint8_t fl, bool big) {
   uint8_t x, y;
 
   if (big) {
-    x = 5;
+    x = 8;
     y = 45;
     
     oled.setFont(XLARGE_FONT);
