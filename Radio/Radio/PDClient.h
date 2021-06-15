@@ -65,12 +65,12 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris = 410;
+    uint16_t iris = 620;
     uint16_t flength = 240;
     uint32_t focus = 12863;
     uint16_t wfl = 0;
     uint16_t tfl = 0;
-    char fulllensname[50] = "0Zeiss|Master Prime|12-300mm 630";
+    char fulllensname[50] = "0Angenieux|Optimo|24-290mm 630";
     char* lensbrand;
     char* lensseries;
     char* lensname;

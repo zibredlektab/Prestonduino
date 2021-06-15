@@ -20,6 +20,10 @@
 #define BTNDELAY 250
 #define BIG true
 #define SMALL false
+#define X_OFFSET_SMALL 90
+#define Y_OFFSET_BTM 15
+#define Y_OFFSET_TOP 24
+
 
 unsigned long long timenow = 0;
 unsigned long long lastpush = 0;
@@ -27,7 +31,7 @@ int wait = 4000;
 
 bool ignoreerrors = true;
 
-int displaymode = 0;
+int displaymode = 1;
 /*
  * Display modes:
  *  0 - F, zi
@@ -123,16 +127,16 @@ void drawScreen() {
     switch (displaymode) {
       case 0 : {
         drawFocus(fd, BIG);
-       // drawZoom(fl, SMALL);
-       // drawIris(ap, SMALL);
+        drawZoom(fl, SMALL);
+        drawIris(ap, SMALL);
         break;
       }
 
       
       case 1 : {
         drawIris(ap, BIG);
-       // drawFocus(fd, SMALL);
-       // drawZoom(fl, SMALL);
+        drawFocus(fd, SMALL);
+        drawZoom(fl, SMALL);
         break;
       }
 
@@ -140,8 +144,8 @@ void drawScreen() {
 
       case 2 : {
         drawZoom(fl, BIG);
-        //drawIris(ap, SMALL);
-        //drawFocus(fd, SMALL);
+        drawIris(ap, SMALL);
+        drawFocus(fd, SMALL);
         break;
         
       }
@@ -179,51 +183,37 @@ void drawFocus(uint32_t fd, bool big) {
     y = 48;
     oled.setFont(XLARGE_FONT);
   
-    if (ft < 1000) {
-  
-      char fdstr[10];
-      int8_t fdx = 0;
-      
-      if (ft < 100) {
-        sprintf(fdstr, "%d%d", ft, in);
-        fdx += 9;
-      } else {
-        sprintf(fdstr, "%d", ft);
-        fdx += 5;
-      }
-      fdx += getGFXStrWidth(fdstr);
-      fdx = oled.width()-fdx;
-      fdx /= 2;
-  
-      
-      oled.setCursor(x, y);
-      oled.print(ft);
-      oled.print(F("'"));
-      if (ft < 100) {
-        oled.print(in);
-        oled.print(F("\""));
-      }
+  } else {
+    x = X_OFFSET_SMALL;
+    if (oled.getCursorY() > 42) {
+      y = Y_OFFSET_TOP;
     } else {
-      
-      oled.setCursor(getCenteredX("INF"), y);
-      oled.print(F("INF"));
+      y = oled.getCursorY() + Y_OFFSET_BTM;
     }
 
-
-
-  } else {
-    
+    oled.setFont(SMALL_FONT);
   }
+
+  oled.setCursor(x, y);
+  if (ft < 1000) {      
+    oled.print(ft);
+    oled.print("'");
+    if (ft < 100) {
+      oled.print(in);
+      oled.print(F("\""));
+    }
+  } else {
+    oled.setCursor(getCenteredX("INF"), y);
+    oled.print("INF");
+  }
+  
 }
 
 void drawIris(uint16_t ap, bool big) {
-
-  uint8_t x = 10;
-  uint8_t y = 48;
-  
+  uint8_t x, y;
+    
   double irisbaserounded, irisfraction;
   irisMath(ap, &irisbaserounded, &irisfraction);
-
 
   uint8_t iriswidth = 32; //T, one digit, fraction
   char irislabel[4];
@@ -236,50 +226,77 @@ void drawIris(uint16_t ap, bool big) {
     sprintf(irislabel, "%d", (int)irisbaserounded);
   }
   
-  uint8_t irisx = x;
+  if (big) {
+    x = 10;
+    y = 48;
+    uint8_t irisx = x;
+    
+    oled.setCursor(irisx, y);
+    oled.setFont(SMALL_FONT);
+    oled.print(F("T")); //5pix
+    oled.setCursor(irisx + 8, y);
+    oled.setFont(XLARGE_FONT);
+    oled.print(irislabel);
   
-  oled.setCursor(irisx, y);
-  oled.setFont(SMALL_FONT);
-  oled.print(F("T")); //5pix
-  oled.setCursor(irisx + 8, y);
-  oled.setFont(XLARGE_FONT);
-  oled.print(irislabel);
+    uint8_t fractionx = oled.getCursorX() + 1;
+    
+    oled.setCursor(fractionx + 5, y - 10);
+    oled.setFont(SMALL_FONT);
+    oled.print((int)(irisfraction*10));
+    oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
+    oled.setCursor(fractionx + 3, y);
+    oled.print(F("10"));
+    
+  } else {
+    x = X_OFFSET_SMALL;
+    if (oled.getCursorY() > 42) {
+      y = Y_OFFSET_TOP;
+    } else {
+      y = oled.getCursorY() + Y_OFFSET_BTM;
+    }
 
-  uint8_t fractionx = oled.getCursorX() + 1;
-  
-  oled.setCursor(fractionx + 5, y - 10);
-  oled.setFont(SMALL_FONT);
-  oled.print((int)(irisfraction*10));
-  oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
-  oled.setCursor(fractionx + 3, y);
-  oled.print(F("10"));
+    oled.setCursor(x, y);
+    oled.setFont(SMALL_FONT);
+    oled.print("*");
+    oled.print(irislabel);
+    oled.setCursor(x, y + 10);
+    oled.print((int)(irisfraction*10));
+    oled.print("/");
+    oled.print("10");
+  }
 }
 
 
 void drawZoom(uint8_t fl, bool big) {
+  uint8_t x, y;
 
-  uint8_t x = 5;
-  uint8_t y = 45;
+  if (big) {
+    x = 5;
+    y = 45;
+    
+    oled.setFont(XLARGE_FONT);
+    oled.setCursor(x, y);
+    oled.print(fl);
+    oled.setFont(SMALL_FONT);
+    oled.print(F("mm"));
   
-  oled.setFont(XLARGE_FONT);
-        
-  char flstr[10];
-  sprintf(flstr, "%d", fl);
-  uint8_t flx = getGFXStrWidth(flstr) + x;
-  
-  flx += 12;
-  flx = 64-flx;
-  flx /= 2;
-  
-  oled.setCursor(x, y);
-  oled.print(fl);
-  oled.setFont(SMALL_FONT);
-  oled.print(F("mm"));
+    if (pd->isZoom()) {
+      oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
+      uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
+      oled.drawLine(zoompos, y + 4, zoompos, y + 10, SH110X_WHITE); // pointer
+    }
+  } else {
+    x = X_OFFSET_SMALL;
+    if (oled.getCursorY() > 42) {
+      y = Y_OFFSET_TOP;
+    } else {
+      y = oled.getCursorY() + Y_OFFSET_BTM;
+    }
 
-  if (pd->isZoom()) {
-    oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
-    uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
-    oled.drawLine(zoompos, y + 4, zoompos, y + 9, SH110X_WHITE); // pointer
+    oled.setCursor(x, y);
+    oled.setFont(SMALL_FONT);
+    oled.print(fl);
+    oled.print("mm");
   }
 }
 
