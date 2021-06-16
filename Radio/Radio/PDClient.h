@@ -67,7 +67,7 @@ class PDClient {
 
     uint16_t iris = 620;
     uint16_t flength = 240;
-    uint32_t focus = 12863;
+    uint32_t focus = 448673;
     uint16_t wfl = 0;
     uint16_t tfl = 0;
     char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";

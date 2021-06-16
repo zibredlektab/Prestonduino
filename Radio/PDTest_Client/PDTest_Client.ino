@@ -18,8 +18,11 @@
 #define BUTTON_C  5
 
 #define BTNDELAY 250
+
 #define BIG true
 #define SMALL false
+#define X_OFFSET_BIG 5
+#define Y_OFFSET_BIG 48
 #define X_OFFSET_SMALL 90
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
@@ -31,7 +34,7 @@ int wait = 4000;
 
 bool ignoreerrors = true;
 
-int displaymode = 1;
+int displaymode = 0;
 /*
  * Display modes:
  *  0 - F, zi
@@ -179,8 +182,8 @@ void drawFocus(uint32_t fd, bool big) {
 
 
   if (big) {
-    x = 5;
-    y = 48;
+    x = X_OFFSET_BIG;
+    y = Y_OFFSET_BIG;
     oled.setFont(XLARGE_FONT);
   
   } else {
@@ -195,15 +198,16 @@ void drawFocus(uint32_t fd, bool big) {
   }
 
   oled.setCursor(x, y);
-  if (ft < 1000) {      
+  if (ft <= 1000) {      
     oled.print(ft);
     oled.print("'");
-    if (ft < 100) {
-      oled.print(in);
-      oled.print(F("\""));
+    if (ft >= 100 && big) {
+      oled.setCursor(oled.getCursorX() - 4, oled.getCursorY());
+      oled.setFont(SMALL_FONT);
     }
+    oled.print(in);
+    oled.print(F("\""));
   } else {
-    oled.setCursor(getCenteredX("INF"), y);
     oled.print("INF");
   }
   
@@ -227,8 +231,8 @@ void drawIris(uint16_t ap, bool big) {
   }
   
   if (big) {
-    x = 10;
-    y = 48;
+    x = X_OFFSET_BIG;
+    y = Y_OFFSET_BIG;
     uint8_t irisx = x;
     
     oled.setCursor(irisx, y);
@@ -271,8 +275,8 @@ void drawZoom(uint8_t fl, bool big) {
   uint8_t x, y;
 
   if (big) {
-    x = 8;
-    y = 45;
+    x = X_OFFSET_BIG;
+    y = Y_OFFSET_BIG;
     
     oled.setFont(XLARGE_FONT);
     oled.setCursor(x, y);
