@@ -183,7 +183,7 @@ void readButtons() {
     } else {
       
       if (bprocess) {
-          // prevent immediate exit of channel editing by holding down B too long - it has to be released for at least one loop
+          // prevent immediate exit of channel editing by holding down B too long - must be released for at least one loop
         editingchannel = false;
         setChannel();
       }
