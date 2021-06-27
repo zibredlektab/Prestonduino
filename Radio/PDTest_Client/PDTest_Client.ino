@@ -3,15 +3,19 @@
 #include <PDClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
-#include <Fonts/pixelmix4pt7b.h>
-#include <Fonts/Roboto_Medium_26.h>
-#include <Fonts/FreeSerifItalic9pt7b.h>
-#include <Fonts/Roboto_34.h>
 
-#define XLARGE_FONT &Roboto_34
-#define LARGE_FONT &Roboto_Medium_26
-#define SMALL_FONT &pixelmix4pt7b
+#include <FlashStorage.h>
+#include <FlashAsEEPROM.h>
+//#include <Fonts/pixelmix4pt7b.h>
+//#include <Fonts/Roboto_Medium_26.h>
+#include <Fonts/FreeSerifItalic9pt7b.h>
+//#include <Fonts/Roboto_34.h>
+
+
 #define CHAR_FONT &FreeSerifItalic9pt7b
+#define XLARGE_FONT CHAR_FONT//&Roboto_34
+#define LARGE_FONT CHAR_FONT//&Roboto_Medium_26
+#define SMALL_FONT CHAR_FONT//&pixelmix4pt7b
 
 #define BUTTON_A  9
 #define BUTTON_B  6
@@ -44,10 +48,23 @@ int displaymode = 0;
 
 PDClient *pd;
 
-Adafruit_SH110X oled = Adafruit_SH110X(64, 128, &Wire);
+Adafruit_SH1107 oled(64, 128, &Wire);
+
+FlashStorage(storedchannel, int); // channel is stored as 0x10 + the actual channel, to allow for the channel to be 0
+int channel;
 
 
 void setup() {
+
+  channel = storedchannel.read(); // get the previously-set channel from memory
+  
+  if (channel == 0) {
+    // no channel has ever been set (channel 0 would be saved as 0x10)
+    storedchannel.write(0x1A);
+    channel = 0xA;
+  } else {
+    channel -= 0x10;
+  }
   
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
@@ -73,7 +90,7 @@ void setup() {
   oled.print("Serial started, or timed out.\n");
   oled.display();
 
-  pd = new PDClient(0xA);
+  pd = new PDClient(channel);
   
   oled.print("PDClient initialized.\n");
   oled.display();
