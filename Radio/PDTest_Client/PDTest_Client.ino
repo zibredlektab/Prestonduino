@@ -21,8 +21,9 @@
 #define BUTTON_B  6
 #define BUTTON_C  5
 
-#define BTNDELAY 250
 #define FLASHTIME 500
+#define MODESTOREDELAY 2000
+#define BSAFETY 3000
 
 #define DATA DATA_FOCUS + DATA_IRIS + DATA_ZOOM + DATA_NAME
 
@@ -36,7 +37,13 @@
 
 bool ignoreerrors = true;
 
-int displaymode = 0;
+bool editingchannel = false;
+
+int displaymode;
+bool changingmodes = false;
+long long int timemodechanged;
+FlashStorage(storedmode, int);
+
 /*
  * Display modes:
  *  0 - F, zi
@@ -49,6 +56,7 @@ PDClient *pd;
 Adafruit_SH1107 oled(64, 128, &Wire);
 
 FlashStorage(storedchannel, int); // channel is stored as 0x10 + the actual channel, to allow for the channel to be 0
+
 int channel;
 
 
@@ -96,6 +104,8 @@ void setup() {
   pd->subscribe(DATA); //FIZ data + lens name, for default display
 
   oled.setTextWrap(false);
+
+  displaymode = storedmode.read();
 }
 
 void loop() {
@@ -103,68 +113,96 @@ void loop() {
   
   pd->onLoop();
   drawScreen();
-  
-}
 
-bool editingchannel = false;
-#define BSAFETY 3000
+  if (changingmodes) {
+    if (timemodechanged + MODESTOREDELAY < millis()) {
+      storedmode.write(displaymode);
+      changingmodes = false;
+    }
+  }
+}
 
 void readButtons() {
   bool adown = !digitalRead(BUTTON_A);
   bool bdown = !digitalRead(BUTTON_B);
   bool cdown = !digitalRead(BUTTON_C);
   static long long int bdowntime;
-  static long long int lastpush;
+  static bool adownlastloop = false;
   static bool bdownlastloop = false;
+  static bool cdownlastloop = false;
+  bool aprocess = false;
+  bool bprocess = false;
+  bool cprocess = false;
+
+  if (adown) {
+    if (!adownlastloop) {
+      adownlastloop = true;
+      aprocess = true;
+    }
+  } else {
+    adownlastloop = false;
+  }
+
+  if (cdown) {
+    if (!cdownlastloop) {
+      cdownlastloop = true;
+      cprocess = true;
+    }
+  } else {
+    cdownlastloop = false;
+  }
+
+  if (bdown) {
+    if (!bdownlastloop) {
+      bdownlastloop = true;
+      bprocess = true;
+    }
+  } else {
+    bdownlastloop = false;
+  }
   
-  if (lastpush + BTNDELAY < millis()) {
 
     if (!editingchannel) {
     
-      if (bdown) {
-        if (!bdownlastloop) {
-          bdownlastloop = true;
-          bdowntime = millis();
-        } else {
-          if (bdowntime + BSAFETY < millis()) {
-            // B button must be held down for BSAFETY seconds to engage editing
-            editingchannel = true;
-          }
+      if (bprocess) {
+        bdowntime = millis();
+      } else if (bdown) {
+        if (bdowntime + BSAFETY < millis()) {
+          // B button must be held down for BSAFETY seconds to engage editing
+          editingchannel = true;
         }
-      } else {
-        bdownlastloop = false;
       }
       
-      if (adown) {
-        displaymode--;
-      } else if (cdown) {
-        displaymode++;
+      if (aprocess) {
+        changeMode(-1);
+      } else if (cprocess) {
+        changeMode(1);
       }
       
-      if (displaymode > 2) displaymode = 0;
-      if (displaymode < 0) displaymode = 2;
       
     } else {
-      if (bdown) {
-        if (!bdownlastloop) {
+      
+      if (bprocess) {
           // prevent immediate exit of channel editing by holding down B too long - it has to be released for at least one loop
-          editingchannel = false;
-          setChannel();
-        }
-      } else {
-        bdownlastloop = false;
+        editingchannel = false;
+        setChannel();
       }
 
-      if (adown) {
+      if (aprocess) {
         changeChannel(-1);
-      } else if (cdown){
+      } else if (cprocess){
         changeChannel(1);
       }
     }
-    
-    lastpush = millis();
   
-  }
+}
+
+void changeMode(int addend) {
+  changingmodes = true;
+  timemodechanged = millis();
+  displaymode += addend;
+  if (displaymode > 2) displaymode = 0;
+  if (displaymode < 0) displaymode = 2;
 }
 
 void changeChannel(int addend) {
