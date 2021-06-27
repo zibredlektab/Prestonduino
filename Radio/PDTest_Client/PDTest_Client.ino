@@ -40,9 +40,10 @@ bool ignoreerrors = true;
 bool editingchannel = false;
 
 int displaymode;
-bool changingmodes = false;
+bool changingmodes = true;
 long long int timemodechanged;
 FlashStorage(storedmode, int);
+bool showna = true;
 
 /*
  * Display modes:
@@ -106,6 +107,8 @@ void setup() {
   oled.setTextWrap(false);
 
   displaymode = storedmode.read();
+
+  timemodechanged = millis();
 }
 
 void loop() {
@@ -116,8 +119,11 @@ void loop() {
 
   if (changingmodes) {
     if (timemodechanged + MODESTOREDELAY < millis()) {
-      storedmode.write(displaymode);
+      if (millis() > 6000) {
+        storedmode.write(displaymode);
+      }
       changingmodes = false;
+      showna = false;
     }
   }
 }
@@ -200,6 +206,7 @@ void readButtons() {
 void changeMode(int addend) {
   changingmodes = true;
   timemodechanged = millis();
+  showna = true;
   displaymode += addend;
   if (displaymode > 2) displaymode = 0;
   if (displaymode < 0) displaymode = 2;
@@ -340,20 +347,27 @@ void drawIris(uint16_t ap, bool big) {
     uint8_t irisx = x;
     
     oled.setCursor(irisx, y);
-    oled.setFont(SMALL_FONT);
-    oled.print(F("T")); //5pix
-    oled.setCursor(irisx + 8, y);
-    oled.setFont(XLARGE_FONT);
-    oled.print(irislabel);
-  
-    uint8_t fractionx = oled.getCursorX() + 1;
+
+    if (ap == 0) {
+      oled.setFont(XLARGE_FONT);
+      oled.print("No Iris");
+    } else {
     
-    oled.setCursor(fractionx + 5, y - 10);
-    oled.setFont(SMALL_FONT);
-    oled.print((int)(irisfraction*10));
-    oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
-    oled.setCursor(fractionx + 3, y);
-    oled.print(F("10"));
+      oled.setFont(SMALL_FONT);
+      oled.print(F("T")); //5pix
+      oled.setCursor(irisx + 8, y);
+      oled.setFont(XLARGE_FONT);
+      oled.print(irislabel);
+    
+      uint8_t fractionx = oled.getCursorX() + 1;
+      
+      oled.setCursor(fractionx + 5, y - 10);
+      oled.setFont(SMALL_FONT);
+      oled.print((int)(irisfraction*10));
+      oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
+      oled.setCursor(fractionx + 3, y);
+      oled.print(F("10"));
+    }
     
   } else {
     x = X_OFFSET_SMALL;
@@ -363,14 +377,22 @@ void drawIris(uint16_t ap, bool big) {
       y = oled.getCursorY() + Y_OFFSET_BTM;
     }
 
+    
     oled.setCursor(x, y);
     oled.setFont(SMALL_FONT);
-    oled.print("*");
-    oled.print(irislabel);
-    oled.setCursor(x, y + 10);
-    oled.print((int)(irisfraction*10));
-    oled.print("/");
-    oled.print("10");
+
+    if (ap == 0) {
+      if (showna) {
+        oled.print("No Iris");
+      }
+    } else {
+      oled.print("*");
+      oled.print(irislabel);
+      oled.setCursor(x, y + 10);
+      oled.print((int)(irisfraction*10));
+      oled.print("/");
+      oled.print("10");
+    }
   }
 }
 
@@ -384,14 +406,19 @@ void drawZoom(uint8_t fl, bool big) {
     
     oled.setFont(XLARGE_FONT);
     oled.setCursor(x, y);
-    oled.print(fl);
-    oled.setFont(SMALL_FONT);
-    oled.print(F("mm"));
-  
-    if (pd->isZoom()) {
-      oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
-      uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
-      oled.drawLine(zoompos, y + 4, zoompos, y + 10, SH110X_WHITE); // pointer
+
+    if (fl == 0) {
+      oled.print("No Zoom");
+    } else {
+      oled.print(fl);
+      oled.setFont(SMALL_FONT);
+      oled.print(F("mm"));
+    
+      if (pd->isZoom()) {
+        oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
+        uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
+        oled.drawLine(zoompos, y + 4, zoompos, y + 10, SH110X_WHITE); // pointer
+      }
     }
   } else {
     x = X_OFFSET_SMALL;
@@ -403,8 +430,15 @@ void drawZoom(uint8_t fl, bool big) {
 
     oled.setCursor(x, y);
     oled.setFont(SMALL_FONT);
-    oled.print(fl);
-    oled.print("mm");
+
+    if (fl == 0) {
+      if (showna) {
+        oled.print("No Zoom");
+      }
+    } else {
+      oled.print(fl);
+      oled.print("mm");
+    }
   }
 }
 
