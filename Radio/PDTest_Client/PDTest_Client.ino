@@ -156,9 +156,9 @@ void readButtons() {
       }
 
       if (adown) {
-        changeChannel(1);
-      } else if (cdown){
         changeChannel(-1);
+      } else if (cdown){
+        changeChannel(1);
       }
     }
     
@@ -225,7 +225,7 @@ void drawScreen() {
   }
 
   
-  drawChannel(ch);
+  drawChannel(channel);
   oled.display();
 }
 
@@ -406,7 +406,7 @@ void drawChannel(uint8_t channel) {
   static long long int flashtranstime; // the time at which the last flash transition happened
   static bool flashing = false; // whether the channel indicator has begun flashing
   static bool transitioning = true; // whether the channel indicator is currently switching between light/dark
-  uint16_t textcolor, bgcolor;
+  static uint16_t textcolor, bgcolor;
 
   if (editingchannel) { // globally, channel editing is occurring
     
@@ -415,18 +415,20 @@ void drawChannel(uint8_t channel) {
       transitioning = true; // flashing should begin with an immediate transition
     }
     
-    if (transitioning = false) {
+    if (!transitioning) {
       if (flashtranstime + FLASHTIME < millis()) {
         transitioning = true;
       }
       
     } else {
       // transition! swap bg and text colors.
-      bgcolor = textcolor;
+
       if (textcolor == SH110X_BLACK) {
         textcolor = SH110X_WHITE;
+        bgcolor = SH110X_BLACK;
       } else {
         textcolor = SH110X_BLACK;
+        bgcolor = SH110X_WHITE;
       }
       
       flashtranstime = millis();
@@ -440,10 +442,10 @@ void drawChannel(uint8_t channel) {
     bgcolor = SH110X_WHITE;
   }
   
-  oled.setTextColor(textcolor);
   oled.drawRect(115, 0, 12, 12, SH110X_WHITE);
   oled.fillRect(116, 0, 11, 11, bgcolor);
   oled.setFont(SMALL_FONT);
+  oled.setTextColor(textcolor);
   oled.setCursor(118, 8);
   oled.print(channel, HEX);
   
