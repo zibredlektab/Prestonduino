@@ -6,8 +6,8 @@
 #include <RHReliableDatagram.h> // RH_ENABLE_EXPLICIT_RETRY_DEDUP must be redefined as 1 in this file
 #include <RH_RF95.h>
 
-#include errorcodes.h
-#include datatypes.h
+#include <errorcodes.h>
+#include <datatypes.h>
 
 #define REFRESHRATE 5
 #define SUBLIFE 6000
