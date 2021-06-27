@@ -22,6 +22,9 @@
 #define BUTTON_C  5
 
 #define BTNDELAY 250
+#define FLASHTIME 500
+
+#define DATA DATA_FOCUS + DATA_IRIS + DATA_ZOOM + DATA_NAME
 
 #define BIG true
 #define SMALL false
@@ -30,11 +33,6 @@
 #define X_OFFSET_SMALL 90
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
-
-
-unsigned long long timenow = 0;
-unsigned long long lastpush = 0;
-int wait = 4000;
 
 bool ignoreerrors = true;
 
@@ -95,7 +93,7 @@ void setup() {
   oled.print("PDClient initialized.\n");
   oled.display();
 
-  pd->subscribe(DATA_FOCUS + DATA_IRIS + DATA_ZOOM + DATA_NAME); //FIZ data + lens name, for default display
+  pd->subscribe(DATA); //FIZ data + lens name, for default display
 
   oled.setTextWrap(false);
 }
@@ -108,21 +106,72 @@ void loop() {
   
 }
 
-void readButtons() {
+bool editingchannel = false;
+#define BSAFETY 3000
 
-  if (lastpush + BTNDELAY < millis()) {
+void readButtons() {
+  bool adown = !digitalRead(BUTTON_A);
+  bool bdown = !digitalRead(BUTTON_B);
+  bool cdown = !digitalRead(BUTTON_C);
+  static long long int bdowntime;
+  static long long int lastpush;
+  static bool bdownlastloop = false;
   
-    if (!digitalRead(BUTTON_A)) {
-      displaymode--;
-    } else if (!digitalRead(BUTTON_C)) {
-      displaymode++;
+  if (lastpush + BTNDELAY < millis()) {
+
+    if (!editingchannel) {
+    
+      if (bdown) {
+        if (!bdownlastloop) {
+          bdownlastloop = true;
+          bdowntime = millis();
+        } else {
+          if (bdowntime + BSAFETY < millis()) {
+            // B button must be held down for BSAFETY seconds to engage editing
+            editingchannel = true;
+          }
+        }
+      } else {
+        bdownlastloop = false;
+      }
+      
+      if (adown) {
+        displaymode--;
+      } else if (cdown) {
+        displaymode++;
+      }
+      
+      if (displaymode > 2) displaymode = 0;
+      if (displaymode < 0) displaymode = 2;
+      
+    } else {
+      if (bdown) {
+        if (!bdownlastloop) {
+          // prevent immediate exit of channel editing by holding down B too long - it has to be released for at least one loop
+          editingchannel = false;
+          setChannel();
+        }
+      } else {
+        bdownlastloop = false;
+      }
+
+      if (adown) {
+        changeChannel(1);
+      } else if (cdown){
+        changeChannel(-1);
+      }
     }
     
     lastpush = millis();
   
-    if (displaymode > 2) displaymode = 0;
-    if (displaymode < 0) displaymode = 2;
   }
+}
+
+void changeChannel(int addend) {
+  channel += addend;
+  if (channel > 0xF) channel = 0;
+  if (channel < 0) channel = 0xF;
+  storedchannel.write(channel + 0x10);
 }
 
 void drawScreen() {
@@ -354,12 +403,51 @@ void drawError(uint8_t errorstate) {
 }
 
 void drawChannel(uint8_t channel) {
-  oled.setTextColor(SH110X_BLACK);
-  oled.fillRect(115, 0, 12, 12, SH110X_WHITE);
+  static long long int flashtranstime; // the time at which the last flash transition happened
+  static bool flashing = false; // whether the channel indicator has begun flashing
+  static bool transitioning = true; // whether the channel indicator is currently switching between light/dark
+  uint16_t textcolor, bgcolor;
+
+  if (editingchannel) { // globally, channel editing is occurring
+    
+    if (!flashing) { // channel editing began since the last cycle, we have not yet started flashing
+      flashing = true;
+      transitioning = true; // flashing should begin with an immediate transition
+    }
+    
+    if (transitioning = false) {
+      if (flashtranstime + FLASHTIME < millis()) {
+        transitioning = true;
+      }
+      
+    } else {
+      // transition! swap bg and text colors.
+      bgcolor = textcolor;
+      if (textcolor == SH110X_BLACK) {
+        textcolor = SH110X_WHITE;
+      } else {
+        textcolor = SH110X_BLACK;
+      }
+      
+      flashtranstime = millis();
+      transitioning = false;
+    }
+    
+  } else {
+    // global channel editing is not occuring, so stop flashing and set default colors.
+    flashing = false;
+    textcolor = SH110X_BLACK;
+    bgcolor = SH110X_WHITE;
+  }
+  
+  oled.setTextColor(textcolor);
+  oled.drawRect(115, 0, 12, 12, SH110X_WHITE);
+  oled.fillRect(116, 0, 11, 11, bgcolor);
   oled.setFont(SMALL_FONT);
   oled.setCursor(118, 8);
   oled.print(channel, HEX);
-  oled.setTextColor(SH110X_WHITE);
+  
+  oled.setTextColor(SH110X_WHITE); // reset the text color to white for the next function
 }
 
 void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
@@ -396,29 +484,12 @@ void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
   *in = focusin+.1;
 }
 
-int8_t getCenteredX(const char* str) {
-  int8_t width = getGFXStrWidth(str);
-  return (oled.width()-width)/2;
-}
-
-uint16_t getGFXStrWidth(const char* str) {
-  uint16_t width = 0;
-  oled.getTextBounds(str, oled.getCursorX(), oled.getCursorY(), NULL, NULL, &width, NULL);
-  return width;
-}
-
-void changeChannel(uint8_t newch) {
-  oled.clearDisplay();
-  oled.setCursor(getCenteredX("Changing"),30);
-  oled.print(F("Changing"));
-  oled.setCursor(getCenteredX("channel..."),45);
-  oled.print(F("channel..."));
-  oled.display();
-  
-  pd->unsub();
-  if (pd->setChannel(newch)) {
-    pd->subscribe(39);
-  } else {
-    Serial.println(F("failed to set new channel"));
+void setChannel() {
+  if (channel != pd->getChannel()) {
+    if (pd->setChannel(channel)) {
+      pd->subscribe(DATA);
+    } else {
+      Serial.println(F("failed to set new channel"));
+    }
   }
 }
