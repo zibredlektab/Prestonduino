@@ -1,32 +1,45 @@
 #include <PDServer.h>
 
-#define PIN1 5
-#define PIN2 6
-#define PIN4 7
-#define PIN8 8
+#define CHCHECKDELAY 1000
 
 PDServer *pd;
 
+uint8_t pins[4] = {0, 1, 13, 14};
+
+unsigned long long lastchannelcheck;
+
 void setup() {
-  pd = new PDServer(readSwitch(), Serial1);
+
+  Serial.begin(115200);
+  for (int i = 0; i < 4; i++) {
+    pinMode(pins[i], INPUT_PULLUP);
+  }
+
   
-  pinMode(PIN1, INPUT_PULLUP);
-  pinMode(PIN2, INPUT_PULLUP);
-  pinMode(PIN4, INPUT_PULLUP);
-  pinMode(PIN8, INPUT_PULLUP);
+  uint8_t newchannel = readSwitch();
+  
+  pd = new PDServer(newchannel, Serial1);
+  lastchannelcheck = millis();
 }
 
 void loop() {
   pd->onLoop();
+
+  if (lastchannelcheck + CHCHECKDELAY < millis()) {
+    uint8_t newchannel = readSwitch();
+    if (pd->getChannel() != newchannel) {
+      pd->setChannel(newchannel);
+    }
+    lastchannelcheck = millis();
+  }
 }
 
 uint8_t readSwitch() {
   uint8_t value = 0;
   for (int i = 0; i < 4; i++) {
-    if (!digitalRead(i + PIN1)) {
+    if (!digitalRead(pins[i])) {
       value += 1 << i;
     }
   }
-
   return value;
 }

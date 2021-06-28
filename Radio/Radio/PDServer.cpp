@@ -1,8 +1,10 @@
 #include "PDServer.h"
 
-PDServer::PDServer(int chan, HardwareSerial& mdrSerial) {
+PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   Serial.begin(115200);
   this->channel = chan;
+  Serial.print("channel is ");
+  Serial.println(chan, HEX);
   this->address = chan * 0x10;
   this->ser = &mdrSerial;
   this->mdr = new PrestonDuino(*ser);
@@ -303,4 +305,22 @@ uint8_t* PDServer::commandReplyToArray(command_reply input) {
 
 uint8_t PDServer::getAddress() {
   return this->address;
+}
+
+uint8_t PDServer::getChannel() {
+  return this->channel;
+}
+
+void PDServer::setAddress(uint8_t newaddress) {
+  this->address = newaddress;
+  Serial.print("new address is 0x");
+  Serial.println(this->address, HEX);
+}
+
+
+void PDServer::setChannel(uint8_t newchannel) {
+  this->channel = newchannel;
+  Serial.print("new channel is ");
+  Serial.println(this->channel, HEX);
+  setAddress(this->channel * 0x10);
 }

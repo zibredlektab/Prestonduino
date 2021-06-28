@@ -42,8 +42,8 @@ struct subscription {
 
 class PDServer {
   private:
-    uint8_t channel = 0xA; //hard-coded for now, will eventually be determined by pot
-    uint8_t address = 0x0;
+    uint8_t channel; // A is default
+    uint8_t address;
     HardwareSerial *ser;
     PrestonDuino *mdr;
     RH_RF95 *driver;
@@ -65,9 +65,12 @@ class PDServer {
     uint8_t* commandReplyToArray(command_reply input);
 
   public:
-    PDServer(int chan = 0xA, HardwareSerial& mdrserial = Serial);
+    PDServer(uint8_t chan = 0xA, HardwareSerial& mdrserial = Serial);
     void onLoop();
     uint8_t getAddress();
+    uint8_t getChannel();
+    void setAddress(uint8_t newaddress);
+    void setChannel(uint8_t newchannel);
   
 };
 
