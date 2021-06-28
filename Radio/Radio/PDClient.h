@@ -10,7 +10,7 @@
 #define PDClient_h
 
 
-#define RETRIES 0
+#define RETRIES 5
 #define PING 5000
 
 #ifdef MOTEINO_M0
@@ -55,12 +55,10 @@ class PDClient {
     command_reply response;
     unsigned long timeoflastmessagefromserver = 0;
     unsigned long lastping = 0;
-    message lastsent;
     uint8_t substate = 0;
     
     bool sendMessage(uint8_t type, uint8_t data);
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
-    bool resend();
     void findAddress();
     void arrayToCommandReply(byte* input);
     bool handleErrors();

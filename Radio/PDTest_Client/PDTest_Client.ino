@@ -11,6 +11,8 @@
 #include <Fonts/FreeSerifItalic9pt7b.h>
 //#include <Fonts/Roboto_34.h>
 
+#define IGNOREERRORS false
+
 
 #define CHAR_FONT &FreeSerifItalic9pt7b
 #define XLARGE_FONT CHAR_FONT//&Roboto_34
@@ -35,7 +37,7 @@
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
 
-bool ignoreerrors = true;
+bool ignoreerrors = IGNOREERRORS;
 
 bool editingchannel = false;
 
@@ -78,7 +80,7 @@ void setup() {
   pinMode(BUTTON_C, INPUT_PULLUP);
 
   if (!digitalRead(BUTTON_B)) {
-    ignoreerrors = false;
+    ignoreerrors = !ignoreerrors;
   }
   
   oled.begin(0x3C, true);
