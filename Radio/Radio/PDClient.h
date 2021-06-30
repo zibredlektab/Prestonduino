@@ -63,9 +63,9 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris = 0;
-    uint16_t flength = 0;
-    uint32_t focus = 448673;
+    uint16_t iris = 340;
+    uint16_t flength = 25;
+    uint32_t focus = 8873;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range
     char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";

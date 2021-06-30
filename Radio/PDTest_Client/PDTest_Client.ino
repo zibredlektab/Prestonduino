@@ -6,18 +6,18 @@
 
 #include <FlashStorage.h>
 #include <FlashAsEEPROM.h>
-//#include <Fonts/pixelmix4pt7b.h>
-//#include <Fonts/Roboto_Medium_26.h>
+#include "Fonts/pixelmix4pt7b.h"
+#include "Fonts/Roboto_Medium_26.h"
+#include "Fonts/Roboto_34.h"
 #include <Fonts/FreeSerifItalic9pt7b.h>
-//#include <Fonts/Roboto_34.h>
 
-#define IGNOREERRORS false
+#define IGNOREERRORS true
 
 
 #define CHAR_FONT &FreeSerifItalic9pt7b
-#define XLARGE_FONT CHAR_FONT//&Roboto_34
-#define LARGE_FONT CHAR_FONT//&Roboto_Medium_26
-#define SMALL_FONT CHAR_FONT//&pixelmix4pt7b
+#define XLARGE_FONT &Roboto_34
+#define LARGE_FONT &Roboto_Medium_26
+#define SMALL_FONT &pixelmix4pt7b
 
 #define BUTTON_A  9
 #define BUTTON_B  6
@@ -33,7 +33,7 @@
 #define SMALL false
 #define X_OFFSET_BIG 5
 #define Y_OFFSET_BIG 48
-#define X_OFFSET_SMALL 90
+#define X_OFFSET_SMALL 85
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
 
@@ -351,7 +351,7 @@ void drawIris(uint16_t ap, bool big) {
     oled.setCursor(irisx, y);
 
     if (ap == 0) {
-      oled.setFont(XLARGE_FONT);
+      oled.setFont(SMALL_FONT);
       oled.print("No Iris");
     } else {
     
@@ -410,6 +410,7 @@ void drawZoom(uint8_t fl, bool big) {
     oled.setCursor(x, y);
 
     if (fl == 0) {
+      oled.setFont(SMALL_FONT);
       oled.print("No Zoom");
     } else {
       oled.print(fl);
@@ -520,7 +521,7 @@ void drawChannel(uint8_t channel) {
   oled.fillRect(116, 0, 11, 11, bgcolor);
   oled.setFont(SMALL_FONT);
   oled.setTextColor(textcolor);
-  oled.setCursor(118, 8);
+  oled.setCursor(119, 8);
   oled.print(channel, HEX);
   
   oled.setTextColor(SH110X_WHITE); // reset the text color to white for the next function
