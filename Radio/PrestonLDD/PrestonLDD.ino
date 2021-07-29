@@ -22,6 +22,7 @@
 #define BUTTON_A  9
 #define BUTTON_B  6
 #define BUTTON_C  5
+#define VBATPIN A7
 
 #define FLASHTIME 500
 #define MODESTOREDELAY 2000
@@ -85,7 +86,7 @@ void setup() {
   
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(3);
+  oled.setRotation(1);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setFont(SMALL_FONT);
@@ -273,6 +274,7 @@ void drawScreen() {
 
   
   drawChannel(channel);
+  drawBatt();
   oled.display();
 }
 
@@ -525,6 +527,33 @@ void drawChannel(uint8_t channel) {
   oled.print(channel, HEX);
   
   oled.setTextColor(SH110X_WHITE); // reset the text color to white for the next function
+}
+
+void drawBatt() {
+  Serial.println("drawing batt");
+  static int battcount = 9;
+  static long int measuredvbatt = 0;
+  static int output = 0;
+  if (battcount < 10) {
+    measuredvbatt += analogRead(VBATPIN);
+    battcount++;
+    
+  } else {
+    measuredvbatt /= 10;
+    battcount = 0;
+    
+    Serial.print("VBAT: ");
+    Serial.println(measuredvbatt);
+    output = map(measuredvbatt, 0, 653, 0, 100);
+  }
+  
+  oled.setCursor(110, 16);
+  if (output <= 100) {
+    oled.print(output);
+    oled.print("%");
+  } else {
+    oled.print("pwr");
+  }
 }
 
 void irisMath (uint16_t iris, double* irisbaserounded, double* irisfraction) {
