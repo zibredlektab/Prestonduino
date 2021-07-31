@@ -71,6 +71,9 @@ class PDServer {
     uint8_t getChannel();
     void setAddress(uint8_t newaddress);
     void setChannel(uint8_t newchannel);
+
+    int sendToMDR(PrestonPacket* pak);
+    command_reply getMDRReply();
   
 };
 

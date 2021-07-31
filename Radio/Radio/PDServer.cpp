@@ -324,3 +324,11 @@ void PDServer::setChannel(uint8_t newchannel) {
   Serial.println(this->channel, HEX);
   setAddress(this->channel * 0x10);
 }
+
+int PDServer::sendToMDR(PrestonPacket* pak) {
+  return this->mdr->sendToMDR(pak);
+}
+
+command_reply PDServer::getMDRReply() {
+  return this->mdr->getReply();
+}
