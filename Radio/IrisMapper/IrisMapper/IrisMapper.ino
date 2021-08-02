@@ -1,11 +1,32 @@
 #include <PrestonDuino.h>
+#include <SD.h>
+
+/*
+ * "map" iris in HU3 per lens, using ring rather than lens
+ * IrisMap lens using IrisMapper (build Mapping LUT)
+ * 
+ * Read commanded iris metadata to determine desired stop
+ * Use loaded Mapping LUT to determine correct aux encoder position from stop
+ * Drive aux motor to position
+ */
 
 PrestonDuino *mdr;
 
-uint16_t lensmap[5] = {0, 0x44, 0x88, 0xAA, 0xFF};
+File lensfile;
+
+uint8_t mappoints = 0;
+uint16_t lensmap[5] = {0, 0x4444, 0x8888, 0xAAAA, 0xFFFF};
+char curlens[28];
+char lensfilename[25];
 
 void setup() {
   Serial.begin(115200);
+
+  if (!SD.begin(4)) {
+    Serial.println("SD initialization failed!");
+    while (1);
+  }
+  Serial.println("SD initialization done.");
 
   mdr = new PrestonDuino(Serial1);
   
@@ -16,7 +37,34 @@ void setup() {
 }
 
 void loop() {
+  char* mdrlens = mdr->getLensName();
+  if (!strcmp(mdr->getLensName(), curlens)) { // current mdr lens is different from our lens
+    lensfile.close(); 
+    memcpy(curlens, mdrlens, 25);
+    
+    lensfile = SD.open(curlens, FILE_WRITE);
+    
+    if (lensfile) {
+      mappoints = lensfile.read(); // first byte in file indicates how many mapping points are saved
+      for(int i = 0; i < mappoints; i++) {
+        lensmap[i] = lensfile.read(); // read through file byte by byte to reconstruct lens table
+      }
+    } else {
+      if (!mapLens()) {
+        Serial.println("Switching lenses failed, because mapping new lens failed");
+      }
+    }
+  }
 
+  
+  irisToAux();
+}
+
+bool mapLens() {
+  
+}
+
+void irisToAux() {
   command_reply irisdata = mdr->data(0x41); // get metadata position of iris channel
   uint16_t iris = 0;
 
@@ -39,12 +87,4 @@ void loop() {
   // set aux motor to encoder setting
   uint8_t auxdata[3] = {0x18, auxpos & 0xFF, auxpos >> 8};
   mdr->data(auxdata, 3);
-  
-  // "map" iris in HU3 per lens, using ring rather than lens
-  // IrisMap lens using IrisMapper (build Mapping LUT)
-  
-  // Read commanded iris metadata to determine desired stop
-  // Use loaded Mapping LUT to determine correct aux encoder position from stop
-  // Drive aux motor to position
-
 }
