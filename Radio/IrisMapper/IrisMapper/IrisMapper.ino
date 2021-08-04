@@ -19,6 +19,8 @@ uint16_t lensmap[5] = {0, 0x4444, 0x8888, 0xAAAA, 0xFFFF};
 char curlens[28];
 char lensfilename[25];
 
+bool mapping = false;
+
 void setup() {
   Serial.begin(115200);
 
@@ -39,7 +41,7 @@ void setup() {
 void loop() {
   char* mdrlens = mdr->getLensName();
   if (!strcmp(mdr->getLensName(), curlens)) { // current mdr lens is different from our lens
-    lensfile.close(); 
+    lensfile.close();
     memcpy(curlens, mdrlens, 25);
     
     lensfile = SD.open(curlens, FILE_WRITE);
@@ -50,17 +52,21 @@ void loop() {
         lensmap[i] = lensfile.read(); // read through file byte by byte to reconstruct lens table
       }
     } else {
-      if (!mapLens()) {
+      if (mapLens()) {
+        lensfile.write(mappoints);
+        lensfile.write((uint8_t*)lensmap, mappoints*2);
+        lensfile.close();
+      } else {
         Serial.println("Switching lenses failed, because mapping new lens failed");
-      }
+      } 
     }
   }
 
-  
   irisToAux();
 }
 
 bool mapLens() {
+  mapping = true;
   
 }
 
@@ -82,8 +88,14 @@ void irisToAux() {
   uint8_t avnceil = ceil(avnumber); // next lowest AV number
 
   // map iris data to aux encoder setting
-  uint16_t auxpos = map(avnumber, avnfloor, avnceil, lensmap[avnfloor], lensmap[avnceil]);
-
+  uint16_t auxpos;
+  if (!mapping) {
+    auxpos = map(avnumber, avnfloor, avnceil, lensmap[avnfloor], lensmap[avnceil]);
+  } else {
+    // if mapping is in progress, move aux linearly through entire range of encoder (no look up table)
+    auxpos = map(avnumber, 0.0, 10.0, 0, 0xFFFF);
+  }
+  
   // set aux motor to encoder setting
   uint8_t auxdata[3] = {0x18, auxpos & 0xFF, auxpos >> 8};
   mdr->data(auxdata, 3);
