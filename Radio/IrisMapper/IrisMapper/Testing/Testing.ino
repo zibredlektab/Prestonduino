@@ -2,7 +2,8 @@
 
 PrestonDuino *mdr;
 
-uint16_t lensmap[10] = {0, 0x1111, 0x2222, 0x3333, 0x4444, 0x6666, 0x8888, 0xAAAA, 0xCCCC, 0xFFFF};
+uint16_t lensmap[10] = {0, 0x0100, 0x0200, 0x0300, 0x4444, 0x6666, 0x8888, 0xAAAA, 0xCCCC, 0xFFFF};
+uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC};
 
 
 void setup() {
@@ -12,12 +13,13 @@ void setup() {
   mdr = new PrestonDuino(Serial1);
   
   delay(100);
-  mdr->setMDRTimeout(10);
+  mdr->setMDRTimeout(100);
 
-  mdr->mode(0x10, 0x40); // We want control of AUX, we are only interested in commanded values
+  mdr->mode(0x00, 0x47); // We want control of AUX, we are only interested in commanded values
 }
 
 void loop() {
+  mdr->mode(0x00, 0x40); // We want control of AUX, we are only interested in commanded values
 
   Serial.println();
   
@@ -26,9 +28,9 @@ void loop() {
 
   if (irisdata.replystatus > 0) {
     // data was received from mdr
-    iris = irisdata.data[1]*256 + irisdata.data[2];
-    //Serial.print("Iris setting: ");
-    //Serial.println(iris);
+    iris = irisdata.data[1] * 0xFF;
+    iris += irisdata.data[2];
+    
   } else if (irisdata.replystatus == 0) {
     Serial.println("F/I knob not calibrated for this lens");
   }
@@ -40,8 +42,8 @@ void loop() {
   
   double avnumber = log(sq(irisdec))/log(2); // iris AV number
 
-  uint8_t avnfloor = floor(avnumber); // next highest AV number
-  uint8_t avnceil = ceil(avnumber); // next lowest AV number
+  uint8_t avnfloor = floor(avnumber+.01); // next highest AV number
+  uint8_t avnceil = ceil(avnumber+.01); // next lowest AV number
 
   Serial.print("AV number is ");
   Serial.println(avnumber);
