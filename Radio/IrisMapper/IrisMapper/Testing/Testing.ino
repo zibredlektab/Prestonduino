@@ -14,7 +14,7 @@ uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA7
 uint16_t testmap[10] = {0, 0x172A, 0x2CEF, 0x5466, 0x6724, 0x9C76, 0xBD72, 0xD545, 0xDC41, 0xEA39}; // test mapping for hand-drawn apertures
 
 void setup() {
-  Serial.begin(115200);
+  //Serial.begin(115200);
 
   
   mdr = new PrestonDuino(Serial1);
@@ -31,7 +31,7 @@ void loop() {
     
     mdr->mode(0x00, 0x40); // We want control of AUX, we are only interested in commanded values
   
-    Serial.println();
+    //Serial.println();
   
     
     command_reply irisdata = mdr->data(0x41); // get metadata position of iris channel
@@ -42,11 +42,11 @@ void loop() {
       iris = irisdata.data[1] * 0xFF;
       iris += irisdata.data[2];
   
-      Serial.print("iris is 0x");
-      Serial.println(iris, HEX);
+      //Serial.print("iris is 0x");
+      //Serial.println(iris, HEX);
       
     } else if (irisdata.replystatus == 0) {
-      Serial.println("F/I knob not calibrated for this lens");
+      //Serial.println("F/I knob not calibrated for this lens");
     }
   
     int ringmapindex = 0;
@@ -58,27 +58,27 @@ void loop() {
       }
     }
   
-    Serial.print("ringmapindex is ");
-    Serial.print(ringmapindex);
-    Serial.print(", 0x");
-    Serial.println(ringmap[ringmapindex], HEX);
+    //Serial.print("ringmapindex is ");
+    //Serial.print(ringmapindex);
+    //Serial.print(", 0x");
+    //Serial.println(ringmap[ringmapindex], HEX);
   
     uint8_t avnfrac = map(iris, ringmap[ringmapindex], ringmap[ringmapindex+1], 0, 100);
-    Serial.print("AV fraction is ");
-    Serial.println(avnfrac);
+    //Serial.print("AV fraction is ");
+    //Serial.println(avnfrac);
     
     double avnumber = ringmapindex + (avnfrac/100.0);
   
     uint8_t avnfloor = ringmapindex; // next highest AV number
     uint8_t avnceil = ringmapindex+1; // next lowest AV number
   
-    Serial.print("AV number is ");
-    Serial.println(avnumber);
+    //Serial.print("AV number is ");
+    //Serial.println(avnumber);
   
-    Serial.print("Floor is ");
-    Serial.println(avnfloor);
-    Serial.print("Ceil is ");
-    Serial.println(avnceil);
+    //Serial.print("Floor is ");
+    //Serial.println(avnfloor);
+    //Serial.print("Ceil is ");
+    //Serial.println(avnceil);
   
     // map iris data to aux encoder setting
     uint16_t auxpos;
@@ -91,8 +91,8 @@ void loop() {
     uint8_t auxl = auxpos & 0xFF;
   
     
-    Serial.print("auxpos is 0x");
-    Serial.println(auxpos, HEX);
+    //Serial.print("auxpos is 0x");
+    //Serial.println(auxpos, HEX);
     
     uint8_t auxdata[3] = {0x08, auxh, auxl};
     mdr->data(auxdata, 3);
