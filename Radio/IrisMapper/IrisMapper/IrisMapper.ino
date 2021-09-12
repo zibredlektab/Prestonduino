@@ -15,23 +15,23 @@
 PrestonDuino *mdr;
 
 File lensfile;
+static char wholestops[10][4] = {"1.0\0", "1.4\0", "2.0\0", "2.8\0", "4.0\0", "5.6\0", "8.0\0", "11 \0", "16 \0", "22 \0"};
 
 static uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
-uint16_t testmap[10] = {0, 0x172A, 0x2CEF, 0x5466, 0x6724, 0x9C76, 0xBD72, 0xD545, 0xDC41, 0xEA39}; // test mapping for hand-drawn apertures
-
 uint16_t lensmap[10];
-char curlens[40];
+char curlens[29];
+char mdrlens[29];
 char lensfilename[40];
 unsigned long long timelastchecked = 0;
 
 bool mapping = false;
+uint8_t curmappingav = 0;
 
 void setup() {
   Serial.begin(115200);
 
   if (!SD.begin(4)) {
-    Serial.println("SD initialization failed!");
-    //while (1);
+    Serial.println("SD initialization failed.");
   } else {
     Serial.println("SD initialization done.");
   }
@@ -49,37 +49,82 @@ void loop() {
     timelastchecked = millis();
     
     mdr->mode(0x00, 0x40); // We want control of AUX, we are only interested in commanded values
-  
-    char* mdrlens = mdr->getLensName();
-    if (!strcmp(mdr->getLensName(), curlens)) { // current mdr lens is different from our lens
-      /*lensfile.close();
-      memcpy(curlens, mdrlens, 25);
+
+    if (!mapping) {
+      strncpy(mdrlens, &mdr->getLensName()[1], 28);
+      mdrlens[28] = '\0';
       
-      lensfile = SD.open(curlens, FILE_WRITE);
-      
-      if (lensfile) {
-        mappoints = lensfile.read(); // first byte in file indicates how many mapping points are saved
-        for(int i = 0; i < mappoints; i++) {
-          lensmap[i] = lensfile.read(); // read through file byte by byte to reconstruct lens table
-        }
-      } else {
-        if (mapLens()) {
-          lensfile.write(mappoints);
-          lensfile.write((uint8_t*)lensmap, mappoints*2);
-          lensfile.close();
+      if (strcmp(mdrlens, curlens) != 0) { // current mdr lens is different from our lens
+        Serial.println("Switching lenses...");
+        Serial.println("This lens has not been mapped.");
+        mapLens();
+        /*lensfile.close();
+        memcpy(curlens, mdrlens, 25);
+        
+        lensfile = SD.open(curlens, FILE_WRITE);
+        
+        if (lensfile) {
+          mappoints = lensfile.read(); // first byte in file indicates how many mapping points are saved
+          for(int i = 0; i < mappoints; i++) {
+            lensmap[i] = lensfile.read(); // read through file byte by byte to reconstruct lens table
+          }
         } else {
-          Serial.println("Switching lenses failed, because mapping new lens failed");
-        } 
-      }*/
+          if (mapLens()) {
+            lensfile.write(mappoints);
+            lensfile.write((uint8_t*)lensmap, mappoints*2);
+            lensfile.close();
+          } else {
+            Serial.println("Switching lenses failed, because mapping new lens failed");
+          } 
+        }*/
+      }
+    } else {
+      if (Serial.available() > 0) {
+        Serial.read();
+        mapLens();
+      }
     }
-  
     irisToAux();
   }
 }
 
-bool mapLens() {
-  mapping = true;
-  return true;
+void mapLens() {
+
+  command_reply auxdata = mdr->data(0x58);
+  uint16_t aux = auxdata.data[1] * 0xFF;
+  aux += auxdata.data[2];
+  
+  if (!mapping) {
+    Serial.print("Mapping new lens \"");
+    for (int i = 0; i < 28; i++) {
+      Serial.print(mdrlens[i]);
+    }
+    Serial.println("\"");
+    
+    strncpy(curlens, mdrlens, 28);
+    curlens[28] = '\0';
+    Serial.println(curlens);
+    Serial.println(mdrlens);
+    
+    mapping = true;
+    curmappingav = 0;
+    
+  } else {
+    Serial.print("Mapping of F/");
+    Serial.print(wholestops[curmappingav]);
+    Serial.print(" saved at encoder position 0x");
+    Serial.println(aux, HEX);
+    lensmap[curmappingav++] = aux;
+  }
+
+  if (curmappingav < 10) {
+    Serial.print("Set aperture to ");
+    Serial.print(wholestops[curmappingav]);
+    Serial.println(" and send any char to continue");
+  } else {
+    Serial.println("Finished mapping.");
+    mapping = false;
+  }
 }
 
 void irisToAux() {
@@ -91,7 +136,7 @@ void irisToAux() {
     iris = irisdata.data[1] * 0xFF;
     iris += irisdata.data[2];
   } else if (irisdata.replystatus == 0) {
-    Serial.println("F/I knob not calibrated for this lens");
+    Serial.println("Communication error with MDR");
   }
 
   int ringmapindex = 0;
@@ -111,10 +156,10 @@ void irisToAux() {
   // map iris data to aux encoder setting
   uint16_t auxpos;
   if (!mapping) {
-    auxpos = map(avnumber*100, avnfloor*100, avnceil*100, testmap[avnfloor], testmap[avnceil]);
+    auxpos = map(avnumber*100, avnfloor*100, avnceil*100, lensmap[avnfloor], lensmap[avnceil]);
   } else {
     // if mapping is in progress, move aux linearly through entire range of encoder (no look up table)
-    auxpos = map(avnumber, 0.0, 10.0, 0, 0xFFFF);
+    auxpos = map(avnumber*100, 0, 1000, 0, 0xFFFF);
   }
   
   // set aux motor to encoder setting
