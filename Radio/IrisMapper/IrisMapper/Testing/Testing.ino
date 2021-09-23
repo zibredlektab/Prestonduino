@@ -18,10 +18,11 @@ SdFat SD;
 
 unsigned long long timelastchecked = 0;
 
-
-char curlens[29];
-char mdrlens[29];
-char lensfilename[40];
+uint8_t lensnamelen;
+char curlens[40];
+char mdrlens[40];
+char lenspath[25];
+char filename[15];
 
 void setup() {
   Serial.begin(115200);
@@ -52,31 +53,100 @@ void loop() {
   if (timelastchecked + DELAY < millis()) {
     timelastchecked = millis();
 
-    strncpy(mdrlens, &mdr->getLensName()[1], 28);
-    mdrlens[28] = '\0';
+    
+    
+    lensnamelen = mdr->getLensName()[0] - 2;
+    strncpy(mdrlens, &mdr->getLensName()[1], lensnamelen);
+    mdrlens[lensnamelen] = '\0';
     
     if (strcmp(mdrlens, curlens) != 0) { // current mdr lens is different from our lens
       Serial.println("Switching lenses...");
-      Serial.println("This lens has not been mapped.");
+      Serial.print("This lens (");
+      Serial.print(mdrlens);
+      Serial.println(") has not been mapped.");
+
+      for (int i = 0; i < lensnamelen; i++) {
+        curlens[i] = '\0';
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.print(mdrlens[i]);
+        Serial.print(" 0x");
+        Serial.println(mdrlens[i], HEX);
+      }
   
-      strncpy(curlens, mdrlens, 28);
-      curlens[28] = '\0';
+      strncpy(curlens, mdrlens, lensnamelen);
+      curlens[lensnamelen] = '\0';
+
+      makePath();
+
+      SD.chdir();
+
+      if(!SD.mkdir(lenspath, true)) {
+        Serial.println("Failed to make directory");
+      }
+      SD.chdir(lenspath);
       
-      lensfile = SD.open("f00.txt", FILE_WRITE); // open lens file for current lens
+      lensfile = SD.open(filename, FILE_WRITE); // open lens file for current lens
       if (lensfile) {
+        Serial.print("Opened file ");
+        Serial.print(filename);
+        Serial.print(" at path ");
+        Serial.println(lenspath);
+        
         lensfile.print(curlens);
         lensfile.close();
       } else {
-        Serial.println("File not opened");
+        Serial.println("File not opened.");
+        Serial.print("File ");
+        Serial.print(filename);
+        Serial.print(" at path ");
+        Serial.println(lenspath);
       }
       
 
-      lensfile = SD.open("f00.txt");
-      while(lensfile.available()) {
-        Serial.print((char)lensfile.read());
+      lensfile = SD.open(filename);
+      if (lensfile) {
+        while(lensfile.available()) {
+          Serial.print((char)lensfile.read());
+        }
+        lensfile.close();
+        Serial.println();
+      } else {
+        Serial.println("failed to reopen file");
       }
-      lensfile.close();
-      Serial.println();
+    }
+  }
+}
+
+void makePath() {
+  int pipecount = 0;
+  int pathlen = 0;
+  
+  for (int i = 0; i < lensnamelen; i++) {
+    if (curlens[i] == '\0') {
+      return;
+    }
+    if (pipecount < 2) {
+      if (curlens[i] == '|') {
+          lenspath[i] = '/';
+          pipecount++;
+      } else {
+        lenspath[i] = curlens[i];
+      }
+      lenspath[i+1] = '\0';
+      pathlen++;
+    } else {
+      filename[i-pathlen] = curlens[i];
+      filename[i-pathlen+1] = '\0';
+    }
+  }
+
+  // Remove trailing whitespace
+  for (int i = 13; i >= 0; i--) {
+    if (filename[i] == ' ') {
+      filename[i] = '\0';
+    } else {
+      break;
     }
   }
 }
