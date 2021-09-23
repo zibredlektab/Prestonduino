@@ -102,7 +102,7 @@ void loop() {
             for(int i = 0; i < 10; i++) {
               // read through file byte by byte to reconstruct lens table
               lensmap[i] = lensfile.read();  // 16-bit int from 2x 8-bit int
-              lensmap[i] += lensfile.read() * 0xFF;
+              lensmap[i] += lensfile.read() * 0x100;
               Serial.print("[F/");
               Serial.print(wholestops[i]);
               Serial.print(": 0x");
@@ -124,6 +124,17 @@ void loop() {
         }
         
       } else if (!saved) {
+        for(int i = 0; i < 10; i++) {
+          // read through file byte by byte to reconstruct lens table
+          Serial.print("[F/");
+          Serial.print(wholestops[i]);
+          Serial.print(": 0x");
+          Serial.print(lensmap[i], HEX);
+          Serial.print("] ");
+          
+        }
+        Serial.println();
+        
         lensfile = SD.open(filename, FILE_WRITE);
         int written = lensfile.write((uint8_t*)lensmap, 20);
         lensfile.close();
