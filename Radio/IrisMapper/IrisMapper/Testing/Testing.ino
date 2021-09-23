@@ -52,12 +52,11 @@ void setup() {
 void loop() {
   if (timelastchecked + DELAY < millis()) {
     timelastchecked = millis();
-
     
+    lensnamelen = mdr->getLensName()[0] - 2; // lens name also includes data type, which is 2 bytes
     
-    lensnamelen = mdr->getLensName()[0] - 2;
-    strncpy(mdrlens, &mdr->getLensName()[1], lensnamelen);
-    mdrlens[lensnamelen] = '\0';
+    strncpy(mdrlens, &mdr->getLensName()[1], lensnamelen); // copy mdr data, sans data type, to local buffer
+    mdrlens[lensnamelen] = '\0'; // null character to terminate string
     
     if (strcmp(mdrlens, curlens) != 0) { // current mdr lens is different from our lens
       Serial.println("Switching lenses...");
@@ -65,8 +64,8 @@ void loop() {
       Serial.print(mdrlens);
       Serial.println(") has not been mapped.");
 
-      for (int i = 0; i < lensnamelen; i++) {
-        curlens[i] = '\0';
+      for (int i = 0; i <= lensnamelen; i++) {
+        curlens[i] = '\0'; // null-out previous lens name
         Serial.print(i);
         Serial.print(": ");
         Serial.print(mdrlens[i]);
@@ -74,20 +73,19 @@ void loop() {
         Serial.println(mdrlens[i], HEX);
       }
   
-      strncpy(curlens, mdrlens, lensnamelen);
-      curlens[lensnamelen] = '\0';
+      strncpy(curlens, mdrlens, lensnamelen); // copy our new lens to current lens name
+      curlens[lensnamelen] = '\0'; // make absolutely sure it ends with a null
 
       makePath();
 
-      SD.chdir();
+      SD.chdir(); // change to SD root
 
-      if(!SD.mkdir(lenspath, true)) {
-        Serial.println("Failed to make directory");
-      }
-      SD.chdir(lenspath);
+      SD.mkdir(lenspath, true); // make the directory for the new lens file (this will fail if the directory already exists, which is fine
+      SD.chdir(lenspath); // move to the new directory
       
       lensfile = SD.open(filename, FILE_WRITE); // open lens file for current lens
       if (lensfile) {
+        // lens file was created/opened successfully
         Serial.print("Opened file ");
         Serial.print(filename);
         Serial.print(" at path ");
@@ -96,6 +94,7 @@ void loop() {
         lensfile.print(curlens);
         lensfile.close();
       } else {
+        // lens file was not opened for some reason
         Serial.println("File not opened.");
         Serial.print("File ");
         Serial.print(filename);
@@ -104,7 +103,7 @@ void loop() {
       }
       
 
-      lensfile = SD.open(filename);
+      lensfile = SD.open(filename); // re-open the file to make sure everything worked
       if (lensfile) {
         while(lensfile.available()) {
           Serial.print((char)lensfile.read());
@@ -119,25 +118,31 @@ void loop() {
 }
 
 void makePath() {
-  int pipecount = 0;
-  int pathlen = 0;
+  int pipecount = 0; // how many directory levels have we processed
+  int pathlen = 0; // length of path so far
   
   for (int i = 0; i < lensnamelen; i++) {
-    if (curlens[i] == '\0') {
-      return;
-    }
+
     if (pipecount < 2) {
+      // we are still processing the path, not the filename itself
       if (curlens[i] == '|') {
-          lenspath[i] = '/';
+          lenspath[i] = '/'; // replace all pipes with slashes, to create directory levels later
           pipecount++;
       } else {
-        lenspath[i] = curlens[i];
+        lenspath[i] = curlens[i]; // otherwise, copy letters over directly
       }
-      lenspath[i+1] = '\0';
+      if (pipecount == 2) {
+        lenspath[i+1] = '\0'; // end filepath with null
+      }
       pathlen++;
     } else {
+      // we are processing the filename, not the path
       filename[i-pathlen] = curlens[i];
-      filename[i-pathlen+1] = '\0';
+    }
+
+    if (curlens[i] == '\0') {
+      // we have reached the end of the lens name, stop working
+      return;
     }
   }
 
