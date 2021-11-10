@@ -11,11 +11,12 @@
 
 
 #define RETRIES 10
+#define TIMEOUT 30
 #define PING 5000
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
-  #define INTPIN 9
+//  #define INTPIN 9
 #elif defined(ARDUINO_SAMD_ZERO)
   #define SSPIN 8
   #define INTPIN 3
@@ -54,7 +55,7 @@ class PDClient {
     bool waitforreply = false;
     command_reply response;
     unsigned long timeoflastmessagefromserver = 0;
-    unsigned long lastping = 0;
+    unsigned long lastsubscribeattempt = 0;
     uint8_t substate = 0;
     
     bool sendMessage(uint8_t type, uint8_t data);

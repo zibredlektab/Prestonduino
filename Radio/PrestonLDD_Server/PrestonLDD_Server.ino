@@ -18,7 +18,7 @@ void setup() {
   
   uint8_t newchannel = readSwitch();
   
-  pd = new PDServer(newchannel, Serial1);
+  pd = new PDServer(readSwitch(), Serial1);
   lastchannelcheck = millis();
 }
 
@@ -35,6 +35,7 @@ void loop() {
 }
 
 uint8_t readSwitch() {
+  return 0xA;
   uint8_t value = 0;
   for (int i = 0; i < 4; i++) {
     if (!digitalRead(pins[i])) {

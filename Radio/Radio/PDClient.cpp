@@ -23,7 +23,7 @@ PDClient::PDClient(int chan) {
   } else {
     //Serial.println(F("RH manager initialized"));
     this->manager->setRetries(RETRIES);
-    this->manager->setTimeout(10);
+    this->manager->setTimeout(TIMEOUT);
   }
 
   this->driver->setPromiscuous(false);
@@ -211,7 +211,7 @@ void PDClient::onLoop() {
       this->error(ERR_NOTX);
     }
 
-    if (this->lastping + PING < millis()) {
+    if (this->lastsubscribeattempt + PING < millis()) {
       //Serial.println("Time to resubscribe");
       this->subscribe(this->substate);
     }
@@ -463,7 +463,7 @@ bool PDClient::subscribe(uint8_t type) {
   if (this->sendMessage(2, data, 2)) {
     //Serial.print(F("Sent subscription request for "));
     //Serial.println(type);
-    this->lastping = millis();
+    this->lastsubscribeattempt = millis();
     return true;
   } else {
     //Serial.println("Failed to send subscription request");

@@ -4,7 +4,7 @@
 */
 
 #include "PrestonDuino.h"
-
+#include "wiring_private.h" // pinPeripheral() function
 
 PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   // Open a connection to the MDR on Serial port 'serial'
@@ -14,24 +14,24 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   ser = &serial;
   ser->begin(115200);
 
-  // Connection to MDR theoretically open, testing with WHO
+  //pinPeripheral(10, PIO_SERCOM);
+  //pinPeripheral(12, PIO_SERCOM);
 
-  while (!ser) {
-    ; // wait until we get a reply
-  }
+  //while (!ser) {}
 
   //Serial.println("MDR connection is open");
   // TODO slightly more robust way of checking for connection?
   this->connectionopen = true;
 
   // TODO get & store MDR number 
-  /*byte* mdrinfo = this->info(0x0);
+  command_reply mdrinfo = this->info(0x0);
 
-  int infolen = mdrinfo[0];
-
-  this->mdrtype = mdrinfo[5];
-  ////Serial.println(this->mdrtype);
-  */
+  //Serial.print("Connected MDR: ");
+  for(int i = 0; i < mdrinfo.data[0]; i++){
+    //Serial.print((char)mdrinfo.data[i]);
+  }
+  //Serial.println();
+  
 }
 
 

@@ -5,6 +5,13 @@
 
 #include <U8g2lib.h>
 
+#include "wiring_private.h" // pinPeripheral() function
+Uart Serial2 (&sercom1, 12, 10, SERCOM_RX_PAD_3, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+  Serial2.IrqHandler();
+}
+
 #define SAMPLES 100
 
 PrestonDuino *mdr;
@@ -18,12 +25,19 @@ int count;
 void setup() {
 
   Serial.begin(115200);
+  while(!Serial) {};
+  
+  
+
+
 
  // oled.begin();
-  mdr = new PrestonDuino(Serial1);
+  mdr = new PrestonDuino(Serial2);
 
   
-  delay(100);
+  mdr->setMDRTimeout(1000);
+  
+  delay(1000);
 
   mdr->mode(0x10, 0x3);
   //byte lensdata[] = {0x2, 0xFF, 0xFF};
@@ -32,7 +46,8 @@ void setup() {
 
 unsigned long focustotal = 0;
 void loop() {
-  uint16_t focus = 0;
+  mdr->data(0x02);
+  /*uint16_t focus = 0;
   if (count++ < SAMPLES) {
     focustotal += analogRead(A1);
   } else {
