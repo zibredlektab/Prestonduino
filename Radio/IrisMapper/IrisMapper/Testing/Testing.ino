@@ -64,7 +64,7 @@ void loop() {
       Serial.print(mdrlens);
       Serial.println(") has not been mapped.");
 
- /*     for (int i = 0; i <= lensnamelen; i++) {
+      for (int i = 0; i <= lensnamelen; i++) {
         curlens[i] = '\0'; // null-out previous lens name
         Serial.print(i);
         Serial.print(": ");
@@ -72,7 +72,7 @@ void loop() {
         Serial.print(" 0x");
         Serial.println(mdrlens[i], HEX);
       }
-  */
+  
       strncpy(curlens, mdrlens, lensnamelen); // copy our new lens to current lens name
       curlens[lensnamelen] = '\0'; // make absolutely sure it ends with a null
 

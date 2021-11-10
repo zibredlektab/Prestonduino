@@ -7,7 +7,30 @@
 #include <BlockDriver.h>
 #include <SysCall.h>
 
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
+#include "Fonts/pixelmix4pt7b.h"
+#include "Fonts/Roboto_Medium_26.h"
+#include "Fonts/Roboto_34.h"
+#include <Fonts/FreeSerifItalic9pt7b.h>
+
+#include "wiring_private.h" // pinPeripheral() function
+Uart Serial2 (&sercom1, 12, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
+void SERCOM1_Handler()
+{
+  Serial2.IrqHandler();
+}
+
 #define DELAY 12
+
+#define CHAR_FONT &FreeSerifItalic9pt7b
+#define XLARGE_FONT &Roboto_34
+#define LARGE_FONT &Roboto_Medium_26
+#define SMALL_FONT &pixelmix4pt7b
+
+#define BUTTON_A  9
+#define BUTTON_B  6
+#define BUTTON_C  5
 
 /*
  * "map" iris in HU3 per lens, using ring rather than lens
@@ -22,6 +45,8 @@ PrestonDuino *mdr;
 
 File lensfile;
 SdFat SD;
+
+//Adafruit_SH1107 oled(64, 128, &Wire);
 
 static char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
 static uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
@@ -41,8 +66,22 @@ bool saved = true;
 uint8_t curmappingav = 0;
 
 void setup() {
+
+  // Initialize display
+  //oled.begin(0x3C, true);
+  //oled.setTextWrap(true);
+  //oled.setRotation(1);
+  //oled.clearDisplay();
+  //oled.setTextColor(SH110X_WHITE);
+  //oled.setFont(SMALL_FONT);
+  //oled.setCursor(0, 10);
+  Serial.println("Starting up...");
+  //oled.display();
+  
   Serial.begin(115200);
-  while(!Serial) {};
+  while(!Serial && millis() < 3000) {};
+  Serial.println("Serial initialized or timed out.");
+  //oled.display();
 
   // disable radio for now
   pinMode(8, OUTPUT);
@@ -50,37 +89,66 @@ void setup() {
 
   // Initialize SD card
   Serial.print("Initializing SD card...");
-  if (!SD.begin(10, SPI_HALF_SPEED)) {
+  //oled.display();
+  if (!SD.begin(19, SPI_HALF_SPEED)) {
     Serial.println("failed.");
-    while(1);
+    //while(1);
   } else {
     Serial.println("done.");
   }
+  //oled.display();
+
+  // Initialize buttons
+  pinMode(BUTTON_A, INPUT_PULLUP);
+  pinMode(BUTTON_B, INPUT_PULLUP);
+  pinMode(BUTTON_C, INPUT_PULLUP);
+
+  // Initialize PrestonDuino
+  mdr = new PrestonDuino(Serial2);
   
-  mdr = new PrestonDuino(Serial1);
+  
+  mdr->setMDRTimeout(1000);
   
   delay(100);
-  mdr->setMDRTimeout(100);
+  Serial.println("PD initialized, setup done.");
+  //oled.display();
 
 }
 
 void loop() {
+  //oled.clearDisplay();
+  //oled.display();
+
+  //oled.setCursor(0,10);
+
+  //Serial.print("standing by...");
+  //oled.display();
   if (timelastchecked + DELAY < millis()) {
     timelastchecked = millis();
+    //Serial.println(".");
+    //oled.display();
     
-    mdr->mode(0x0, 0x40); // We want control of AUX, we are only interested in commanded values
+    mdr->mode(0x0, 0x2); // We want control of (F ix 0x0,0x2) (AUX is 0x0,0x40), we are only interested in commanded values
 
     lensnamelen = mdr->getLensName()[0] - 1; // lens name includes length of lens name, which we disregard
 
+    //Serial.print("got lens name from MDR: ");
+    //oled.display();
+    
     if (!mapping) {
+      //Serial.println("not mapping.");
+      //oled.display();
       strncpy(mdrlens, &mdr->getLensName()[1], lensnamelen); // copy mdr data, sans length of lens name, to local buffer
       mdrlens[lensnamelen] = '\0'; // null character to terminate string
+      //Serial.println("updated stored lens name");
+      //oled.display();
+
       
       if (strcmp(mdrlens, curlens) != 0) { // current mdr lens is different from our lens
         Serial.println("Switching lenses...");
-
         Serial.print("New lens name is ");
         Serial.println(mdrlens);
+        //oled.display();
         
         for (int i = 0; i <= lensnamelen; i++) {
           curlens[i] = '\0'; // null-out previous lens name
@@ -119,13 +187,12 @@ void loop() {
           }
           
         } else { // lens file for this lens does not exist (yet)
-          Serial.println("This lens has not been mapped");
           mapLens();
         }
         
       } else if (!saved) {
         for(int i = 0; i < 10; i++) {
-          // read through file byte by byte to reconstruct lens table
+          // print new mapped lens table
           Serial.print("[F/");
           Serial.print(wholestops[i]);
           Serial.print(": 0x");
@@ -202,7 +269,7 @@ void makePath() {
 
 void mapLens() {
 
-  command_reply auxdata = mdr->data(0x58);
+  command_reply auxdata = mdr->data(0x52); //0x58 for AUX, 0x52 for F (for MDR4 testing)
   uint16_t aux = auxdata.data[1] * 0xFF;
   aux += auxdata.data[2];
   
@@ -214,7 +281,6 @@ void mapLens() {
     curmappingav = 0;
     
   } else {
-
     Serial.print("saved at encoder position 0x");
     Serial.println(aux, HEX);
     lensmap[curmappingav++] = aux;
@@ -269,6 +335,6 @@ void irisToAux() {
   // set aux motor to encoder setting
   uint8_t auxh = auxpos >> 8;
   uint8_t auxl = auxpos & 0xFF;
-  uint8_t auxdata[3] = {0x48, auxh, auxl};
+  uint8_t auxdata[3] = {0x42, auxh, auxl}; //0x48 is AUX, 0x42 is F
   mdr->data(auxdata, 3);
 }
