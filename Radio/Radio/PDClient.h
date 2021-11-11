@@ -10,9 +10,9 @@
 #define PDClient_h
 
 
-#define RETRIES 10
+#define RETRIES 20
 #define TIMEOUT 30
-#define PING 5000
+#define PING 3000
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -55,7 +55,7 @@ class PDClient {
     bool waitforreply = false;
     command_reply response;
     unsigned long timeoflastmessagefromserver = 0;
-    unsigned long lastsubscribeattempt = 0;
+    unsigned long lastsubscriptionattempt = 0;
     uint8_t substate = 0;
     
     bool sendMessage(uint8_t type, uint8_t data);
