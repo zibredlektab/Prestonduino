@@ -68,6 +68,8 @@ int dialog = 0; // see below
  */
 
 int menuselected = 0;
+bool submenu = false;
+int choffset = 0;
 
 PDClient *pd;
 
@@ -108,13 +110,15 @@ void callback_ok(uint8_t pinIn)
 {
   switch (menuselected) {
     case 0: {
-      Serial.println("change channel");
-      changeChannel(1);
+      if (submenu) {
+        changeChannel(choffset);
+        choffset = 0;
+      }
+      submenu = !submenu;
       break;
     }
     case 1: {
-      Serial.println("change display mode");
-      changeMode(1);
+      submenu = !submenu;
       break;
     }
     case 2: {
@@ -136,15 +140,36 @@ void callback_ok(uint8_t pinIn)
 void callback_nav(uint8_t pinIn) {
   Serial.println("navigating");
   if (pinIn == BUTTON_A) {
-    menuselected++;
+    doNav(-1);
   } else {
-    menuselected--;
+    doNav(1);
   }
+}
 
-  if (menuselected >= 4) {
-    menuselected = 0;
-  } else if (menuselected < 0) {
-    menuselected = 3;
+void doNav(int dir) {
+  if (submenu) {
+    switch (menuselected) {
+      case 0: {
+        choffset += dir;
+        if (channel + choffset < 0) {
+          choffset = 0xF - channel;
+        } else if (channel + choffset > 0xF) {
+          choffset = channel * -1;
+        }
+        break;
+      }
+      case 1: {
+        changeMode(dir);
+        break;
+      }
+    }
+  } else {
+    menuselected -= dir;
+    if (menuselected >= 4) {
+      menuselected = 0;
+    } else if (menuselected < 0) {
+      menuselected = 3;
+    }
   }
 }
 
@@ -334,19 +359,32 @@ void drawDialog() {
       oled.setFont(SMALL_FONT);
       oled.print("Settings");
 
-      oled.drawRect(3, 15 + (menuselected * 12), 100, 12, 1);
+
+      if (submenu) {
+        switch (menuselected) {
+          case 0: {
+            oled.drawRect(59, 15, 13, 12, 1);
+            break;
+          } case 1: {
+            oled.drawRect(58, 27, 25, 12, 1);
+            break;
+          }
+        }
+      } else {
+        oled.drawRect(3, 15 + (menuselected * 12), 100, 12, 1);
+      }
 
       oled.setCursor(7, 24);
       oled.print("Channel - ");
-      oled.print(channel, HEX);
+      oled.print(channel + choffset, HEX);
       oled.setCursor(7, 36);
       oled.print("Display - ");
       if (displaymode == 0) {
         oled.print("F/iz");
       } else if (displaymode == 1) {
-        oled.print("I/fz");
+        oled.print("I/zf");
       } else {
-        oled.print("Z/if");
+        oled.print("Z/fi");
       }
       oled.setCursor(7, 48);
       oled.print("Start iris map >");
