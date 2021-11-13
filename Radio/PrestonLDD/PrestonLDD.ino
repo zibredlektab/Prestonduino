@@ -90,61 +90,78 @@ void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int 
   }
 }
 
-void callback_back(uint8_t pinIn)
-{
-  Serial.println("BACK");
-}
-
-void callback_menu(uint8_t pinIn)
-{  
-  dialog = 1;
-  
-  btn_a.registerCallbacks(NULL, callback_nav);
-  btn_c.registerCallbacks(NULL, callback_nav);
-  btn_b.registerCallbacks(NULL, callback_ok);
-  
-  Serial.println("opening menu");
-}
-
-void callback_ok(uint8_t pinIn)
-{
-  switch (menuselected) {
+void callback_pressed(uint8_t pinIn) {
+  switch(dialog) {
     case 0: {
-      if (submenu) {
-        changeChannel(choffset);
-        choffset = 0;
+      dialog = 1;
+      break;
+    }
+
+    case 1: { // Main menu
+      switch(pinIn) {
+        case BUTTON_A: { // down nav
+          doNav(-1);
+          break;
+        }
+        
+        case BUTTON_B: { // "ok"
+          switch (menuselected) {
+            case 0: {
+              if (submenu) {
+                changeChannel(choffset);
+                choffset = 0;
+              }
+              submenu = !submenu;
+              break;
+            }
+            case 1: {
+              submenu = !submenu;
+              break;
+            }
+            case 2: {
+              Serial.println("start map");
+              break;
+            }
+            case 3: {
+              dialog = 0;
+              menuselected = 0;
+              Serial.println("closing menu");
+              break;
+            }
+          }
+          break;
+        }
+        
+        case BUTTON_C: { // up nav
+          doNav(1);
+          break;
+        }
       }
-      submenu = !submenu;
+
       break;
     }
-    case 1: {
-      submenu = !submenu;
-      break;
-    }
-    case 2: {
-      Serial.println("start map");
-      break;
-    }
-    case 3: {
-      dialog = 0;
-      menuselected = 0;
-      Serial.println("closing menu");
-      btn_a.registerCallbacks(NULL, callback_menu);
-      btn_c.registerCallbacks(NULL, callback_menu);
-      btn_b.registerCallbacks(NULL, callback_menu);
+
+    case 2: { // Map lens now?
+      switch(pinIn) {
+        case BUTTON_A: {
+          pd->mapLater();
+          dialog = 0;
+          break;
+        }
+        
+        case BUTTON_C: {
+          pd->mapLens();
+          dialog = 0;
+          break;
+        }
+      }
+      
       break;
     }
   }
 }
 
-void callback_nav(uint8_t pinIn) {
-  Serial.println("navigating");
-  if (pinIn == BUTTON_A) {
-    doNav(-1);
-  } else {
-    doNav(1);
-  }
-}
+
 
 void doNav(int dir) {
   if (submenu) {
@@ -173,12 +190,6 @@ void doNav(int dir) {
   }
 }
 
-void callback_default(uint8_t pinIn) {
-  Serial.print("pin ");
-  Serial.print(pinIn);
-  Serial.println(" pressed");
-}
-
 
 void setup() {
 
@@ -193,9 +204,9 @@ void setup() {
   }
 
 
-  btn_a.registerCallbacks(NULL, callback_menu);
-  btn_b.registerCallbacks(NULL, callback_menu);
-  btn_c.registerCallbacks(NULL, callback_menu);
+  btn_a.registerCallbacks(NULL, callback_pressed);
+  btn_b.registerCallbacks(NULL, callback_pressed);
+  btn_c.registerCallbacks(NULL, callback_pressed);
   
   
   btn_a.setup(BUTTON_A, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
@@ -295,8 +306,14 @@ void drawScreen() {
 
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
+  bool newlens = pd->isNewLens();
   
   oled.clearDisplay();
+
+  if (newlens) {
+    dialog = 2;
+  }
+  
   if (dialog > 0) {
     drawDialog();
   } else {
@@ -395,6 +412,28 @@ void drawDialog() {
     }
 
     case 2: {
+      drawRect(3, 3, 90, 61); // draw main dialog box
+      oled.setCursor(25, 12);
+      oled.setFont(SMALL_FONT);
+      oled.print("New lens:");
+      oled.setCursor(10, 24);
+      oled.print(pd->getLensBrand());
+      oled.print(" ");
+      oled.print(pd->getLensSeries());
+      oled.setCursor(10, 36);
+      oled.print(pd->getLensName());
+      oled.print(" ");
+      oled.print(pd->getLensNote());
+      oled.setCursor(14, 60);
+      oled.setFont(SMALL_FONT);
+      oled.print("Map iris now?");
+    
+      drawButton(0, "yes");
+      drawButton(2, "no");
+      break;
+    }
+
+    case 3: {
       oled.fillRect(0, 10, 128, 54, 0); // black out background
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);

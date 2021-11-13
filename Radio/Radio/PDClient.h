@@ -74,6 +74,7 @@ class PDClient {
     char* lensseries;
     char* lensname;
     char* lensnote;
+    bool newlens = false;
     
     void parseMessage();
     bool processLensName();
@@ -105,6 +106,7 @@ class PDClient {
     char* getLensSeries();
     char* getLensName();
     char* getLensNote();
+    bool isNewLens();
     bool isZoom();
     uint8_t getAddress();
     uint8_t getChannel();
@@ -116,6 +118,9 @@ class PDClient {
     bool subFocus();
     bool subZoom();
     bool unsub();
+
+    void mapLater();
+    void mapLens();
 
   
 };
