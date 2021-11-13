@@ -57,6 +57,8 @@ class PDServer {
     uint16_t zoom = 0;
     uint32_t focus = 0;
     char* fulllensname;
+    char mdrlens[40];
+    char curlens[40];
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);

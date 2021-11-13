@@ -153,6 +153,10 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     this->iris = mdr->getAperture();
     this->focus = mdr->getFocusDistance();
     this->zoom = mdr->getFocalLength();
+
+    Serial.print("zoom is ");
+    Serial.println(this->zoom);
+    
     this->fulllensname = mdr->getLensName();
     Serial.print(F("New lens name: "));
     for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
@@ -201,10 +205,26 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   if (datatype & DATA_NAME) {
     Serial.print(F("name "));
     char* lensname = this->fulllensname;
+    int lensnamelen = lensname[0] - 1; // lens name includes length of lens name, which we disregard
+    strncpy(mdrlens, &lensname[1], lensnamelen); // copy mdr data, sans length of lens name, to local buffer
+    mdrlens[lensnamelen] = '\0'; // null character to terminate string
+    
+    if (strcmp(mdrlens, curlens) != 0) {
+      Serial.println("Lens changed");
+      // current mdr lens is different from our lens
+      databuf[sendlen++] = '*'; // send an asterisk before lens name
+      for (int i = 0; i <= lensnamelen; i++) {
+        curlens[i] = '\0'; // null-out previous lens name
+      }
+      strncpy(curlens, mdrlens, lensnamelen); // copy our new lens to current lens name
+      curlens[lensnamelen] = '\0'; // make absolutely sure it ends with a null
+    }
+
     
     int i;
-    for (i = 0; i < lensname[0] - 1; i++) {
+    for (i = 0; i < lensnamelen; i++) {
       databuf[sendlen+i] = lensname[i];
+      
     }
     sendlen += i;
   }

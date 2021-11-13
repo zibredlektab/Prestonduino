@@ -315,11 +315,18 @@ void PDClient::parseMessage() {
 
 
 bool PDClient::processLensName() {
-  // Format of name is: [length of name][brand]|[series]|[name] [note]
+  // Format of name is: [asterisk for new lens][length of name][brand]|[series]|[name] [note]
   Serial.print("full name is ");
   Serial.println(this->fulllensname);
+
+  int processfrom = 1;
+
+  if (this->fulllensname[0] == '*') {
+    Serial.println("this is a new lens");
+    processfrom = 2;
+  }
   
-  this->lensbrand = &this->fulllensname[1]; // first element of name is length of full name
+  this->lensbrand = &this->fulllensname[processfrom]; // first element of name is length of full name
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
   this->lensseries[-1] = '\0'; // null terminator for brand
   
