@@ -120,7 +120,9 @@ class PDClient {
     bool unsub();
 
     void mapLater();
-    void mapLens();
+    void startMap();
+    void mapLens(uint8_t curav);
+    void finishMap();
 
   
 };

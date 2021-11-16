@@ -364,10 +364,10 @@ bool PDClient::processLensName() {
   return true;
 }
 
-#define SWAPCT 6
+#define SWAPCT 5
 
 void PDClient::abbreviateName() {
-  char* swaps[SWAPCT][2] = {{"Panavision", "PV\0"}, {"Angenieux", "Ang\0"}, {"Servicevision", "SV"}, {"Prime", "Pr\0"}, {"Zoom", "Zm\0"}, {"Other", "\0"}};
+  char* swaps[SWAPCT][2] = {{"Panavision", "PV\0"}, {"Angenieux", "Ang\0"}, {"Angeniux", "Ang\0"}, {"Servicevision", "SV"}, {"Other", "\0"}};
 
   for (int i = 0; i < SWAPCT; i++) {
 
@@ -631,9 +631,20 @@ bool PDClient::isNewLens() {
 void PDClient::mapLater() {
   Serial.println("mapping later");
   this->newlens = false;
+  this->sendMessage(4, 0);
 }
 
-void PDClient::mapLens() {
-  Serial.println("mapping now");
+void PDClient::startMap() {
   this->newlens = false;
+}
+
+void PDClient::mapLens(uint8_t curav) {
+  Serial.print("mapping now, starting av is ");
+  Serial.println(curav);
+  this->sendMessage(3, curav);
+}
+
+void PDClient::finishMap() {
+  Serial.println("Finishing map");
+  this->sendMessage(4, 0);
 }

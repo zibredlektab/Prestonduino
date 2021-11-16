@@ -83,6 +83,9 @@ static InputDebounce btn_b;
 static InputDebounce btn_c;
 
 
+static char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
+uint8_t curmappingav = 1;
+
 void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int tracecolor = 1) {
   oled.fillRect(x, y, w, h, color) ;
   if (trace) {
@@ -91,6 +94,11 @@ void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int 
 }
 
 void callback_pressed(uint8_t pinIn) {
+  //Serial.print("Button pressed: ");
+  //Serial.print(pinIn);
+  //Serial.print(", dialog = ");
+  //Serial.println(dialog);
+  
   switch(dialog) {
     case 0: {
       dialog = 1;
@@ -114,18 +122,21 @@ void callback_pressed(uint8_t pinIn) {
               submenu = !submenu;
               break;
             }
+            
             case 1: {
               submenu = !submenu;
               break;
             }
+            
             case 2: {
               Serial.println("start map");
               break;
             }
+            
             case 3: {
-              dialog = 0;
               menuselected = 0;
               Serial.println("closing menu");
+              dialog = 0;
               break;
             }
           }
@@ -150,8 +161,65 @@ void callback_pressed(uint8_t pinIn) {
         }
         
         case BUTTON_C: {
-          pd->mapLens();
+          Serial.println("map now");
+          pd->startMap();
+          dialog = 3;
+          break;
+        }
+      }
+      
+      break;
+    }
+
+    case 3: { // Select WFO
+      switch(pinIn) {
+        case BUTTON_A: {
+          curmappingav--;
+          if (curmappingav < 0) {
+            curmappingav = 0;
+          }
+          break;
+        }
+
+        case BUTTON_B: {
+          Serial.println("WFO selected");
+          dialog = 4;
+          break;
+        }
+        
+        case BUTTON_C: {
+          curmappingav++;
+          if (curmappingav > 9) {
+            curmappingav = 9;
+          }
+          break;
+        }
+      }
+      break;
+    }
+      
+    case 4: { // Set lens
+      switch(pinIn) {
+        case BUTTON_A: { // Finish
+          pd->finishMap();
+          curmappingav = 1;
           dialog = 0;
+          break;
+        }
+
+        case BUTTON_B: { // ok
+          Serial.println("Saving AV position");
+          pd->mapLens(curmappingav++);
+          if (curmappingav == 10) {
+            pd->finishMap();
+            curmappingav = 1;
+            dialog = 0;
+          }
+          break;
+        }
+        
+        case BUTTON_C: { // Back
+          curmappingav--;
           break;
         }
       }
@@ -251,6 +319,11 @@ void loop() {
   readButtons();
   
   pd->onLoop();
+  
+  if (pd->isNewLens()) {
+    dialog = 2;
+  }
+  
   drawScreen();
 
   if (changingmodes) {
@@ -306,13 +379,9 @@ void drawScreen() {
 
   uint8_t ch = pd->getChannel();
   uint8_t er = pd->getErrorState();
-  bool newlens = pd->isNewLens();
   
   oled.clearDisplay();
 
-  if (newlens) {
-    dialog = 2;
-  }
   
   if (dialog > 0) {
     drawDialog();
@@ -438,12 +507,31 @@ void drawDialog() {
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);
       oled.setFont(SMALL_FONT);
+      oled.print("Select WFO:");
+      oled.setCursor(22, 46);
+      oled.print("T");
+      oled.setCursor(28, 46);
+      oled.setFont(LARGE_FONT);
+      oled.print(wholestops[curmappingav]);
+      oled.setCursor(10, 55);
+      oled.setFont(SMALL_FONT);
+      oled.print("and press ok");
+    
+      drawNav();
+      break;
+    }
+
+    case 4: {
+      oled.fillRect(0, 10, 128, 54, 0); // black out background
+      drawRect(3, 12, 82, 48); // draw main dialog box
+      oled.setCursor(12, 22);
+      oled.setFont(SMALL_FONT);
       oled.print("Set lens to:");
       oled.setCursor(22, 46);
       oled.print("T");
       oled.setCursor(28, 46);
       oled.setFont(LARGE_FONT);
-      oled.print("1.4");
+      oled.print(wholestops[curmappingav]);
       oled.setCursor(10, 55);
       oled.setFont(SMALL_FONT);
       oled.print("and press ok");
@@ -477,7 +565,7 @@ void drawNavButton(bool down) {
   uint16_t arrowpointy = 13 + (down * 41);
   uint16_t arrowbasey = 18 + (down * 31);
   oled.drawLine(114, arrowbasey, 119, arrowpointy, 1);
-  oled.drawLine(119, arrowpointy, 124, arrowbasey, 1);//(119, 12, 123, 18, 114, 18, 1);
+  oled.drawLine(119, arrowpointy, 124, arrowbasey, 1);
 }
 
 void drawNav() {
