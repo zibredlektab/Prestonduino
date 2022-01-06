@@ -64,7 +64,9 @@ int dialog = 0; // see below
  * 0 - none
  * 1 - menu
  * 2 - map now?
- * 3 - mapping
+ * 3 - WFO selection
+ * 4 - Mapping
+ * 5 - OneRing settings
  */
 
 int menuselected = 0;
@@ -129,7 +131,8 @@ void callback_pressed(uint8_t pinIn) {
             }
             
             case 2: {
-              Serial.println("start map");
+              dialog = 5;
+              menuselected = 0;
               break;
             }
             
@@ -224,6 +227,54 @@ void callback_pressed(uint8_t pinIn) {
         }
       }
       
+      break;
+    }
+
+    case 5: { // OneRing menu
+      switch(pinIn) {
+        case BUTTON_A: { // down nav
+          doNav(-1);
+          break;
+        }
+        
+        case BUTTON_B: { // "ok"
+          switch (menuselected) {
+            case 0: {
+              if (submenu) {
+                changeChannel(choffset);
+                choffset = 0;
+              }
+              submenu = !submenu;
+              break;
+            }
+            
+            case 1: {
+              submenu = !submenu;
+              break;
+            }
+            
+            case 2: {
+              dialog = 5;
+              menuselected = 0;
+              break;
+            }
+            
+            case 3: {
+              menuselected = 0;
+              Serial.println("closing menu");
+              dialog = 0;
+              break;
+            }
+          }
+          break;
+        }
+        
+        case BUTTON_C: { // up nav
+          doNav(1);
+          break;
+        }
+      }
+
       break;
     }
   }
@@ -439,7 +490,7 @@ void drawDialog() {
   
 
   switch (dialog) {
-    case 1: {
+    case 1: { // Settings
       drawRect(3, 3, 100, 61); // draw main dialog box
       oled.setCursor(30, 12);
       oled.setFont(SMALL_FONT);
@@ -473,14 +524,14 @@ void drawDialog() {
         oled.print("Z/fi");
       }
       oled.setCursor(7, 48);
-      oled.print("Start iris map >");
+      oled.print("OneRing >");
       oled.setCursor(7, 60);
       oled.print("Back");
       drawNav();
       break;
     }
 
-    case 2: {
+    case 2: { // Map now?
       drawRect(3, 3, 90, 61); // draw main dialog box
       oled.setCursor(25, 12);
       oled.setFont(SMALL_FONT);
@@ -502,7 +553,7 @@ void drawDialog() {
       break;
     }
 
-    case 3: {
+    case 3: { // WFO
       oled.fillRect(0, 10, 128, 54, 0); // black out background
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);
@@ -521,7 +572,7 @@ void drawDialog() {
       break;
     }
 
-    case 4: {
+    case 4: { // Mapping
       oled.fillRect(0, 10, 128, 54, 0); // black out background
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);
@@ -539,6 +590,40 @@ void drawDialog() {
       drawButton(0, "back");
       drawButton(1, "ok");
       drawButton(2, "finish");
+      break;
+    }
+
+    case 5: { // OneRing
+      drawRect(3, 3, 100, 61); // draw main dialog box
+      oled.setCursor(30, 12);
+      oled.setFont(SMALL_FONT);
+      oled.print("OneRing");
+
+
+      if (submenu) {
+        switch (menuselected) {
+          case 0: {
+            oled.drawRect(59, 15, 13, 12, 1);
+            break;
+          } case 1: {
+            oled.drawRect(58, 27, 25, 12, 1);
+            break;
+          }
+        }
+      } else {
+        oled.drawRect(3, 15 + (menuselected * 12), 100, 12, 1);
+      }
+
+      oled.setCursor(7, 24);
+      oled.print("Use OneRing - ");
+      oled.print("yes");
+      oled.setCursor(7, 36);
+      oled.print("(Iris data from OR)");
+      oled.setCursor(7, 48);
+      oled.print("Start mapping >");
+      oled.setCursor(7, 60);
+      oled.print("Back");
+      drawNav();
       break;
     }
   }
