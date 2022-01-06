@@ -270,7 +270,7 @@ void makePath() {
 void mapLens() {
 
   command_reply auxdata = mdr->data(0x52); //0x58 for AUX, 0x52 for F (for MDR4 testing)
-  uint16_t aux = auxdata.data[1] * 0xFF;
+  uint16_t aux = auxdata.data[1] * 0x100;
   aux += auxdata.data[2];
   
   if (!mapping) {
