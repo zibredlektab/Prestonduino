@@ -70,7 +70,7 @@ class PDServer {
     SdFat SD;
 
     char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-    static uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
+    static constexpr uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
     uint16_t lensmap[10];
     int8_t curmappingav = -1;
     char mdrlens[40];
@@ -94,7 +94,7 @@ class PDServer {
     void irisToAux();
 
   public:
-    PDServer(uint8_t chan = 0xA, HardwareSerial& mdrserial = Serial);
+    PDServer(uint8_t chan = 0xA, HardwareSerial& mdrserial = Serial1);
     void onLoop();
     uint8_t getAddress();
     uint8_t getChannel();

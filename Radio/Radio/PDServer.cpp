@@ -82,7 +82,7 @@ void PDServer::onLoop() {
             // MDR sent data
             //Serial.println(F("got data back from MDR"));
             command_reply reply = this->mdr->getReply();
-            if(!this->manager->sendtoWait(this->commandReplyToArray(reply), reply.replystatus + 1, &this->lastfrom)) {
+            if(!this->manager->sendtoWait(this->commandReplyToArray(reply), reply.replystatus + 1, this->lastfrom)) {
               //Serial.println(F("failed to send reply"));
             } else {
               //Serial.println("reply sent");
@@ -308,7 +308,7 @@ bool PDServer::updateSubs() {
       //Serial.print(" ");
     }
     //Serial.println();
-    if (!this->manager->sendto((char*)tosend, sendlen, (this->channel * 0x10) + i)) {
+    if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
       //Serial.println(F("Failed to send message"));
       return false;
     }
@@ -459,8 +459,16 @@ void PDServer::makePath() {
 
 void PDServer::mapLens(uint8_t curav) {
   Serial.print("Mapping lens at AV ");
-  Serial.println(curav);
-  this->lensmap[curav] = 0x1111; // aux encoder position
+  Serial.print(curav);
+
+  command_reply auxdata = mdr->data(0x58); // 0x58 for Aux, 0x52 for F (for MDR4 testing)
+  uint16_t aux = auxdata.data[1] * 0x100;
+  aux += auxdata.data[2];
+
+  Serial.print(" to encoder position 0x");
+  Serial.println(aux, HEX);
+  
+  this->lensmap[curav] = aux; // aux encoder position
 }
 
 void PDServer::finishMap() {
