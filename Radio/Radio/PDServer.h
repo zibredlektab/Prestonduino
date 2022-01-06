@@ -5,6 +5,13 @@
 #include <PrestonDuino.h>
 #include <RHReliableDatagram.h> // RH_ENABLE_EXPLICIT_RETRY_DEDUP must be redefined as 1 in this file
 #include <RH_RF95.h>
+#include <SdFatConfig.h>
+#include <sdios.h>
+#include <FreeStack.h>
+#include <MinimumSerial.h>
+#include <SdFat.h>
+#include <BlockDriver.h>
+#include <SysCall.h>
 
 #include <errorcodes.h>
 #include <datatypes.h>
@@ -57,6 +64,10 @@ class PDServer {
     uint16_t zoom = 0;
     uint32_t focus = 0;
     char* fulllensname;
+    uint8_t lensnamelen = 0;
+    
+    File lensfile;
+    SdFat SD;
 
     char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
     static uint16_t ringmap[10] = {0, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
@@ -64,6 +75,8 @@ class PDServer {
     int8_t curmappingav = -1;
     char mdrlens[40];
     char curlens[40];
+    char lenspath[25];
+    char filename[25];
     bool mapped = true;
     unsigned long long lastmdrupdate = 0; // last time we asked MDR for updated data
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
@@ -76,6 +89,9 @@ class PDServer {
     void startMap();
     void mapLens(uint8_t curav);
     void finishMap();
+
+    void makePath();
+    void irisToAux();
 
   public:
     PDServer(uint8_t chan = 0xA, HardwareSerial& mdrserial = Serial);
