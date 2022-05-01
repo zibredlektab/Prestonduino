@@ -17,8 +17,6 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   //pinPeripheral(10, PIO_SERCOM);
   //pinPeripheral(12, PIO_SERCOM);
 
-  //while (!ser) {}
-
   //Serial.println("MDR connection is open");
   // TODO slightly more robust way of checking for connection?
   this->connectionopen = true;
