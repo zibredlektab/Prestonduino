@@ -1,3 +1,5 @@
+#include <Adafruit_InternalFlash.h>
+
 #include <PrestonDuino.h>
 #include <SdFatConfig.h>
 #include <sdios.h>
@@ -7,12 +9,12 @@
 #include <BlockDriver.h>
 #include <SysCall.h>
 
-#include <Adafruit_GFX.h>
-#include <Adafruit_SH110X.h>
-#include "Fonts/pixelmix4pt7b.h"
-#include "Fonts/Roboto_Medium_26.h"
-#include "Fonts/Roboto_34.h"
-#include <Fonts/FreeSerifItalic9pt7b.h>
+//#0include <Adafruit_GFX.h>
+//#include <Adafruit_SH110X.h>
+//#include "Fonts/pixelmix4pt7b.h"
+//#include "Fonts/Roboto_Medium_26.h"
+//#include "Fonts/Roboto_34.h"
+//#include <Fonts/FreeSerifItalic9pt7b.h>
 
 #include "wiring_private.h" // pinPeripheral() function
 Uart Serial2 (&sercom1, 12, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2);
@@ -104,7 +106,7 @@ void setup() {
   pinMode(BUTTON_C, INPUT_PULLUP);
 
   // Initialize PrestonDuino
-  mdr = new PrestonDuino(Serial2);
+  mdr = new PrestonDuino(Serial1);
   
   
   mdr->setMDRTimeout(1000);

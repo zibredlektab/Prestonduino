@@ -1,5 +1,7 @@
+
+
 #ifndef PDServer_h
-  #define PDServer_h  
+  #define PDServer_h
   
 #include "Arduino.h"
 #include <PrestonDuino.h>
@@ -12,6 +14,8 @@
 #include <SdFat.h>
 #include <BlockDriver.h>
 #include <SysCall.h>
+#include <Adafruit_InternalFlash.h>
+
 
 #include <errorcodes.h>
 #include <datatypes.h>
@@ -20,16 +24,24 @@
 #define SUBLIFE 6000 // how long to keep subscriptions active before purging them
 #define UPDATEDELAY 10 // how long to wait between updating subs
 
+#define INTERNAL_FLASH_FILESYSTEM_SIZE (64*1024)
+#define INTERNAL_FLASH_FILESYSTEM_START_ADDR (0x00040000 - 256 - 0 - INTERNAL_FLASH_FILESYSTEM_SIZE)
+
 #ifdef MOTEINO_M0
   #define SSPIN A2
   #define INTPIN 9
 #elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
   #define SSPIN 4
   #define INTPIN 2
+#elif defined(ADAFRUIT_FEATHER_M0) || defined(ADAFRUIT_FEATHER_M0_EXPRESS) || defined(ARDUINO_SAMD_FEATHER_M0)
+  // Feather M0 w/Radio
+  #define SSPIN 8
+  #define INTPIN 3
 #else
   #define SSPIN SS
   #define INTPIN 2
 #endif
+
 
 
 /*
@@ -48,8 +60,14 @@ struct subscription {
   unsigned long keepalive = 0; // time of last subscription update
 };
 
+
 class PDServer {
   private:
+    
+    Adafruit_InternalFlash *flash;
+    FatFileSystem fatfs;
+    File lensfile;
+
     uint8_t channel; // A is default
     uint8_t address;
     HardwareSerial *ser;
@@ -66,18 +84,16 @@ class PDServer {
     char* fulllensname;
     uint8_t lensnamelen = 0;
     
-    File lensfile;
-    SdFat SD;
 
     char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-    static constexpr uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
+    uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
     uint16_t lensmap[10];
+    bool mapped = false;
     int8_t curmappingav = -1;
     char mdrlens[40];
     char curlens[40];
     char lenspath[25];
     char filename[25];
-    bool mapped = true;
     unsigned long long lastmdrupdate = 0; // last time we asked MDR for updated data
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
 

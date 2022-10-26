@@ -22,7 +22,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->connectionopen = true;
 
   // TODO get & store MDR number 
-  command_reply mdrinfo = this->info(0x0);
+  command_reply mdrinfo = this->info(0x1);
 
   //Serial.print("Connected MDR: ");
   for(int i = 0; i < mdrinfo.data[0]; i++){
@@ -203,6 +203,8 @@ int PrestonDuino::parseRcv() {
       }
       PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
       this->rcvpacket = pak;
+
+    //  this->reply.data = this->rcvpacket->getData(); // testing streaming, this line may be causing issues
       
       if (this->rcvpacket->getMode() == 0x11) {
         // Reply is an error message

@@ -23,6 +23,10 @@
 #elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
   #define SSPIN 4
   #define INTPIN 2
+#elif defined(ADAFRUIT_FEATHER_M0) || defined(ADAFRUIT_FEATHER_M0_EXPRESS) || defined(ARDUINO_SAMD_FEATHER_M0)
+  // Feather M0 w/Radio
+  #define SSPIN 8
+  #define INTPIN 3
 #else
   #define SSPIN SS
   #define INTPIN 2

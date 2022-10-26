@@ -11,6 +11,7 @@ unsigned long long lastchannelcheck;
 void setup() {
 
   Serial.begin(115200);
+  while(!Serial);
   for (int i = 0; i < 4; i++) {
     pinMode(pins[i], INPUT_PULLUP);
   }
