@@ -11,14 +11,13 @@ void setup() {
   while(!Serial);
 
   mdr = new PrestonDuino(Serial1);
-  mdr->mode(0x01,0x01);
+  //mdr->mode(0x01,0x01);
 }
 
 void loop() {
-  if (mdr->waitForRcv()) {
-    int newmsg = mdr->parseRcv();
-    Serial.println((char*)mdr->getReply().data);
-  }
+  mdr->onLoop();
+  //Serial.print("focus is: ");
+  //Serial.println(mdr->getFocusDistance());
 
   if (time + 4 < millis()) {
     time = millis();
@@ -26,6 +25,10 @@ void loop() {
     byte irish = iris >> 8;
     byte irisl = iris & 0xFF;
     byte irisdata[3] = {0x1, irish, irisl};
-    mdr->data(irisdata, 3);
+    //mdr->data(irisdata, 3);
+  }
+
+  if (time > 2000) {
+    while(1) {};
   }
 }

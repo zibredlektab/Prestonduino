@@ -27,7 +27,6 @@ class PrestonDuino {
     bool firstpacket = true;
     bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
-    bool rcving = false; // flag that we are in the middle of receiving a packet
     bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR
@@ -40,20 +39,22 @@ class PrestonDuino {
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
     int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
 
+    uint16_t aperture = 0;
+    uint16_t focusdistance = 0;
+    uint16_t focallength = 0;
 
     // methods
     void sendACK();
     void sendNAK();
-    //bool waitForRcv(); // returns true if response was recieved
+    bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not
-    //int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
+    int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     command_reply sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
 
 
   public:
 
-    bool waitForRcv(); // returns true if response was recieved
-    int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
+    void onLoop();
 
     PrestonDuino(HardwareSerial& serial);
     int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error

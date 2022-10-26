@@ -14,7 +14,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->mdr->setMDRTimeout(10);
 
-  this->mdr->mode(0x0, 0x40); // take command of the AUX channel
+  this->mdr->mode(0x01, 0x40); // take command of the AUX channel
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
