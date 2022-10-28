@@ -32,16 +32,23 @@ class PrestonDuino {
     PrestonPacket* rcvpacket; // most recently received packet from MDR
     int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
     command_reply reply;
-    char lensname[50];
     const byte dummydata[7] = {0,0,0,0,0,0,0};
     
     unsigned long time_now = 0; // used for scheduling packets (Caution: this will overflow if the program runs for over 49.7 days. Remember to reboot once a month or so)
     int period = 6; // milliseconds to wait between sending packets (lens data is updated every 6ms)
     int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
 
-    uint16_t aperture = 0;
-    uint16_t focusdistance = 0;
-    uint16_t focallength = 0;
+
+    // MDR Data
+    // Basic lens data - can be assumed to be up to date
+    uint16_t iris = 0;
+    uint16_t focus = 0;
+    uint16_t zoom = 0;
+    uint16_t aux = 0;
+    uint16_t distance = 0; // rangefinder distance
+    
+    // Advanced data, not updated automatically
+    char lensname[50];
 
     // methods
     void sendACK();
@@ -93,16 +100,16 @@ class PrestonDuino {
 
     // Getters
     const byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
-    uint32_t getFocusDistance(); // Focus distance, in mm (1mm precision)
-    int getFocalLength(); // Focal length, in mm (1mm precision)
-    int getAperture(); // Aperture (*100, ex T-5.6 returns as 560)
+    uint32_t getFocus(); // Focus distance, in mm (1mm precision)
+    int getZoom(); // Focal length, in mm (1mm precision)
+    int getIris(); // Iris (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
 
     // Setters
-    command_reply setLensData(uint32_t dist, uint16_t aperture, uint16_t flength);
-    command_reply setFocusDistance(uint32_t dist);
-    command_reply setAperture(uint16_t aperture);
-    command_reply setFocalLength(uint16_t flength);
+    command_reply setLensData(uint32_t dist, uint16_t iris, uint16_t flength);
+    command_reply setFocus(uint32_t dist);
+    command_reply setIris(uint16_t iris);
+    command_reply setZoom(uint16_t flength);
 };
 
 #endif
