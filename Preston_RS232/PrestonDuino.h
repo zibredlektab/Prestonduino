@@ -30,7 +30,7 @@ class PrestonDuino {
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR
     int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
-    command_reply reply;
+    command_reply reply; // most recently received reply from MDR
     const byte dummydata[7] = {0,0,0,0,0,0,0};
     
     unsigned long time_now = 0; // used for scheduling packets (Caution: this will overflow if the program runs for over 49.7 days. Remember to reboot once a month or so)

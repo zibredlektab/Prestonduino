@@ -17,6 +17,8 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   // TODO get & store MDR number 
   command_reply mdrinfo = this->info(0x1);
+  //Serial.print("Status of reply from info command: ");
+  //Serial.println(mdrinfo.replystatus);
   
   long int time = millis();
 /*
@@ -32,7 +34,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->connectionopen = true;
   Serial.println("Connection open.");
   Serial.print("Current lens: ");
-  for(int i = 0; i < mdrinfo.data[0]; i++){
+  for(int i = 2; i < mdrinfo.replystatus; i++){ // skip the first two characters for info(), they describe the type of info - in this case, lens name
     Serial.print((char)mdrinfo.data[i]);
   }
   Serial.println();
@@ -85,16 +87,17 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 
 
 // A reply is expected, so wait for one until the timeout threshold has passed
+// Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
   this->time_now = millis();
-  Serial.print("Waiting for response.");
+  //Serial.print("Waiting for response.");
   
   while(millis() <= this->time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
-      Serial.println("Got a response");
+      //Serial.println("Got a response");
       return true;
     } else if (millis() % 1000 == 0){
-      Serial.print(".");
+      //Serial.print(".");
     }
   }
 
@@ -111,25 +114,26 @@ bool PrestonDuino::waitForRcv() {
 bool PrestonDuino::rcv() {
   /* Check if there is available data, then check the first char for following:
    *    ACK/NAK: add to rcv and return
-   *    STX: add all bytes to rcv until ETX is found (if second control character is found, see next line)
+   *    STX: add all bytes to rcvbuf until ETX is found (if second control character is found, see next line)
    *    Anything else: treat as garbage data. Send NAK to MDR and toss the buffer
    * Returns true if we got usable data, false if not
    */
   
-  static int rcvi = 0; // index of currently processing character in the received message
-  static char currentchar; // currently processing character
+  int rcvi = 0; // index of currently processing character in the received message
+  char currentchar; // currently processing character
   int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
 
 
   if (ser->available()) { //only receive if there is something to be received and no data currently being parsed
     currentchar = ser->read();
-    this->rcvbuf[rcvi++] = currentchar; 
-    Serial.print("Start : 0x");
-    Serial.print(currentchar, HEX);
+    this->rcvbuf[rcvi] = currentchar; 
+    //Serial.print("\nStart : 0x");
+    //Serial.print(this->rcvbuf[rcvi], HEX);
+    rcvi++;
     
     if (currentchar == STX) {
       // STX received from MDR
-      Serial.print(" (STX)");
+      //Serial.print(" (STX)");
 
       while (gotgoodreply == -1) { // iterate as long as there we have not received a full good or bad reply
 
@@ -151,16 +155,18 @@ bool PrestonDuino::rcv() {
         }
 
         currentchar = ser->read();
-        this->rcvbuf[rcvi++] = currentchar; // Add current incoming character to rcvbuf
+        this->rcvbuf[rcvi] = currentchar; // Add current incoming character to rcvbuf
 
-        Serial.print(" 0x");
-        Serial.print(currentchar, HEX);
+        //Serial.print(" 0x");
+        //Serial.print(this->rcvbuf[rcvi], HEX);
+
+        rcvi++;
 
         if (currentchar == ETX) {
           // We have received ETX, stop reading
           this->rcvlen = rcvi;
           gotgoodreply = 1;
-          Serial.println(" (ETX) : End");
+          //Serial.println(" (ETX) : End");
           
           this->sendACK(); // Polite thing to do
           
@@ -172,29 +178,29 @@ bool PrestonDuino::rcv() {
           
         } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
           // This should not happen, and means that our packet integrity is compromised (we somehow started reading into a new packet)
-          Serial.println(" (unexpected control character!)");
+          //Serial.println(" (unexpected control character!)");
           gotgoodreply = 0;
           break;
           
         } else {
           //delay(1); // TODO seems to be necessary to stop the serial port from tripping all over itself
-          Serial.print(" (");
-          Serial.print(currentchar);
-          Serial.print(")");
+          //Serial.print(" (");
+          //Serial.print(currentchar);
+          //Serial.print(")");
         }
 
       }
       
     } else if (currentchar == NAK || currentchar == ACK) {
       // Incoming character is either NAK or ACK, right now we don't care which
-      Serial.println(" (ACK or NAK)");
+      //Serial.println(" (ACK or NAK)");
       this->rcvbuf[0] = currentchar;
       this->rcvlen = 1;
       gotgoodreply = 1; // NAK still counts as a good reply in this context!
   
     } else {
       // Incoming character is some kind of garbage (not a control character, but we're not in the middle of a packet yet)
-      Serial.println(" (garbage data!)");
+      //Serial.println(" (garbage data!)");
       gotgoodreply = 0;
     }
   }
@@ -231,24 +237,28 @@ bool PrestonDuino::rcv() {
 
 
 int PrestonDuino::parseRcv() {
-  // >0 result is length of data received, -1 if ACK, -2 if error, -3 if NAK
-  
+  /* Step through rcvbuf and figure out what data we got.
+   * -1 result is ACK
+   * -2 is error
+   * -3 is NAK
+   * >0 result is length of data received, and this->rcvpacket should be populated with the resulting data
+   */
   int response = 0;
   
-  Serial.println("Starting to process rcv");
+  //Serial.println("Starting to process rcvbuf");
 
-  if (rcvbuf[0] == ACK) {
+  if (this->rcvbuf[0] == ACK) {
     // Reply is ACK
-    //Serial.println("Rcv is ACK");
+    //Serial.println("Rcvbuf is ACK");
     response = -1;
     
-  } else if (rcvbuf[0] == NAK) {
+  } else if (this->rcvbuf[0] == NAK) {
     // Reply is NAK
-    //Serial.println("Rcv is NAK");
+    //Serial.println("Rcvbuf is NAK");
     response = -2;
     
-  } else if (rcvbuf[0] == STX) {
-    //Serial.println("Rcv is a packet");
+  } else if (this->rcvbuf[0] == STX) {
+    //Serial.println("Rcvbuf is a packet");
     // Reply is a packet
     
     if (!this->firstpacket) {
@@ -326,10 +336,16 @@ int PrestonDuino::parseRcv() {
         }
       }
     }
+  } else {
+    Serial.print("First byte of rcvbuf is 0x");
+    Serial.print(this->rcvbuf[0], HEX);
+    Serial.println(", and I don't know how to parse that.");
+    Serial.print("Second byte of rcvbuf is 0x");
+    Serial.println(this->rcvbuf[1], HEX);
   }
 
   // Done processing
-  Serial.println("Done processing rcv");
+  //Serial.println("Done processing rcvbuf");
 
   return response;
 }
@@ -398,7 +414,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   } else if (stat == -1 && withreply) {
     // Packet was acknowledged by MDR, but we still need a reply
   
-    Serial.println("Command packet acknowledged, awaiting reply");
+    //Serial.println("Command packet acknowledged, awaiting reply");
     if (this->waitForRcv()) {
       // Response packet was received
       //Serial.println("Got a reply packet");
