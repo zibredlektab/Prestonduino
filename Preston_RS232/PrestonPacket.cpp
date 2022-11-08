@@ -46,6 +46,9 @@ PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
   
   this->packetlen = len;
+  for (int i = 0; i < len; i++) {
+    this->packet_ascii[i] = inputbuffer[i];
+  }
   this->parseInput(inputbuffer, len);
   
   this->compilePacket();
@@ -63,7 +66,7 @@ PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
 
 
 
-void PrestonPacket::parseInput(byte* inputbuffer, int len) {  
+void PrestonPacket::parseInput(byte* inputbuffer, int len) {
   if (inputbuffer[0] != STX) {
     //Serial.print("Packet to parse doesn't start with STX, instead starts with ");
     //Serial.println(inputbuffer[0]);

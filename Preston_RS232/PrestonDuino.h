@@ -56,7 +56,7 @@ class PrestonDuino {
     bool rcv(); // true if usable data received, false if not
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     command_reply sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
-
+    bool validatePacket(); // true if packet validates with checksum
 
   public:
 

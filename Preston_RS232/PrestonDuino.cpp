@@ -279,6 +279,12 @@ int PrestonDuino::parseRcv() {
     PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
     this->rcvpacket = pak;
 
+    // check validity of message
+    
+    if (!this->validatePacket()) {
+      Serial.println("Packet failed validity check!");
+      return -2;
+    }
     
     if (this->rcvpacket->getMode() == 0x11) {
       // Reply is an error message
@@ -378,6 +384,23 @@ int PrestonDuino::parseRcv() {
 }
 
 
+bool PrestonDuino::validatePacket() {
+  // Check validity of incoming packet, using its checksum
+  //Serial.print("checksum of incoming message is 0x");
+  //Serial.println(this->rcvpacket->getSum(), HEX);
+
+  int corelen = this->rcvpacket->getPacketLen() - 4; // ignore STX, ETX, and message checksum bytes
+  byte packetcore[corelen];
+  memcpy(packetcore, &this->rcvpacket->getPacket()[1], corelen);
+
+  int sum = this->rcvpacket->computeSum(packetcore, corelen);
+
+  //Serial.print("calculated checksum is 0x");
+  //Serial.println(sum, HEX);
+
+  return sum == this->rcvpacket->getSum();
+}
+
 
 void PrestonDuino::sendACK() {
   // Send ACK, don't wait for a reply (there shouldn't be one)
@@ -461,6 +484,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
           //Serial.print("Status of reply packet is ");
           //Serial.println(stat);
 
+          // if stat is an error, we did not get a good reply
 
           if (this->rcvpacket->getMode() == mode) {
             

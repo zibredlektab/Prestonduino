@@ -21,7 +21,6 @@ class PrestonPacket {
     byte data[100]; // not encoded, 100 for now as arbitrary limit
     int checksum;
     byte packet_ascii[100]; // ascii-encoded packet, currently limited to 100 bytes (arbitrary "big" limit)
-    int computeSum(byte* input, int len);
     void asciiEncode(byte* input, int len, byte* output);
     void asciiDecode(byte* input, int len, byte* output);
     void compilePacket();
@@ -37,6 +36,9 @@ class PrestonPacket {
     PrestonPacket(byte cmd_mode); // For commands that don't take arguments
     PrestonPacket(byte cmd_mode, byte* cmd_data, int datalen); // For commands that do take arguments
     PrestonPacket(byte* inputbuffer, int len); // For parsing incoming bytes into a PrestonPacket
+
+    int computeSum(byte* input, int len);
+
     byte getMode();
     byte* getData();
     int getDataLen();
