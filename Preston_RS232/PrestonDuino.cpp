@@ -39,9 +39,9 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   }
   Serial.println();
 
-  //this->mode(0x1,0x0);
+  this->mode(0x1,0x0); // start streaming mode
 
-  //this->data(1);
+  this->data(0x13); // request high res focus and iris data
   
 }
 
@@ -287,46 +287,62 @@ int PrestonDuino::parseRcv() {
         // Packet is a response to a request for data
         int dataindex = 0;
         byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
-        //Serial.print("data descriptor is 0x");
-        //Serial.println(datadescriptor, HEX);
         if (datadescriptor & 1) {
           // has iris
-          this->iris = this->rcvpacket->getData()[dataindex++] * 0xFF;
+
+          this->iris = this->rcvpacket->getData()[dataindex++] << 8;
           this->iris += this->rcvpacket->getData()[dataindex++];
           //Serial.print("iris: ");
-          //Serial.println(this->iris);
+          //Serial.print(this->iris);
         }
         if (datadescriptor & 2) {
           // has focus
-          this->focus = this->rcvpacket->getData()[dataindex++] * 0xFF;
+
+          this->focus = this->rcvpacket->getData()[dataindex++] << 8;
           this->focus += this->rcvpacket->getData()[dataindex++];
-          //Serial.print("focus: ");
-          //Serial.println(this->focus);      
+
+          //Serial.print(" focus: ");
+          //Serial.print(this->focus);
+          //Serial.print("mm");
+/*          double focusfracft = this->focus / 304.8; // for displaying in ft instead of mm
+          double focusin = int(focusfracft * 100) % 100;
+          focusin /= 100;
+          int focusft = focusfracft - focusin;
+
+          focusin *= 12;
+          
+          /*double focusin = this->focus % 100; // for low-res data in fractional feet
+          int focusft = this->focus - focusin;
+
+          focusin *= 12;
+          focusin /= 100;
+          focusft /= 100; */
+      
         
         }
         if (datadescriptor & 4) {
           // has focal length
-          this->zoom = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
           this->zoom += this->rcvpacket->getData()[dataindex++];  
-          //Serial.print("focal length: ");
-          //Serial.println(this->zoom);          
+          Serial.print(" zoom: ");
+          Serial.print(this->zoom);          
         }
         if (datadescriptor & 8) {
           // has AUX
-          this->aux = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->aux = this->rcvpacket->getData()[dataindex++] << 8;
           this->aux += this->rcvpacket->getData()[dataindex++];  
-          //Serial.print("aux: ");
-          //Serial.println(this->aux);          
+          Serial.print(" aux: ");
+          Serial.print(this->aux);          
         }
         if (datadescriptor & 16) {
           // describes resolution of data (unused)
         }
         if (datadescriptor & 32) {
           // has rangefinder distance
-          this->distance = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->distance = this->rcvpacket->getData()[dataindex++] << 8;
           this->distance += this->rcvpacket->getData()[dataindex++];   
-          //Serial.print("distance: ");
-          //Serial.println(this->distance);
+          Serial.print(" distance: ");
+          Serial.print(this->distance);
         }
         if (datadescriptor & 64) {
           // describes datatype of data (position vs metadata) (unused)
@@ -334,6 +350,8 @@ int PrestonDuino::parseRcv() {
         if (datadescriptor & 128) {
           // describes status of MDR (unused, and I'm not even sure what this means tbh)
         }
+
+        //Serial.println();
       }
     }
   } else {
@@ -401,41 +419,65 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet) {
 command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
   // Return an array of the reply, first element of which is an indicator of the reply type
-  int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
-  this->reply.replystatus = stat;
-  this->reply.data = NULL;
-  
-  //Serial.print("Immediate response to command is ");
-  //Serial.println(stat);
+  int mode = pak->getMode();
+  for (int i = 0; i < 3; i++) { // try the whole thing 3 times, unless one of the tries is successful
+    /*Serial.print("Sending command with a mode of 0x");
+    Serial.print(mode, HEX);
+    Serial.print(" (attempt #");
+    Serial.print(i);
+    Serial.println(")");*/
 
-  if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
-    // Either: timeout, NAK, or ACK for a command that doesn't need a reply
-    return this->reply;
-  } else if (stat == -1 && withreply) {
-    // Packet was acknowledged by MDR, but we still need a reply
-  
-    //Serial.println("Command packet acknowledged, awaiting reply");
-    if (this->waitForRcv()) {
-      // Response packet was received
-      //Serial.println("Got a reply packet");
-      stat = this->parseRcv(); // MDR's response to the command packet
-      //Serial.print("Status of reply packet is ");
-      //Serial.println(stat);
-      this->reply.replystatus = stat;
-    } else {
-      //Serial.println("Reply packet never came");
+    int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
+    this->reply.replystatus = stat;
+    this->reply.data = NULL;
+    
+    //Serial.print("Immediate response to command is ");
+    //Serial.println(stat);
+
+    if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
+      // Either: timeout, NAK, or ACK for a command that doesn't need a reply
+      return this->reply;
+    } else if (stat == -1 && withreply) {
+      // Packet was acknowledged by MDR, but we still need a reply
+      //Serial.println("Command packet acknowledged, awaiting reply");
+
+      bool gotgoodreply = false;
+      long int timestartedwaiting = millis();
+      
+      while (!gotgoodreply && timestartedwaiting + this->timeout > millis()) {
+        if (this->waitForRcv()) {
+          // Response packet was received
+          //Serial.println("Got a reply packet");
+          stat = this->parseRcv(); // MDR's response to the command packet
+          //Serial.print("Status of reply packet is ");
+          //Serial.println(stat);
+
+
+          if (this->rcvpacket->getMode() == mode) {
+            
+            //Serial.print("Received message with a mode of 0x");
+            //Serial.println(this->rcvpacket->getMode(), HEX);
+            // the most recently processed packet from the MDR is of the same mode as our outgoing message
+            // thus, we can assume it is a reply to our message 
+            this->reply.replystatus = stat;
+            this->reply.data = this->rcvpacket->getData();
+            /*Serial.print("got a good reply: ");
+
+            for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
+              Serial.print((char)this->rcvpacket->getData()[i]);
+            }
+            Serial.println();*/
+            gotgoodreply = true;
+            return this->reply;
+          }
+        }
+      }
+
+      if (!gotgoodreply) {
+        Serial.println("Timed out waiting for a reply from MDR");
+      }
     }
   }
-
-
-  //Serial.println("Reply data is as follows");
-  //for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
-    //Serial.println(this->rcvpacket->getData()[i], HEX);
-  //}
-  //Serial.println("End of reply array");
-
-  this->reply.data = this->rcvpacket->getData();
-
   return this->reply;
 }
 
