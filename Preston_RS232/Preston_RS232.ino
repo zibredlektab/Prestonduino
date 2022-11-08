@@ -20,7 +20,7 @@ void setup() {
 void loop() {
   mdr->onLoop();
 
-  if (time1 + 100 < 1) {
+  if (time1 + 100 < millis()) {
     time1 = millis();
     Serial.print("iris: ");
     Serial.print(mdr->getIris());
@@ -28,10 +28,9 @@ void loop() {
     Serial.println(mdr->getFocus());
   }
 
-  if (time + 1000 < millis()) {
+  if (time + 100 < millis()) {
 
     time = millis();
-    Serial.println("asking for lens name...");
     command_reply lens = mdr->info(1);
     Serial.print("current lens name is: ");
     for (int i = 2; i < lens.replystatus; i++) {

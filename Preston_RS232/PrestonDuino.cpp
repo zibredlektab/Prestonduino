@@ -13,6 +13,12 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   ser->begin(115200);
   delay(1000);
 
+
+  while(ser->available()) {
+    // empty out ser to begin
+    ser->read();
+  }
+
   Serial.print("Establishing connection to MDR...");
 
   // TODO get & store MDR number 
@@ -38,6 +44,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
     Serial.print((char)mdrinfo.data[i]);
   }
   Serial.println();
+  
 
   this->mode(0x1,0x0); // start streaming mode
 
@@ -119,32 +126,38 @@ bool PrestonDuino::rcv() {
    * Returns true if we got usable data, false if not
    */
   
-  int rcvi = 0; // index of currently processing character in the received message
+  int rcvi = -1; // index of last received character in the received message
+  int chari = 0; // index of currently processing character in the received message
   char currentchar; // currently processing character
   int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
 
 
-  if (ser->available()) { //only receive if there is something to be received and no data currently being parsed
-    currentchar = ser->read();
-    this->rcvbuf[rcvi] = currentchar; 
+  if (ser->available()) { //only receive if there is something to be received
+    while (ser->available() > 0) {
+      rcvi++;
+      this->rcvbuf[rcvi] = ser->read(); // add the current byte from serial into rcvbuf
+    }    
+    currentchar = this->rcvbuf[chari++]; // get the first character from rcvbuf to take a look at 
     //Serial.print("\nStart : 0x");
-    //Serial.print(this->rcvbuf[rcvi], HEX);
-    rcvi++;
+    //Serial.print(currentchar, HEX);
     
     if (currentchar == STX) {
       // STX received from MDR
       //Serial.print(" (STX)");
 
-      while (gotgoodreply == -1) { // iterate as long as there we have not received a full good or bad reply
-
-        if (!ser->available()) {
-          // if nothing is available in ser, keep checking for a few ms to make sure there isn't just a delay in the uart
+      while (gotgoodreply == -1) { // iterate as long as there we have not received a full reply
+        if (chari >= rcvi) {
+          // if no more characters are available in rcvbuf, keep checking ser->available() for a few ms to make sure there isn't just a delay in the uart
           bool seravailable = false;
           long int timewaitstart = millis();
           while (timewaitstart + 2 > millis() && !seravailable) {
             if (ser->available() > 0) {
               // something is available after all
               seravailable = true;
+              while(ser->available()) {
+                rcvi++;
+                this->rcvbuf[rcvi] = ser->read();
+              }
             }
           }
           if (!seravailable) {
@@ -154,13 +167,10 @@ bool PrestonDuino::rcv() {
           }
         }
 
-        currentchar = ser->read();
-        this->rcvbuf[rcvi] = currentchar; // Add current incoming character to rcvbuf
+        currentchar = this->rcvbuf[chari++];
 
         //Serial.print(" 0x");
-        //Serial.print(this->rcvbuf[rcvi], HEX);
-
-        rcvi++;
+        //Serial.print(currentchar, HEX);
 
         if (currentchar == ETX) {
           // We have received ETX, stop reading
@@ -194,7 +204,6 @@ bool PrestonDuino::rcv() {
     } else if (currentchar == NAK || currentchar == ACK) {
       // Incoming character is either NAK or ACK, right now we don't care which
       //Serial.println(" (ACK or NAK)");
-      this->rcvbuf[0] = currentchar;
       this->rcvlen = 1;
       gotgoodreply = 1; // NAK still counts as a good reply in this context!
   

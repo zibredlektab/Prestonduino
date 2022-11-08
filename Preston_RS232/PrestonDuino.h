@@ -8,7 +8,7 @@
 #ifndef PrestonDuino_h
 #define PrestonDuino_h
 
-#define DEFAULTTIMEOUT 20000
+#define DEFAULTTIMEOUT 2000
 
 struct command_reply {
   uint8_t replystatus;
