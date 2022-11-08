@@ -286,20 +286,17 @@ int PrestonDuino::parseRcv() {
       return -2;
     }
     
-    if (this->rcvpacket->getMode() == 0x11) {
-      // Reply is an error message
-      //Serial.println("Rcv packet is an error");
-      response = -3;
-      // TODO actual error handling?
-      
-    } else {
-      // Reply is a response packet
-      response = this->rcvpacket->getDataLen();
-      //Serial.print("Packet data is ");
-      //Serial.print(response);
-      //Serial.println(" bytes long");
-      if (this->rcvpacket->getMode() == 0x4) {
-        // Packet is a response to a request for data
+    switch (this->rcvpacket->getMode()) {
+      case 0x11: {
+        // Reply is an error message
+        Serial.println("Rcv packet is an error");
+        response = -3;
+        // TODO actual error handling?
+        break;
+      }
+      case 0x04: {
+        // Reply is a data packet
+        response = this->rcvpacket->getDataLen();
         int dataindex = 0;
         byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
         if (datadescriptor & 1) {
@@ -319,20 +316,6 @@ int PrestonDuino::parseRcv() {
           //Serial.print(" focus: ");
           //Serial.print(this->focus);
           //Serial.print("mm");
-/*          double focusfracft = this->focus / 304.8; // for displaying in ft instead of mm
-          double focusin = int(focusfracft * 100) % 100;
-          focusin /= 100;
-          int focusft = focusfracft - focusin;
-
-          focusin *= 12;
-          
-          /*double focusin = this->focus % 100; // for low-res data in fractional feet
-          int focusft = this->focus - focusin;
-
-          focusin *= 12;
-          focusin /= 100;
-          focusft /= 100; */
-      
         
         }
         if (datadescriptor & 4) {
@@ -367,9 +350,27 @@ int PrestonDuino::parseRcv() {
         }
 
         //Serial.println();
+        break;
+      }
+
+      case 0x0E: { // info
+        response = this->rcvpacket->getDataLen();
+        if (this->rcvpacket->getData()[1] == '1') {
+          // lens name
+          for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
+            this->lensname[i] = this->rcvpacket->getData()[i];
+          }
+          this->lensname[this->rcvpacket->getDataLen()] = 0;
+
+          Serial.print("lens name updated: ");
+          Serial.println(this->lensname);
+        }
+        break;
       }
     }
-  } else {
+
+
+  } else { // This isn't a packet I recognize
     Serial.print("First byte of rcvbuf is 0x");
     Serial.print(this->rcvbuf[0], HEX);
     Serial.println(", and I don't know how to parse that.");
