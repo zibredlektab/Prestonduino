@@ -10,17 +10,19 @@ void setup() {
   Serial.begin(115200);
   while(!Serial);
 
+  Serial.println("start");
+
   mdr = new PrestonDuino(Serial1);
   //mdr->mode(0x01,0x01);
 }
 
 void loop() {
-  mdr->onLoop();
+  //mdr->onLoop();
 
   if (time + 100 < millis()) {
 
-    Serial.print("iris is: ");
-    Serial.println(mdr->getIris());
+    //Serial.print("iris is: ");
+    //Serial.println(mdr->getIris());
     time = millis();
     uint16_t iris = map(time, 0, 10000, 0, 0xFFFF); // full lens rack in 10 seconds...nice and smooth
     byte irish = iris >> 8;
@@ -29,8 +31,5 @@ void loop() {
     //mdr->data(irisdata, 3);
   }
 
-  if (millis() > 10000) {
-    while(1);
-  }
-
+  
 }

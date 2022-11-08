@@ -8,7 +8,7 @@
 #ifndef PrestonDuino_h
 #define PrestonDuino_h
 
-#define DEFAULTTIMEOUT 20000
+#define DEFAULTTIMEOUT 2000
 
 struct command_reply {
   uint8_t replystatus;
@@ -27,7 +27,6 @@ class PrestonDuino {
     bool firstpacket = true;
     bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
-    bool rcvreadytoprocess = false; // flag that we have received a complete packet from the MDR to process
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* rcvpacket; // most recently received packet from MDR
     int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
@@ -91,7 +90,7 @@ class PrestonDuino {
     command_reply tcstat();
     command_reply ld(); // MDR3/4 only
     command_reply info(byte type); // MDR3/4 only, first element of array is size of payload
-    command_reply dist(byte type, int dist);
+    command_reply dist(byte type, uint32_t dist);
     command_reply err(); // Here for completeness but unused as a client command
 
 

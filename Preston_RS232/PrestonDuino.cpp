@@ -18,8 +18,8 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   // TODO get & store MDR number 
   command_reply mdrinfo = this->info(0x1);
   
-  long int time = millis();  
-
+  long int time = millis();
+/*
   while (mdrinfo.replystatus == 0) {
     // TODO slightly more robust way of checking for connection?
     mdrinfo = this->info(0x1);
@@ -27,7 +27,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
       Serial.print(".");
       time = millis();
     }
-  }
+  }*/
 
   this->connectionopen = true;
   Serial.println("Connection open.");
@@ -37,9 +37,9 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   }
   Serial.println();
 
-  this->mode(0x1,0x0);
+  //this->mode(0x1,0x0);
 
-  this->data(1);
+  //this->data(1);
   
 }
 
@@ -75,7 +75,6 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
   
   if (this->waitForRcv()) {
     // response received
-    //Serial.println("Got a response");
     response = this->parseRcv();
   }
 
@@ -88,15 +87,20 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 // A reply is expected, so wait for one until the timeout threshold has passed
 bool PrestonDuino::waitForRcv() {
   this->time_now = millis();
+  Serial.print("Waiting for response.");
   
-  while(millis() <= this->time_now + this->timeout) {
+  while(millis() <= this->time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
+      Serial.println("Got a response");
       return true;
+    } else if (millis() % 1000 == 0){
+      Serial.print(".");
     }
   }
 
   // If it gets this far, there was a timeout
-  //Serial.println("Timeout");
+
+  Serial.println("Timeout");
   return false;
 }
 
@@ -114,72 +118,93 @@ bool PrestonDuino::rcv() {
   
   static int rcvi = 0; // index of currently processing character in the received message
   static char currentchar; // currently processing character
-  bool gotgoodreply = false; // flag that message was a properly formatted preston reply
-  bool rcving = false; // flag that an stx character was received, and so we are now recieving a packet
-  this->rcvreadytoprocess = false; // flag that an etx character was received, so the packet is now complete and ready to parse
+  int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
 
-  while (ser->available() > 0 && !this->rcvreadytoprocess) { //only receive if there is something to be received and no data currently being parsed
-    
+
+  if (ser->available()) { //only receive if there is something to be received and no data currently being parsed
     currentchar = ser->read();
-    Serial.print(" 0x");
+    this->rcvbuf[rcvi++] = currentchar; 
+    Serial.print("Start : 0x");
     Serial.print(currentchar, HEX);
     
-    if (rcving) {
-      // Currently in the process of receiving an incoming packet
-      this->rcvbuf[rcvi++] = currentchar; // Add current incoming character to rcvbuf
-      if (currentchar == ETX) {
-        // We have received ETX, stop reading
-        rcving = false;
-        this->rcvlen = rcvi;
-        this->rcvreadytoprocess = true;
-        gotgoodreply = true;
-        Serial.println(" (ETX)");
-        
-        this->sendACK(); // Polite thing to do
-        
-        for (int i = rcvi; i < 100; i++) {
-          this->rcvbuf[i] = 0; // Zero out the rest of the buffer
-        }
-
-        break;
-        
-      } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
-        // This should not happen, and means that our packet integrity is compromised (we somehow started reading into a new packet)
-        Serial.println(" (unexpected control character! aborting)");
-        gotgoodreply = false;
-        break;
-      }
-      
-    } else if (currentchar == STX) {
+    if (currentchar == STX) {
       // STX received from MDR
       Serial.print(" (STX)");
-      rcvi = 0; // start at the beginning!
-      this->rcvbuf[rcvi++] = currentchar;
-      rcving = true; // On the next go-round, start adding characters to rcvbuf
+
+      while (gotgoodreply == -1) { // iterate as long as there we have not received a full good or bad reply
+
+        if (!ser->available()) {
+          // if nothing is available in ser, keep checking for a few ms to make sure there isn't just a delay in the uart
+          bool seravailable = false;
+          long int timewaitstart = millis();
+          while (timewaitstart + 2 > millis() && !seravailable) {
+            if (ser->available() > 0) {
+              // something is available after all
+              seravailable = true;
+            }
+          }
+          if (!seravailable) {
+            // timeout waiting for another byte in this packet, abort
+            gotgoodreply = 0;
+            break;
+          }
+        }
+
+        currentchar = ser->read();
+        this->rcvbuf[rcvi++] = currentchar; // Add current incoming character to rcvbuf
+
+        Serial.print(" 0x");
+        Serial.print(currentchar, HEX);
+
+        if (currentchar == ETX) {
+          // We have received ETX, stop reading
+          this->rcvlen = rcvi;
+          gotgoodreply = 1;
+          Serial.println(" (ETX) : End");
+          
+          this->sendACK(); // Polite thing to do
+          
+          for (int i = rcvi; i < 100; i++) {
+            this->rcvbuf[i] = 0; // Zero out the rest of the buffer
+          }
+
+          break;
+          
+        } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
+          // This should not happen, and means that our packet integrity is compromised (we somehow started reading into a new packet)
+          Serial.println(" (unexpected control character!)");
+          gotgoodreply = 0;
+          break;
+          
+        } else {
+          //delay(1); // TODO seems to be necessary to stop the serial port from tripping all over itself
+          Serial.print(" (");
+          Serial.print(currentchar);
+          Serial.print(")");
+        }
+
+      }
       
     } else if (currentchar == NAK || currentchar == ACK) {
       // Incoming character is either NAK or ACK, right now we don't care which
       Serial.println(" (ACK or NAK)");
       this->rcvbuf[0] = currentchar;
-      this->rcvreadytoprocess = true;
       this->rcvlen = 1;
-      rcving = false;
-      gotgoodreply = true; // NAK still counts as a good reply in this context!
-      break;
+      gotgoodreply = 1; // NAK still counts as a good reply in this context!
   
     } else {
       // Incoming character is some kind of garbage (not a control character, but we're not in the middle of a packet yet)
-      Serial.println(" (garbage data! Aborting)");
-      gotgoodreply = false;
-      break;
+      Serial.println(" (garbage data!)");
+      gotgoodreply = 0;
     }
   }
 
-  if (gotgoodreply) {
+  if (gotgoodreply == 1) {
     return true;
   } else {
     // Some kind of garbage was received from the MDR
     //Serial.println("Did not receive a valid message from the MDR, dumping...");
+    /*
     while (ser->available()) {
       // Dump the buffer
       ser->read();
@@ -187,19 +212,17 @@ bool PrestonDuino::rcv() {
       //Serial.print("0x");
       //Serial.print(ser->read(), HEX);
       //Serial.print(" ");
-    }
+    }*/
     //Serial.println();
 
     if (rcvi > 0) {
       // we received some data, but did not get a good reply
       this->sendNAK(); // so let the MDR know we don't understand
     }
-  
-    rcving = false;
+
     this->rcvlen = 0;
-    this->rcvreadytoprocess = false;
-    
-    return false; // :(
+  
+    return false;
   }
 
 }
@@ -209,106 +232,104 @@ bool PrestonDuino::rcv() {
 
 int PrestonDuino::parseRcv() {
   // >0 result is length of data received, -1 if ACK, -2 if error, -3 if NAK
+  
   int response = 0;
   
-  if (this->rcvreadytoprocess) {
-    //Serial.println("Starting to process rcv");
-    // This should always be true, parseRcv() shouldn't be called unless we're ready to process...
-    if (rcvbuf[0] == ACK) {
-      // Reply is ACK
-      //Serial.println("Rcv is ACK");
-      response = -1;
-      
-    } else if (rcvbuf[0] == NAK) {
-      // Reply is NAK
-      //Serial.println("Rcv is NAK");
-      response = -2;
-      
-    } else if (rcvbuf[0] == STX) {
-      //Serial.println("Rcv is a packet");
-      // Reply is a packet
-      
-      if (!this->firstpacket) {
-        // Delete the previously-received packet before making a new one
-        delete this->rcvpacket;
-      } else {
-        this->firstpacket = false;
-      }
-      PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
-      this->rcvpacket = pak;
+  Serial.println("Starting to process rcv");
 
+  if (rcvbuf[0] == ACK) {
+    // Reply is ACK
+    //Serial.println("Rcv is ACK");
+    response = -1;
+    
+  } else if (rcvbuf[0] == NAK) {
+    // Reply is NAK
+    //Serial.println("Rcv is NAK");
+    response = -2;
+    
+  } else if (rcvbuf[0] == STX) {
+    //Serial.println("Rcv is a packet");
+    // Reply is a packet
+    
+    if (!this->firstpacket) {
+      // Delete the previously-received packet before making a new one
+      delete this->rcvpacket;
+    } else {
+      this->firstpacket = false;
+    }
+    PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
+    this->rcvpacket = pak;
+
+    
+    if (this->rcvpacket->getMode() == 0x11) {
+      // Reply is an error message
+      //Serial.println("Rcv packet is an error");
+      response = -3;
+      // TODO actual error handling?
       
-      if (this->rcvpacket->getMode() == 0x11) {
-        // Reply is an error message
-        //Serial.println("Rcv packet is an error");
-        response = -3;
-        // TODO actual error handling?
+    } else {
+      // Reply is a response packet
+      response = this->rcvpacket->getDataLen();
+      //Serial.print("Packet data is ");
+      //Serial.print(response);
+      //Serial.println(" bytes long");
+      if (this->rcvpacket->getMode() == 0x4) {
+        // Packet is a response to a request for data
+        int dataindex = 0;
+        byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
+        //Serial.print("data descriptor is 0x");
+        //Serial.println(datadescriptor, HEX);
+        if (datadescriptor & 1) {
+          // has iris
+          this->iris = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->iris += this->rcvpacket->getData()[dataindex++];
+          //Serial.print("iris: ");
+          //Serial.println(this->iris);
+        }
+        if (datadescriptor & 2) {
+          // has focus
+          this->focus = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->focus += this->rcvpacket->getData()[dataindex++];
+          //Serial.print("focus: ");
+          //Serial.println(this->focus);      
         
-      } else {
-        // Reply is a response packet
-        response = this->rcvpacket->getDataLen();
-        //Serial.print("Packet data is ");
-        //Serial.print(response);
-        //Serial.println(" bytes long");
-        if (this->rcvpacket->getMode() == 0x4) {
-          // Packet is a response to a request for data
-          int dataindex = 0;
-          byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
-          //Serial.print("data descriptor is 0x");
-          //Serial.println(datadescriptor, HEX);
-          if (datadescriptor & 1) {
-            // has iris
-            this->iris = this->rcvpacket->getData()[dataindex++] * 0xFF;
-            this->iris += this->rcvpacket->getData()[dataindex++];
-            //Serial.print("iris: ");
-            //Serial.println(this->iris);
-          }
-          if (datadescriptor & 2) {
-            // has focus
-            this->focus = this->rcvpacket->getData()[dataindex++] * 0xFF;
-            this->focus += this->rcvpacket->getData()[dataindex++];
-            //Serial.print("focus: ");
-            //Serial.println(this->focus);      
-          
-          }
-          if (datadescriptor & 4) {
-            // has focal length
-            this->zoom = this->rcvpacket->getData()[dataindex++] * 0xFF;
-            this->zoom += this->rcvpacket->getData()[dataindex++];  
-            //Serial.print("focal length: ");
-            //Serial.println(this->zoom);          
-          }
-          if (datadescriptor & 8) {
-            // has AUX
-            this->aux = this->rcvpacket->getData()[dataindex++] * 0xFF;
-            this->aux += this->rcvpacket->getData()[dataindex++];  
-            //Serial.print("aux: ");
-            //Serial.println(this->aux);          
-          }
-          if (datadescriptor & 16) {
-            // describes resolution of data (unused)
-          }
-          if (datadescriptor & 32) {
-            // has rangefinder distance
-            this->distance = this->rcvpacket->getData()[dataindex++] * 0xFF;
-            this->distance += this->rcvpacket->getData()[dataindex++];   
-            //Serial.print("distance: ");
-            //Serial.println(this->distance);
-          }
-          if (datadescriptor & 64) {
-            // describes datatype of data (position vs metadata) (unused)
-          }
-          if (datadescriptor & 128) {
-            // describes status of MDR (unused, and I'm not even sure what this means tbh)
-          }
+        }
+        if (datadescriptor & 4) {
+          // has focal length
+          this->zoom = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->zoom += this->rcvpacket->getData()[dataindex++];  
+          //Serial.print("focal length: ");
+          //Serial.println(this->zoom);          
+        }
+        if (datadescriptor & 8) {
+          // has AUX
+          this->aux = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->aux += this->rcvpacket->getData()[dataindex++];  
+          //Serial.print("aux: ");
+          //Serial.println(this->aux);          
+        }
+        if (datadescriptor & 16) {
+          // describes resolution of data (unused)
+        }
+        if (datadescriptor & 32) {
+          // has rangefinder distance
+          this->distance = this->rcvpacket->getData()[dataindex++] * 0xFF;
+          this->distance += this->rcvpacket->getData()[dataindex++];   
+          //Serial.print("distance: ");
+          //Serial.println(this->distance);
+        }
+        if (datadescriptor & 64) {
+          // describes datatype of data (position vs metadata) (unused)
+        }
+        if (datadescriptor & 128) {
+          // describes status of MDR (unused, and I'm not even sure what this means tbh)
         }
       }
     }
-
-    // Done processing
-    //Serial.println("Done processing rcv");
-    this->rcvreadytoprocess = false;
   }
+
+  // Done processing
+  Serial.println("Done processing rcv");
 
   return response;
 }
@@ -377,7 +398,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   } else if (stat == -1 && withreply) {
     // Packet was acknowledged by MDR, but we still need a reply
   
-    //Serial.println("Command packet acknowledged, awaiting reply");
+    Serial.println("Command packet acknowledged, awaiting reply");
     if (this->waitForRcv()) {
       // Response packet was received
       //Serial.println("Got a reply packet");
@@ -392,9 +413,9 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
 
 
   //Serial.println("Reply data is as follows");
-  for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
+  //for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
     //Serial.println(this->rcvpacket->getData()[i], HEX);
-  }
+  //}
   //Serial.println("End of reply array");
 
   this->reply.data = this->rcvpacket->getData();
@@ -499,10 +520,10 @@ command_reply PrestonDuino::info(byte type) {
   return this->sendCommand(pak, true);
 }
 
-command_reply PrestonDuino::dist(byte type, int dist) {
+command_reply PrestonDuino::dist(byte type, uint32_t dist) {
   //TODO properly format distance (should be 3 bytes)
   
-  byte data[4] = {type, dist};
+  byte data[4] = {type, (uint8_t)dist}; // this is a stupid thing to do
   PrestonPacket *pak = new PrestonPacket(0x10, data, 4);
   return this->sendCommand(pak, false);
 }
