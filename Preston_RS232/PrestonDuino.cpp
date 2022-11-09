@@ -46,7 +46,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   Serial.println();
   
 
-  this->mode(0x11,0x0); // start streaming mode
+  this->mode(0x1,0x0); // start streaming mode, not controlling any channels
 
   this->data(0x17); // request high res focus iris and zoom data
   
