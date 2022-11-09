@@ -25,7 +25,9 @@ void loop() {
     Serial.print("iris: ");
     Serial.print(mdr->getIris());
     Serial.print(" focus: ");
-    Serial.println(mdr->getFocus());
+    Serial.print(mdr->getFocus());
+    Serial.print(" zoom: ");
+    Serial.println(mdr->getZoom());
   }
 
   if (time + 100 < millis()) {
@@ -33,10 +35,7 @@ void loop() {
     time = millis();
     command_reply lens = mdr->info(1);
     Serial.print("current lens name is: ");
-    for (int i = 2; i < lens.replystatus; i++) {
-      Serial.print((char)lens.data[i]);
-    }
-    Serial.println();
+    Serial.println(mdr->getLensName());
 
 /*
     uint16_t iris = map(time, 0, 10000, 0, 0xFFFF); // full lens rack in 10 seconds...nice and smooth

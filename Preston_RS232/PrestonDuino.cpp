@@ -46,9 +46,9 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   Serial.println();
   
 
-  this->mode(0x1,0x0); // start streaming mode
+  this->mode(0x11,0x0); // start streaming mode
 
-  this->data(0x13); // request high res focus and iris data
+  this->data(0x17); // request high res focus iris and zoom data
   
 }
 
@@ -127,22 +127,24 @@ bool PrestonDuino::rcv() {
    */
   
   int rcvi = -1; // index of last received character in the received message
-  int chari = 0; // index of currently processing character in the received message
+  int chari = -1; // index of currently processing character in the received message
   char currentchar; // currently processing character
   int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
 
 
   if (ser->available()) { //only receive if there is something to be received
-    while (ser->available() > 0) {
+    while (ser->available() > 0) { // move all available bytes into rcvbuf for processing
       rcvi++;
       this->rcvbuf[rcvi] = ser->read(); // add the current byte from serial into rcvbuf
-    }    
-    currentchar = this->rcvbuf[chari++]; // get the first character from rcvbuf to take a look at 
+    }
+    chari++;
+    currentchar = this->rcvbuf[chari]; // get the first character from rcvbuf to take a look at 
     //Serial.print("\nStart : 0x");
     //Serial.print(currentchar, HEX);
     
     if (currentchar == STX) {
       // STX received from MDR
+      // Continue reading from rcvbuf (or ser) until no more characters to process
       //Serial.print(" (STX)");
 
       while (gotgoodreply == -1) { // iterate as long as there we have not received a full reply
@@ -167,7 +169,8 @@ bool PrestonDuino::rcv() {
           }
         }
 
-        currentchar = this->rcvbuf[chari++];
+        chari++;
+        currentchar = this->rcvbuf[chari];
 
         //Serial.print(" 0x");
         //Serial.print(currentchar, HEX);
@@ -193,7 +196,6 @@ bool PrestonDuino::rcv() {
           break;
           
         } else {
-          //delay(1); // TODO seems to be necessary to stop the serial port from tripping all over itself
           //Serial.print(" (");
           //Serial.print(currentchar);
           //Serial.print(")");
@@ -217,22 +219,21 @@ bool PrestonDuino::rcv() {
   if (gotgoodreply == 1) {
     return true;
   } else {
-    // Some kind of garbage was received from the MDR
-    //Serial.println("Did not receive a valid message from the MDR, dumping...");
-    /*
-    while (ser->available()) {
+    
+    //while (ser->available()) {
       // Dump the buffer
-      ser->read();
+      //ser->read();
       // TODO this could result in well-structured data being tossed as well, if a good packet arrives while we are processing a bad packet.
       //Serial.print("0x");
       //Serial.print(ser->read(), HEX);
       //Serial.print(" ");
-    }*/
+    //}
     //Serial.println();
 
     if (rcvi > 0) {
       // we received some data, but did not get a good reply
-      this->sendNAK(); // so let the MDR know we don't understand
+      //Serial.println("got some data, but not a full reply");
+      //this->sendNAK(); // so let the MDR know we don't understand
     }
 
     this->rcvlen = 0;
@@ -319,11 +320,11 @@ int PrestonDuino::parseRcv() {
         
         }
         if (datadescriptor & 4) {
-          // has focal length
+          // has focal length/zoom
           this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
           this->zoom += this->rcvpacket->getData()[dataindex++];  
-          Serial.print(" zoom: ");
-          Serial.print(this->zoom);          
+          //Serial.print(" zoom: ");
+          //Serial.print(this->zoom);          
         }
         if (datadescriptor & 8) {
           // has AUX
@@ -362,8 +363,8 @@ int PrestonDuino::parseRcv() {
           }
           this->lensname[this->rcvpacket->getDataLen()] = 0;
 
-          Serial.print("lens name updated: ");
-          Serial.println(this->lensname);
+          //Serial.print("lens name updated: ");
+          //Serial.println(this->lensname);
         }
         break;
       }
