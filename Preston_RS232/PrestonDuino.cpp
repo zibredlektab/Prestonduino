@@ -437,7 +437,6 @@ int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
 
   //Serial.print("Response status is ");
   //Serial.println(response);
-  delete packet;
   return response;
 
 }
@@ -470,6 +469,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
 
     if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
       // Either: timeout, NAK, or ACK for a command that doesn't need a reply
+      delete pak;
       return this->reply;
     } else if (stat == -1 && withreply) {
       // Packet was acknowledged by MDR, but we still need a reply
@@ -503,6 +503,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
             }
             Serial.println();*/
             gotgoodreply = true;
+            delete pak;
             return this->reply;
           }
         }
@@ -510,6 +511,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
 
       if (!gotgoodreply) {
         Serial.println("Timed out waiting for a reply from MDR");
+        delete pak;
       }
     }
   }
