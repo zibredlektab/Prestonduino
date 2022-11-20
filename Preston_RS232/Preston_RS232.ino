@@ -14,13 +14,17 @@ void setup() {
   Serial.println("start");
 
   mdr = new PrestonDuino(Serial1);
+  delay(100);
+  Serial.println("Done with mdr setup");
   mdr->mode(0x01,0x40);
+  Serial.println("Done setting mode");
 }
 
 void loop() {
   mdr->onLoop();
 
-  if (time1 + 1000 < millis()) {
+  if (time1 + 100 < millis()) {
+    Serial.println("time to print lens info");
     time1 = millis();
     Serial.print("iris: ");
     Serial.print(mdr->getIris());
@@ -28,8 +32,8 @@ void loop() {
     Serial.print(mdr->getFocus());
     Serial.print(" zoom: ");
     Serial.println(mdr->getZoom());
-    mdr->info(1);
-    Serial.println(mdr->getLensName());
+    //mdr->info(1);
+    //Serial.println(mdr->getLensName());
   }
 
   if (time + 6 < millis()) {
@@ -38,7 +42,7 @@ void loop() {
     //command_reply lens = mdr->info(1);
     //Serial.print("current lens name is: ");
     //Serial.println(mdr->getLensName());
-
+    Serial.println("time to update aux");
 
     uint16_t iris = map(time, 0, 10000, 0, 0xFFFF); // full lens rack in 10 seconds...nice and smooth
     byte irish = iris >> 8;

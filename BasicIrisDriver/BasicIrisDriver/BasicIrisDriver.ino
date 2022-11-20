@@ -11,15 +11,16 @@ void setup() {
   while(!Serial);
 
   mdr = new PrestonDuino(Serial1);
-  //mdr->mode(0x01,0x01);
+  mdr->mode(0x01,0x08);
 }
 
 void loop() {
   mdr->onLoop();
-  //Serial.print("focus is: ");
-  //Serial.println(mdr->getFocusDistance());
 
-  if (time + 4 < millis()) {
+  if (time + 100 < millis()) {
+
+    Serial.print("iris is: ");
+    Serial.println(mdr->getAperture());
     time = millis();
     uint16_t iris = map(time, 0, 10000, 0, 0xFFFF); // full lens rack in 10 seconds...nice and smooth
     byte irish = iris >> 8;
@@ -28,7 +29,8 @@ void loop() {
     //mdr->data(irisdata, 3);
   }
 
-  if (time > 2000) {
-    while(1) {};
+  if (millis() > 10000) {
+    while(1);
   }
+
 }

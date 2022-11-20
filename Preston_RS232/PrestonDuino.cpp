@@ -13,10 +13,12 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   ser->begin(115200);
   delay(1000);
 
-
-  while(ser->available()) {
-    // empty out ser to begin
-    ser->read();
+  if(ser->available()) {
+    this->mode(0,0); // tell the mdr to shut up for a second
+    delay(100);
+    while(ser->available()) {
+      ser->read(); // dump anything the mdr said before we told it to shut up
+    }
   }
 
   Serial.print("Establishing connection to MDR...");
@@ -40,9 +42,10 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->connectionopen = true;
   Serial.println("Connection open.");
   Serial.print("Current lens: ");
-  for(int i = 2; i < mdrinfo.replystatus; i++){ // skip the first two characters for info(), they describe the type of info - in this case, lens name
+  /*for(int i = 2; i < mdrinfo.replystatus; i++){ // skip the first two characters for info(), they describe the type of info - in this case, lens name
     Serial.print((char)mdrinfo.data[i]);
-  }
+  }*/
+  Serial.print(this->lensname);
   Serial.println();
   
 
@@ -73,8 +76,8 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
    */
 
   for (int i = 0; i < len; i++) {
-    //Serial.print("Sending 0x");
-    //Serial.println(tosend[i], HEX);
+    Serial.print("Sending 0x");
+    Serial.println(tosend[i], HEX);
     ser->write(tosend[i]);
     ser->flush(); // wait for byte to finish sending
   }
@@ -97,14 +100,14 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 // Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
   this->time_now = millis();
-  //Serial.print("Waiting for response.");
+  Serial.print("Waiting for response.");
   
   while(millis() <= this->time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
-      //Serial.println("Got a response");
+      Serial.println("Got a response");
       return true;
     } else if (millis() % 1000 == 0){
-      //Serial.print(".");
+      Serial.print(".");
     }
   }
 
@@ -255,26 +258,29 @@ int PrestonDuino::parseRcv() {
    */
   int response = 0;
   
-  //Serial.println("Starting to process rcvbuf");
+  Serial.println("Starting to process rcvbuf");
 
   if (this->rcvbuf[0] == ACK) {
     // Reply is ACK
-    //Serial.println("Rcvbuf is ACK");
+    Serial.println("Rcvbuf is ACK");
     response = -1;
     
   } else if (this->rcvbuf[0] == NAK) {
     // Reply is NAK
-    //Serial.println("Rcvbuf is NAK");
+    Serial.println("Rcvbuf is NAK");
     response = -2;
     
   } else if (this->rcvbuf[0] == STX) {
-    //Serial.println("Rcvbuf is a packet");
+    Serial.println("Rcvbuf is a packet");
     // Reply is a packet
     
     if (!this->firstpacket) {
       // Delete the previously-received packet before making a new one
+      Serial.print("deleting previous packet...");
       delete this->rcvpacket;
+      Serial.println("deleted.");
     } else {
+      Serial.println("this is the first packet");
       this->firstpacket = false;
     }
     PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
@@ -297,6 +303,7 @@ int PrestonDuino::parseRcv() {
       }
       case 0x04: {
         // Reply is a data packet
+        Serial.println("This is a data packet");
         response = this->rcvpacket->getDataLen();
         int dataindex = 0;
         byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
@@ -355,6 +362,7 @@ int PrestonDuino::parseRcv() {
       }
 
       case 0x0E: { // info
+        Serial.println("This is an Info packet");
         response = this->rcvpacket->getDataLen();
         if (this->rcvpacket->getData()[1] == '1') {
           // lens name
@@ -363,9 +371,15 @@ int PrestonDuino::parseRcv() {
           }
           this->lensname[this->rcvpacket->getDataLen()] = 0;
 
-          //Serial.print("lens name updated: ");
-          //Serial.println(this->lensname);
+          Serial.print("lens name updated: ");
+          Serial.println(this->lensname);
         }
+        break;
+      }
+
+      default: {
+        Serial.print("packet is of mode 0x");
+        Serial.println(this->rcvpacket->getMode());
         break;
       }
     }
@@ -380,7 +394,7 @@ int PrestonDuino::parseRcv() {
   }
 
   // Done processing
-  //Serial.println("Done processing rcvbuf");
+  Serial.println("Done processing rcvbuf");
 
   return response;
 }
@@ -454,26 +468,25 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   // Return an array of the reply, first element of which is an indicator of the reply type
   int mode = pak->getMode();
   for (int i = 0; i < 3; i++) { // try the whole thing 3 times, unless one of the tries is successful
-    /*Serial.print("Sending command with a mode of 0x");
+    Serial.print("Sending command with a mode of 0x");
     Serial.print(mode, HEX);
     Serial.print(" (attempt #");
     Serial.print(i);
-    Serial.println(")");*/
+    Serial.println(")");
 
     int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
     this->reply.replystatus = stat;
     this->reply.data = NULL;
     
-    //Serial.print("Immediate response to command is ");
-    //Serial.println(stat);
+    Serial.print("Immediate response to command is ");
+    Serial.println(stat);
 
     if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
       // Either: timeout, NAK, or ACK for a command that doesn't need a reply
-      delete pak;
       return this->reply;
     } else if (stat == -1 && withreply) {
       // Packet was acknowledged by MDR, but we still need a reply
-      //Serial.println("Command packet acknowledged, awaiting reply");
+      Serial.println("Command packet acknowledged, awaiting reply");
 
       bool gotgoodreply = false;
       long int timestartedwaiting = millis();
@@ -481,10 +494,10 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
       while (!gotgoodreply && timestartedwaiting + this->timeout > millis()) {
         if (this->waitForRcv()) {
           // Response packet was received
-          //Serial.println("Got a reply packet");
+          Serial.println("Got a reply packet");
           stat = this->parseRcv(); // MDR's response to the command packet
-          //Serial.print("Status of reply packet is ");
-          //Serial.println(stat);
+          Serial.print("Status of reply packet is ");
+          Serial.println(stat);
 
           // if stat is an error, we did not get a good reply
 
@@ -511,7 +524,6 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
 
       if (!gotgoodreply) {
         Serial.println("Timed out waiting for a reply from MDR");
-        delete pak;
       }
     }
   }
@@ -530,6 +542,7 @@ command_reply PrestonDuino::getReply() {
 
 
 command_reply PrestonDuino::mode(byte modeh, byte model) {
+  Serial.println("issuing mode command");
   byte data[2] = {modeh, model};
   PrestonPacket *pak = new PrestonPacket(0x01, data, 2);
   return this->sendCommand(pak, false);
@@ -630,189 +643,27 @@ command_reply PrestonDuino::dist(byte type, uint32_t dist) {
  */
 
 
-const byte* PrestonDuino::getLensData() {
-  command_reply reply = this->ld();
-
-  if (reply.replystatus > 0) {
-    //Serial.print(F("Got valid lens data: "));
-    for (int i = 0; i < reply.replystatus; i++) {
-      //Serial.print(reply.data[i], HEX);
-      //Serial.print(" ");
-    }
-    //Serial.println();
-    return reply.data;
-  } else {
-    //Serial.println(F("Didn't get valid lens data this time either"));
-    return this->dummydata;
-  }
-}
-
-
 
 uint32_t PrestonDuino::getFocus() {
   return this->focus;
-  /*
-  const byte* lensdata = this->getLensData();
-  static uint32_t distint;
-  byte dist[4];
-  dist[3] = 0;
-  
-  for (int i = 2; i >= 0; i--) {
-    dist[i] = lensdata[2-i];
-  }
-
-  distint = ((uint32_t*)dist)[0];
-
-  return distint;*/
 }
 
 
 
 int PrestonDuino::getZoom() {
   return this->zoom;
-  /*
-  const byte* lensdata = this->getLensData();
-  byte flength[2];
-
-
-  //Serial.println("Focal length data:");
-  for (int i = 0; i < 2; i++) {
-    //Serial.println(lensdata[5+i], HEX);
-  }
-  //Serial.println("----");
-  
-  for (int i = 1; i >= 0; i--) {
-    flength[i] = lensdata[6-i];
-  }
-
-  //Serial.println("Focal Length data isolated:");
-  for (int i = 0; i < 2; i++) {
-    //Serial.println(flength[i], HEX);
-  }
-
-  //Serial.println("----");
-  //Serial.print("Focal length data as int: ");
-  //Serial.println(((uint16_t*)flength)[0], DEC);
-
-  return ((uint16_t*)flength)[0];*/
 }
 
 
 
 int PrestonDuino::getIris() {
   return this->iris;
-  /*
-  const byte* lensdata = this->getLensData();
-  byte iris[2];
-  //Serial.print(F("Lens data as reported: "));
-  for (int i = 0; i < 7; i++) {
-    //Serial.print(lensdata[i]);
-  }
-  //Serial.println();
-
-
-  //Serial.println("Iris data:");
-  for (int i = 0; i < 2; i++) {
-    //Serial.println(lensdata[3+i], HEX);
-  }
-  //Serial.println("----");
-  
-  for (int i = 1; i >= 0; i--) {
-    iris[i] = lensdata[4-i];
-  }
-
-  //Serial.println("Iris data isolated:");
-  for (int i = 0; i < 2; i++) {
-    //Serial.println(iris[i], HEX);
-  }
-
-  //Serial.println("----");
-  //Serial.print("Iris data as int: ");
-  //Serial.println(((uint16_t*)iris)[0], DEC);
-
-  return ((uint16_t*)iris)[0];
-  */
 }
 
 
 char* PrestonDuino::getLensName() {
-
-  
-  command_reply lensinfo = this->info(0x1);
-
-  int lensnamelen = lensinfo.replystatus-1; //first byte in the reply to info() is the type of info, so minus one
-
-  //Serial.print("Lens name is this long: ");
-  //Serial.println(lensnamelen);
-  
-  this->lensname[0] = lensnamelen; // first index is length of name, plus one to acccount for the length itself
-  for (int i = 1; i < lensnamelen; i++) {
-    this->lensname[i] = lensinfo.data[i+1]; //1+1 ensures that we skip the first two elements of data, which are the info type
-  }
-
-  this->lensname[lensnamelen+1] = '\0';
-
-
-  //Serial.print("Lens name: ");
-  //Serial.print("[0x");
-  //Serial.print(this->lensname[0], HEX);
-  //Serial.print("]");
-  for (int i = 1; i < lensnamelen; i++) {
-    //Serial.print(this->lensname[i]);
-  }
-  //Serial.println();
-  
   return this->lensname;
 }
-
-
-
-
-command_reply PrestonDuino::setLensData(uint32_t dist, uint16_t iris, uint16_t flength) {
-  // dist is actually a 0-padded little-endian 24-bit int
-
-  byte newlensdata[8];
-  newlensdata[0] = 0x7; //FIZ data
-
-
-  // Focus
-
-  //Serial.print("Input dist is 0x");
-  //Serial.println(dist, HEX);
-
-  newlensdata[3] = (dist >> 0);
-  newlensdata[2] = (dist >> 8);
-  newlensdata[1] = (dist >> 16);
-
-
-  // Iris
-
-  //Serial.print("Input iris is ");
-  //Serial.println(iris);
-
-  newlensdata[5] = (iris >> 0);
-  newlensdata[4] = (iris >> 8);
-
-
-  // Zoom
-
-  //Serial.print("Input zoom is ");
-  //Serial.println(flength);
-
-  newlensdata[7] = (flength >> 0);
-  newlensdata[6] = (flength >> 8);
-
-
-  //Serial.println("New lens data packet: ");
-  for (int i = 0; i < 8; i++){
-    //Serial.println(newlensdata[i], HEX);
-  }
-  
-  return this->data(newlensdata, 8);
-  
-}
-
-
 
 
 void PrestonDuino::setMDRTimeout(int newtimeout) {

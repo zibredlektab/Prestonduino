@@ -98,17 +98,10 @@ class PrestonDuino {
     // Lens data requires lens to be calibrated (mapped) from the hand unit
 
     // Getters
-    const byte* getLensData(); // checks for previously-recieved (still fresh) lens data, then runs ld if not found
     uint32_t getFocus(); // Focus distance, in mm (1mm precision)
     int getZoom(); // Focal length, in mm (1mm precision)
     int getIris(); // Iris (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
-
-    // Setters
-    command_reply setLensData(uint32_t dist, uint16_t iris, uint16_t flength);
-    command_reply setFocus(uint32_t dist);
-    command_reply setIris(uint16_t iris);
-    command_reply setZoom(uint16_t flength);
 };
 
 #endif
