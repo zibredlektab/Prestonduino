@@ -16,7 +16,7 @@ void setup() {
   mdr = new PrestonDuino(Serial1);
   delay(100);
   Serial.println("Done with mdr setup");
-  mdr->mode(0x01,0x40);
+  //mdr->mode(0x01,0x40);
   Serial.println("Done setting mode");
 }
 

@@ -274,14 +274,13 @@ int PrestonDuino::parseRcv() {
     Serial.println("Rcvbuf is a packet");
     // Reply is a packet
     
-    if (!this->firstpacket) {
+    if (this->rcvpacket != NULL) {
       // Delete the previously-received packet before making a new one
       Serial.print("deleting previous packet...");
       delete this->rcvpacket;
       Serial.println("deleted.");
     } else {
       Serial.println("this is the first packet");
-      this->firstpacket = false;
     }
     PrestonPacket *pak = new PrestonPacket(this->rcvbuf, this->rcvlen);
     this->rcvpacket = pak;
@@ -527,6 +526,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
       }
     }
   }
+
   return this->reply;
 }
 
