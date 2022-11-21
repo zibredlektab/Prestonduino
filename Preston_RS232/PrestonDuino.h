@@ -27,7 +27,8 @@ class PrestonDuino {
     bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
-    PrestonPacket* rcvpacket = NULL; // most recently received packet from MDR
+    PrestonPacket* sendpacket = NULL; // outgoing packet to MDR
+    PrestonPacket* rcvpacket = NULL; // incoming packet from MDR
     int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
     command_reply reply; // most recently received reply from MDR
     const byte dummydata[7] = {0,0,0,0,0,0,0};
