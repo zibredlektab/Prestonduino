@@ -29,6 +29,7 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   //Serial.println("Making a packet");
   this->mode = cmd_mode;
 
+
   for (int i = 0; i < cmd_datalen; i++) {
     this->data[i] = cmd_data[i];
   }
@@ -44,8 +45,10 @@ PrestonPacket::PrestonPacket(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
 
 PrestonPacket::PrestonPacket(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
-  
   this->packetlen = len;
+  if (len > 100) {
+    Serial.println("warning: incoming packet is too long.");
+  }
   for (int i = 0; i < len; i++) {
     this->packet_ascii[i] = inputbuffer[i];
   }

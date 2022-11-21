@@ -22,7 +22,7 @@ void setup() {
 
 void loop() {
   mdr->onLoop();
-
+/*
   if (time1 + 100 < millis()) {
     Serial.println("time to print lens info");
     time1 = millis();
@@ -51,5 +51,5 @@ void loop() {
     mdr->data(irisdata, 3);
   }
 
-  
+  */
 }

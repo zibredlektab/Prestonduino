@@ -15,6 +15,12 @@
 
 #include "Arduino.h"
 
+/* [STX][Mode][Len][Data 1]...[Data n][sum 1][sum 2][etx]
+   [                    Packet                          ]
+        [                Core        ]
+                   [     Data        ]
+*/
+
 class PrestonPacket {
   private:
     byte mode;
