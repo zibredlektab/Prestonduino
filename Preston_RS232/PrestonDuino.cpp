@@ -144,9 +144,9 @@ bool PrestonDuino::rcv() {
       rcvi++;
       this->rcvbuf[rcvi] = ser->read(); // add the current byte from serial into rcvbuf
     }
-    Serial.print("Received ");
+    Serial.print("Serial had ");
     Serial.print(rcvi);
-    Serial.println(" characters so far");
+    Serial.println(" characters for us to process");
     
     chari++;
     currentchar = this->rcvbuf[chari]; // get the first character from rcvbuf to take a look at 
@@ -169,15 +169,15 @@ bool PrestonDuino::rcv() {
               Serial.println("More arrived!");
               // something is available after all
               seravailable = true;
-              while(ser->available()) {
+              while (ser->available() > 0) {
                 rcvi++;
                 this->rcvbuf[rcvi] = ser->read();
               }
 
 
-              Serial.print("Received ");
+              Serial.print("Okay, now I have ");
               Serial.print(rcvi);
-              Serial.println(" characters so far");
+              Serial.println(" characters");
             }
           }
           if (!seravailable) {
