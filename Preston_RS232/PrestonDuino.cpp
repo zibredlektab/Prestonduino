@@ -122,10 +122,68 @@ bool PrestonDuino::waitForRcv() {
 }
 
 
-
-
-
 bool PrestonDuino::rcv() {
+  /* Check one character from serial and see if it's a control character or not. 
+   * Continue until a good reply is found or timeout
+   * Only put control characters and following valid data into rcvbuf
+   *
+   */
+  
+  unsigned long long timestartedrcv = millis();
+  char currentchar = 0;
+  
+  while (timestartedrcv + this->timeout > millis()) {
+    currentchar = this->waitForRead();
+
+    if (currentchar) {
+      switch (currentchar) {
+        case ACK: {
+          Serial.println("ACK received");
+          return true;
+          break;
+        }
+        case NAK: {
+          Serial.println("NAK received");
+          return true;
+          break;
+        }
+        case STX: {
+          // Start copying data to rcvbuf.
+          // Start with 2 characters, look for length in 2nd
+          this->rcvbuf[0] = STX;
+          this->rcvbuf[1] = this->waitForRead(); // mode of message
+          this->rcvbuf[2] = this->waitForRead(); // length of data in message
+          int remaininglen = this->rcvbuf[2] + 3; // 2 bytes for checksum and 1 etx character
+          for (int i = 0; i < remaininglen; i++) {
+            this->rcvbuf[i+3] = this->waitForRead();
+          }
+          this->rcvbuf[remaininglen+3] = 0; // null terminator just to be safe
+          return true;
+          break;
+        }
+        default: {
+          // data we do not understand, let's go around again
+          break;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+char PrestonDuino::waitForRead() {
+  unsigned long long int startedwait = millis();
+  while (startedwait + this->timeout > millis()) {
+    if (ser->available() > 0) {
+      return ser->read();
+    }
+  }
+  Serial.println("Timeout waiting for another serial character");
+  return 0;
+}
+
+bool PrestonDuino::rcvold() {
   /* Check if there is available data, then check the first char for following:
    *    ACK/NAK: add to rcv and return
    *    STX: add all bytes to rcvbuf until ETX is found (if second control character is found, see next line)
@@ -133,23 +191,26 @@ bool PrestonDuino::rcv() {
    * Returns true if we got usable data, false if not
    */
   
-  int rcvi = -1; // index of last received character in the received message
-  int chari = -1; // index of currently processing character in the received message
+  int rcvi = 0; // index of last received character in the received message
+  int chari = 0; // index of currently processing character in the received message
   char currentchar; // currently processing character
   int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
 
 
   if (ser->available()) { //only receive if there is something to be received
+    Serial.print("starting off, rcvi is ");
+    Serial.print(rcvi);
+    Serial.print(", and ser->available is ");
+    Serial.println(ser->available());
+
     while (ser->available() > 0) { // move all available bytes into rcvbuf for processing
-      rcvi++;
-      this->rcvbuf[rcvi] = ser->read(); // add the current byte from serial into rcvbuf
+      this->rcvbuf[rcvi++] = ser->read(); // add the current byte from serial into rcvbuf
     }
     Serial.print("Serial had ");
     Serial.print(rcvi);
     Serial.println(" characters for us to process");
     
-    chari++;
-    currentchar = this->rcvbuf[chari]; // get the first character from rcvbuf to take a look at 
+    currentchar = this->rcvbuf[chari++]; // get the first character from rcvbuf to take a look at 
     Serial.print("\nStart : 0x");
     Serial.print(currentchar, HEX);
     
@@ -170,8 +231,7 @@ bool PrestonDuino::rcv() {
               // something is available after all
               seravailable = true;
               while (ser->available() > 0) {
-                rcvi++;
-                this->rcvbuf[rcvi] = ser->read();
+                this->rcvbuf[rcvi++] = ser->read();
               }
 
 
@@ -188,14 +248,17 @@ bool PrestonDuino::rcv() {
           }
         }
 
-        chari++;
-        currentchar = this->rcvbuf[chari];
+        currentchar = this->rcvbuf[chari++];
 
         Serial.print(" 0x");
         Serial.print(currentchar, HEX);
 
         if (currentchar == ETX) {
           // We have received ETX, stop reading
+          Serial.print("chari = ");
+          Serial.print(chari);
+          Serial.print(", rcvi = ");
+          Serial.println(rcvi);
           this->rcvlen = rcvi;
           gotgoodreply = 1;
           Serial.println(" (ETX) : End");
@@ -242,15 +305,6 @@ bool PrestonDuino::rcv() {
     return true;
   } else {
     
-    //while (ser->available()) {
-      // Dump the buffer
-      //ser->read();
-      // TODO this could result in well-structured data being tossed as well, if a good packet arrives while we are processing a bad packet.
-      //Serial.print("0x");
-      //Serial.print(ser->read(), HEX);
-      //Serial.print(" ");
-    //}
-    //Serial.println();
 
     if (rcvi > 0) {
       // we received some data, but did not get a good reply
