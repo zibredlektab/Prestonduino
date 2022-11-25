@@ -140,24 +140,31 @@ bool PrestonDuino::rcv() {
       switch (currentchar) {
         case ACK: {
           Serial.println("ACK received");
-          ser->read();
+          this->rcvbuf[0] = ser->read();
+          this->rcvlen = 1;
           return true;
           break;
         }
         case NAK: {
           Serial.println("NAK received");
-          ser->read();
+          this->rcvbuf[0] = ser->read();
+          this->rcvlen = 1;
           return true;
           break;
         }
         case STX: {
+          Serial.print("Got a packet in response, of ");
           // Start copying data to rcvbuf, until an etx
           this->rcvlen = ser->readBytesUntil(ETX, this->rcvbuf, 100);
+          Serial.print(this->rcvlen);
+          Serial.println(" characters.");
+
           if (this->rcvlen < 99) {
             this->rcvbuf[rcvlen++] = ETX;
           } else {
             Serial.println("Read a suspiciously large amount of data...");
           }
+          
           return true;
           break;
         }
@@ -173,145 +180,6 @@ bool PrestonDuino::rcv() {
 
   return false;
 }
-
-
-bool PrestonDuino::rcvold() {
-  /* Check if there is available data, then check the first char for following:
-   *    ACK/NAK: add to rcv and return
-   *    STX: add all bytes to rcvbuf until ETX is found (if second control character is found, see next line)
-   *    Anything else: treat as garbage data. Send NAK to MDR and toss the buffer
-   * Returns true if we got usable data, false if not
-   */
-  
-  int rcvi = 0; // index of last received character in the received message
-  int chari = 0; // index of currently processing character in the received message
-  char currentchar; // currently processing character
-  int gotgoodreply = -1; // flag that message was a properly formatted preston reply: -1 is not checked yet, 0 is bad reply or timeout, 1 is good reply
-
-
-  if (ser->available()) { //only receive if there is something to be received
-    Serial.print("starting off, rcvi is ");
-    Serial.print(rcvi);
-    Serial.print(", and ser->available is ");
-    Serial.println(ser->available());
-
-    while (ser->available() > 0) { // move all available bytes into rcvbuf for processing
-      this->rcvbuf[rcvi++] = ser->read(); // add the current byte from serial into rcvbuf
-    }
-    Serial.print("Serial had ");
-    Serial.print(rcvi);
-    Serial.println(" characters for us to process");
-    
-    currentchar = this->rcvbuf[chari++]; // get the first character from rcvbuf to take a look at 
-    Serial.print("\nStart : 0x");
-    Serial.print(currentchar, HEX);
-    
-    if (currentchar == STX) {
-      // STX received from MDR
-      // Continue reading from rcvbuf (or ser) until no more characters to process
-      Serial.print(" (STX)");
-
-      while (gotgoodreply == -1) { // iterate as long as there we have not received a full reply
-        if (chari >= rcvi) {
-          // if no more characters are available in rcvbuf, keep checking ser->available() for a few ms to make sure there isn't just a delay in the uart
-          bool seravailable = false;
-          long int timewaitstart = millis();
-          Serial.println(" ...ran out of characters to process, waiting 2ms for more to arrive...");
-          while (timewaitstart + 2 > millis() && !seravailable) {
-            if (ser->available() > 0) {
-              Serial.println("More arrived!");
-              // something is available after all
-              seravailable = true;
-              while (ser->available() > 0) {
-                this->rcvbuf[rcvi++] = ser->read();
-              }
-
-
-              Serial.print("Okay, now I have ");
-              Serial.print(rcvi);
-              Serial.println(" characters");
-            }
-          }
-          if (!seravailable) {
-            Serial.println("Nothing else ever arrived.");
-            // timeout waiting for another byte in this packet, abort
-            gotgoodreply = 0;
-            break;
-          }
-        }
-
-        currentchar = this->rcvbuf[chari++];
-
-        Serial.print(" 0x");
-        Serial.print(currentchar, HEX);
-
-        if (currentchar == ETX) {
-          // We have received ETX, stop reading
-          Serial.print("chari = ");
-          Serial.print(chari);
-          Serial.print(", rcvi = ");
-          Serial.println(rcvi);
-          this->rcvlen = rcvi;
-          gotgoodreply = 1;
-          Serial.println(" (ETX) : End");
-          Serial.print("Received a total of ");
-          Serial.print(this->rcvlen);
-          Serial.println(" bytes");
-          
-          this->sendACK(); // Polite thing to do
-          
-          for (int i = rcvi; i < 100; i++) {
-            this->rcvbuf[i] = 0; // Zero out the rest of the buffer
-          }
-
-          break;
-          
-        } else if (currentchar == STX || currentchar == NAK || currentchar == ACK) {
-          // This should not happen, and means that our packet integrity is compromised (we somehow started reading into a new packet)
-          //Serial.println(" (unexpected control character!)");
-          gotgoodreply = 0;
-          break;
-          
-        } else {
-          Serial.print(" (");
-          Serial.print(currentchar);
-          Serial.print(")");
-        }
-
-      }
-      
-    } else if (currentchar == NAK || currentchar == ACK) {
-      // Incoming character is either NAK or ACK, right now we don't care which
-      Serial.println(" (ACK or NAK)");
-      this->rcvlen = 1;
-      gotgoodreply = 1; // NAK still counts as a good reply in this context!
-  
-    } else {
-      // Incoming character is some kind of garbage (not a control character, but we're not in the middle of a packet yet)
-      Serial.println(" (garbage data!)");
-      gotgoodreply = 0;
-    }
-  }
-
-  if (gotgoodreply == 1) {
-    return true;
-  } else {
-    
-
-    if (rcvi > 0) {
-      // we received some data, but did not get a good reply
-      //Serial.println("got some data, but not a full reply");
-      //this->sendNAK(); // so let the MDR know we don't understand
-    }
-
-    this->rcvlen = 0;
-  
-    return false;
-  }
-
-}
-
-
 
 
 int PrestonDuino::parseRcv() {
