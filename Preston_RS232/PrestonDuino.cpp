@@ -21,6 +21,8 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
     }
   }
 
+  ser->setTimeout(this->timeout);
+
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
 
@@ -103,10 +105,10 @@ int PrestonDuino::sendToMDR(byte* tosend, int len) {
 // A reply is expected, so wait for one until the timeout threshold has passed
 // Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
-  this->time_now = millis();
+  unsigned long long int time_now = millis();
   Serial.println("Waiting for response.");
   
-  while(millis() <= this->time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
+  while(millis() <= time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
       Serial.println("Got a response");
       return true;
@@ -126,62 +128,52 @@ bool PrestonDuino::rcv() {
   /* Check one character from serial and see if it's a control character or not. 
    * Continue until a good reply is found or timeout
    * Only put control characters and following valid data into rcvbuf
-   *
    */
   
   unsigned long long timestartedrcv = millis();
   char currentchar = 0;
   
   while (timestartedrcv + this->timeout > millis()) {
-    currentchar = this->waitForRead();
+    currentchar = ser->peek();
 
-    if (currentchar) {
+    if (currentchar != -1) {
       switch (currentchar) {
         case ACK: {
           Serial.println("ACK received");
+          ser->read();
           return true;
           break;
         }
         case NAK: {
           Serial.println("NAK received");
+          ser->read();
           return true;
           break;
         }
         case STX: {
-          // Start copying data to rcvbuf.
-          // Start with 2 characters, look for length in 2nd
-          this->rcvbuf[0] = STX;
-          this->rcvbuf[1] = this->waitForRead(); // mode of message
-          this->rcvbuf[2] = this->waitForRead(); // length of data in message
-          int remaininglen = this->rcvbuf[2] + 3; // 2 bytes for checksum and 1 etx character
-          for (int i = 0; i < remaininglen; i++) {
-            this->rcvbuf[i+3] = this->waitForRead();
+          // Start copying data to rcvbuf, until an etx
+          this->rcvlen = ser->readBytesUntil(ETX, this->rcvbuf, 100);
+          if (this->rcvlen < 99) {
+            this->rcvbuf[rcvlen++] = ETX;
+          } else {
+            Serial.println("Read a suspiciously large amount of data...");
           }
-          this->rcvbuf[remaininglen+3] = 0; // null terminator just to be safe
           return true;
           break;
         }
         default: {
           // data we do not understand, let's go around again
+          ser->read();
           break;
         }
       }
     }
+
   }
 
   return false;
 }
 
-char PrestonDuino::waitForRead() {
-  unsigned long long int startedwait = millis();
-  while (startedwait + this->timeout > millis()) {
-    if (ser->available() > 0) {
-      return ser->read();
-    }
-  }
-  Serial.println("Timeout waiting for another serial character");
-  return 0;
-}
 
 bool PrestonDuino::rcvold() {
   /* Check if there is available data, then check the first char for following:
@@ -734,4 +726,5 @@ char* PrestonDuino::getLensName() {
 
 void PrestonDuino::setMDRTimeout(int newtimeout) {
   this->timeout = newtimeout;
+  ser->setTimeout(this->timeout);
 }
