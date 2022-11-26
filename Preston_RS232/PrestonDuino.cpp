@@ -94,8 +94,8 @@ bool PrestonDuino::rcv() {
    * Only put control characters and following valid data into rcvbuf
    */
   
-  unsigned long long timestartedrcv = millis();
-  char currentchar = 0;
+  unsigned long long int timestartedrcv = millis();
+  int currentchar = 0;
   
   while (timestartedrcv + this->timeout > millis()) {
     currentchar = ser->peek();
@@ -134,7 +134,9 @@ bool PrestonDuino::rcv() {
         }
         default: {
           // data we do not understand, let's go around again
-          ser->read();
+          Serial.print("current character in serial is ");
+          Serial.print(ser->read());
+          Serial.println(", which I don't understand");
           break;
         }
       }
@@ -175,12 +177,12 @@ int PrestonDuino::parseRcv() {
 
     Serial.println("Set up new rcvpacket.");
 
-    // check validity of message
-    
+    // check validity of message todo
+    /*
     if (!this->validatePacket()) {
       Serial.println("Packet failed validity check!");
       return -2;
-    }
+    }*/
     
     switch (this->rcvpacket->getMode()) {
       case 0x11: {
@@ -373,6 +375,8 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
       if (this->waitForRcv()){ // wait for a response
         // got a response
         this->reply.replystatus = this->parseRcv(); // figure out what the response was
+        Serial.print("reply status after parsing is ");
+        Serial.println(this->reply.replystatus);
         if (this->reply.replystatus == -1) { // command acknowledged
           Serial.print("Command acknowledged, ");
           if (!withreply) {
