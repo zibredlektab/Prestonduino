@@ -55,7 +55,7 @@ void PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
   }
   this->parseInput(inputbuffer, len);
   
-  this->compilePacket();
+  //this->compilePacket();
 
   //Serial.print ("Packet is : ");
   for (int i = 0; i < this->packetlen; i++) {
