@@ -15,7 +15,7 @@ void PrestonPacket::packetFromCommand(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
   this->mode = cmd_mode;
 
-  this->data[0] = NULL;
+  this->zeroOut();
   this->datalen = 0;
 
   this->compilePacket();
@@ -178,9 +178,9 @@ void PrestonPacket::compilePacket() {
   // Finished encoding core
 
   // Compute sum, encode sum
-  int coresum = this->computeSum(coreascii, coreasciilen);
+  this->checksum = this->computeSum(coreascii, coreasciilen);
   char sumascii[3];
-  sprintf(sumascii, "%02X", coresum);
+  sprintf(sumascii, "%02X", this->checksum);
   // Finished with sum
 
 
@@ -216,8 +216,7 @@ int PrestonPacket::computeSum(byte* input, int len) {
     sum += input[i];
   }
   
-  this->checksum = sum % 0x100;
-  return this->checksum;
+  return sum % 0x100;
 }
 
 

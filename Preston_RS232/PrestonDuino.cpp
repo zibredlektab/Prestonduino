@@ -253,16 +253,23 @@ int PrestonDuino::parseRcv() {
       case 0x0E: { // info
         Serial.println("This is an Info packet");
         response = this->rcvpacket->getDataLen();
+        char* arraytofill = this->fwname;
         if (this->rcvpacket->getData()[1] == '1') {
           // lens name
-          for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
-            this->lensname[i] = this->rcvpacket->getData()[i];
-          }
-          this->lensname[this->rcvpacket->getDataLen()] = 0;
-
-          Serial.print("lens name updated: ");
-          Serial.println(this->lensname);
+          arraytofill = this->lensname;
+        } else if (this->rcvpacket->getData()[1] == '0') {
+          // mdr firmware
+          arraytofill = this->fwname;
+        } else {
+          Serial.println("unknown info type received, something has gone wrong.");
+          break;
         }
+      
+        memcpy(arraytofill, this->rcvpacket->getData(), this->rcvpacket->getDataLen());
+        arraytofill[this->rcvpacket->getDataLen()] = 0;
+
+        Serial.print("info updated: ");
+        Serial.println(arraytofill);
         break;
       }
 
@@ -274,7 +281,7 @@ int PrestonDuino::parseRcv() {
     }
 
 
-  } else { // This isn't a packet I recognize
+  } else { // This isn't a packet format I recognize
     Serial.print("First byte of rcvbuf is 0x");
     Serial.print(this->rcvbuf[0], HEX);
     Serial.println(", and I don't know how to parse that.");
@@ -303,7 +310,7 @@ bool PrestonDuino::validatePacket() {
   //Serial.print("calculated checksum is 0x");
   //Serial.println(sum, HEX);
 
-  return sum == this->rcvpacket->getSum();
+  return (sum == this->rcvpacket->getSum());
 }
 
 
