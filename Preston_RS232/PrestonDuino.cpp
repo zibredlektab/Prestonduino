@@ -13,23 +13,22 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   ser->begin(115200);
   delay(1000);
 
-  if(ser->available()) {
-    this->mode(0,0); // tell the mdr to shut up for a second
-    delay(100);
-    while(ser->available()) {
-      ser->read(); // dump anything the mdr said before we told it to shut up
-    }
-  }
-
-  ser->setTimeout(this->timeout);
 
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
 
   Serial.print("Establishing connection to MDR...");
 
+  this->mode(0,0); // tell the mdr to shut up for a second
+  delay(100);
+  while(ser->available() > 0) {
+    ser->read(); // dump anything the mdr said before we told it to shut up
+  }
+
+  ser->setTimeout(this->timeout);
+
   // TODO get & store MDR number 
-  command_reply mdrinfo = this->info(0x1);
+  this->info(0x1);
   //Serial.print("Status of reply from info command: ");
   //Serial.println(mdrinfo.replystatus);
   
@@ -44,8 +43,6 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
     }
   }*/
 
-  this->connectionopen = true;
-  Serial.println("Connection open.");
   Serial.print("Current lens: ");
   /*for(int i = 2; i < mdrinfo.replystatus; i++){ // skip the first two characters for info(), they describe the type of info - in this case, lens name
     Serial.print((char)mdrinfo.data[i]);
@@ -58,11 +55,6 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   this->data(0x7); // request low res (for easy debugging) focus iris and zoom data
   
-}
-
-
-bool PrestonDuino::readyToSend() {
-  return this->connectionopen;
 }
 
 void PrestonDuino::onLoop () {
@@ -354,7 +346,7 @@ void PrestonDuino::sendPacketToMDR(PrestonPacket* packet, bool retry) {
 
 command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   /* Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
-   * Return an array of the reply, first element of which is an indicator of the reply type
+   * Returns a command_reply object of the reply
    *
    * A reply_status of 0 indicates no valid response, meaning either a timeout or an invalid reply packet
    */
@@ -407,11 +399,6 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
     }
   }
   // if we get this far, we have failed to get a valid response to our sent command. :(
-  return this->reply;
-}
-
-
-command_reply PrestonDuino::getReply() {
   return this->reply;
 }
 

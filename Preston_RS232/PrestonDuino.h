@@ -24,17 +24,12 @@ class PrestonDuino {
   private:
     // variables
     HardwareSerial *ser; // serial port connected to MDR
-    bool connectionopen = false; // flag that we have a line to the MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
-    PrestonPacket* sendpacket = NULL; // outgoing packet to MDR
-    PrestonPacket* rcvpacket = NULL; // incoming packet from MDR
-    int mdrtype = 0; // 2, 3, or 4 depending on what kind of MDR
-    command_reply reply; // most recently received reply from MDR
-    const byte dummydata[7] = {0,0,0,0,0,0,0};
-    
+    PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
+    PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
+    command_reply reply; // most recent received reply from MDR
     int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
-
 
     // MDR Data
     // Basic lens data - can be assumed to be up to date
@@ -46,6 +41,7 @@ class PrestonDuino {
     
     // Advanced data, not updated automatically
     char lensname[50];
+    char fwname[50];
 
     // methods
     void sendACK();
@@ -55,23 +51,22 @@ class PrestonDuino {
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     command_reply sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
     bool validatePacket(); // true if packet validates with checksum
+    void sendBytesToMDR(byte* tosend, int len); // sends raw bytes to MDR.
+    void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
 
   public:
 
     void onLoop();
 
     PrestonDuino(HardwareSerial& serial);
-    void sendBytesToMDR(byte* tosend, int len); // sends raw bytes to MDR.
-    void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR, returns same as above.
-    void setMDRTimeout(int newtimeout); // sets the timeout
-    bool readyToSend();
-    command_reply getReply();
+    void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
     
     /* All of the following are according to the Preston protocol.
-     * The first byte is a signed int identifying the type of the response:
+     * reply_status is a signed int identifying the type of the response:
      * 0 if timeout, -1 if ACK with no further reply, -2 if NAK, -3 if error, >0 result is length of data section in the MDR reply
-     * The following array is the data section of the MDR reply
+     * data is a byte array representing the data section of the MDR reply
      */
+
     command_reply mode(byte datah, byte datal);
     command_reply stat();
     command_reply who();
@@ -89,7 +84,6 @@ class PrestonDuino {
     command_reply info(byte type); // MDR3/4 only, first element of array is size of payload
     command_reply dist(byte type, uint32_t dist);
     command_reply err(); // Here for completeness but unused as a client command
-
 
     // The following are helper methods, simplifying common tasks
     // Lens data requires lens to be calibrated (mapped) from the hand unit
