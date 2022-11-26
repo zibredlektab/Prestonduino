@@ -11,7 +11,7 @@
 #define DEFAULTTIMEOUT 2000
 
 struct command_reply {
-  uint8_t replystatus;
+  int8_t replystatus;
   byte* data;
 };
 
