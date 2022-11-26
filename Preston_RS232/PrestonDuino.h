@@ -51,7 +51,7 @@ class PrestonDuino {
     void sendACK();
     void sendNAK();
     bool waitForRcv(); // returns true if response was recieved
-    bool rcv(); // true if usable data received, false if not
+    bool rcv(); // true if usable data received, false if not 
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     command_reply sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
     bool validatePacket(); // true if packet validates with checksum
@@ -61,9 +61,8 @@ class PrestonDuino {
     void onLoop();
 
     PrestonDuino(HardwareSerial& serial);
-    int sendToMDR(byte* tosend, int len); // sends raw bytes to MDR. >0 result is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error
-    int sendToMDR(PrestonPacket* packet); // sends a constructed PrestonPacket to MDR, returns same as above. Does not retry on NAK
-    int sendToMDR(PrestonPacket* packet, bool retry); // same as above, with option to retry on NAK
+    void sendBytesToMDR(byte* tosend, int len); // sends raw bytes to MDR.
+    void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR, returns same as above.
     void setMDRTimeout(int newtimeout); // sets the timeout
     bool readyToSend();
     command_reply getReply();

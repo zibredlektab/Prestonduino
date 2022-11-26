@@ -72,34 +72,6 @@ void PrestonDuino::onLoop () {
   }
 }
 
-int PrestonDuino::sendToMDR(byte* tosend, int len) {
-  /* The most basic send function, simply writes byte array out to ser and returns the immediate MDR response
-   *  
-   * Returns: >0 is length of data received, 0 if timeout, -1 if ACK, -2 if NAK, -3 if error message
-   * 
-   * MDR should always (apparently) respond with ACK or NAK before sending a reply packet, so this function 
-   * should always return 0, -1, or -2. YMMV.
-   */
-
-  for (int i = 0; i < len; i++) {
-    //Serial.print("Sending 0x");
-    //Serial.println(tosend[i], HEX);
-    ser->write(tosend[i]);
-    ser->flush(); // wait for byte to finish sending
-  }
-
-  
-  int response = 0;
-  
-  if (this->waitForRcv()) {
-    // response received
-    response = this->parseRcv();
-  }
-
-  return response;
-}
-
-
 
 
 // A reply is expected, so wait for one until the timeout threshold has passed
@@ -360,99 +332,81 @@ void PrestonDuino::sendNAK() {
 }
 
 
+void PrestonDuino::sendBytesToMDR(byte* tosend, int len) {
+  // The most basic send function, simply writes a byte array out to ser
 
-int PrestonDuino::sendToMDR(PrestonPacket* packet, bool retry) {
-  // Send a PrestonPacket to the MDR, byte by byte. If "retry" is true, packet will be re-sent upon timout or NAK, up to 3 times
+  for (int i = 0; i < len; i++) {
+    //Serial.print("Sending 0x");
+    //Serial.println(tosend[i], HEX);
+    ser->write(tosend[i]);
+    ser->flush(); // wait for byte to finish sending
+  }
+}
+
+void PrestonDuino::sendPacketToMDR(PrestonPacket* packet, bool retry) {
+  // Send a PrestonPacket to the MDR, byte by byte. If "retry" is true, packet will be re-sent upon timout or NAK, up to 3 times (todo)
   int packetlen = packet->getPacketLen();
   byte* packetbytes = packet->getPacket();
   
-  int response = this->sendToMDR(packetbytes, packetlen);
-
-  if (response == -2) {
-    // NAK received, MDR didn't understand us. Resend packet.
-    // TODO retry
-  }
-
-
-  //Serial.print("Response status is ");
-  //Serial.println(response);
-  return response;
-
+  this->sendBytesToMDR(packetbytes, packetlen);
 }
-
-
-
-int PrestonDuino::sendToMDR(PrestonPacket* packet) {
-  return this->sendToMDR(packet, false);
-}
-
 
 
 command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
-  // Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
-  // Return an array of the reply, first element of which is an indicator of the reply type
+  /* Send a PrestonPacket to the MDR, optionally wait for a reply packet in response
+   * Return an array of the reply, first element of which is an indicator of the reply type
+   *
+   * A reply_status of 0 indicates no valid response, meaning either a timeout or an invalid reply packet
+   */
+
+
   int mode = pak->getMode();
-  for (int i = 0; i < 3; i++) { // try the whole thing 3 times, unless one of the tries is successful
+  for (int i = 0; i < 3; i++) { // try sending the command up to 3 times
     Serial.print("Sending command with a mode of 0x");
     Serial.print(mode, HEX);
     Serial.print(" (attempt #");
     Serial.print(i);
     Serial.println(")");
 
-    int stat = this->sendToMDR(pak); // MDR's receipt of the command packet
-    this->reply.replystatus = stat;
-    this->reply.data = NULL;
-    
-    Serial.print("Immediate response to command is ");
-    Serial.println(stat);
+    this->sendPacketToMDR(pak); // send the packet to the mdr
 
-    if (stat == 0 || stat < -1 || (stat == -1 && !withreply)) {
-      // Either: timeout, NAK, or ACK for a command that doesn't need a reply
-      return this->reply;
-    } else if (stat == -1 && withreply) {
-      // Packet was acknowledged by MDR, but we still need a reply
-      Serial.println("Command packet acknowledged, awaiting reply");
-
-      bool gotgoodreply = false;
-      long int timestartedwaiting = millis();
-      
-      while (!gotgoodreply && timestartedwaiting + this->timeout > millis()) {
-        if (this->waitForRcv()) {
-          // Response packet was received
-          Serial.println("Got a reply packet");
-          stat = this->parseRcv(); // MDR's response to the command packet
-          Serial.print("Status of reply packet is ");
-          Serial.println(stat);
-
-          // if stat is an error, we did not get a good reply
-
-          if (this->rcvpacket->getMode() == mode) {
-            
-            //Serial.print("Received message with a mode of 0x");
-            //Serial.println(this->rcvpacket->getMode(), HEX);
-            // the most recently processed packet from the MDR is of the same mode as our outgoing message
-            // thus, we can assume it is a reply to our message 
-            this->reply.replystatus = stat;
-            this->reply.data = this->rcvpacket->getData();
-            /*Serial.print("got a good reply: ");
-
-            for (int i = 0; i < this->rcvpacket->getDataLen(); i++) {
-              Serial.print((char)this->rcvpacket->getData()[i]);
-            }
-            Serial.println();*/
-            gotgoodreply = true;
-            
-            return this->reply;
+    for (int j = 0; j < 3; j++) { // check for a response 3 times
+      if (this->waitForRcv()){ // wait for a response
+        // got a response
+        this->reply.replystatus = this->parseRcv(); // figure out what the response was
+        if (this->reply.replystatus == -1) { // command acknowledged
+          Serial.print("Command acknowledged, ");
+          if (!withreply) {
+            Serial.println("no reply expected.");
+            break;
+          } else {
+            // this command needs a reply, so start the count over and wait for another response
+            Serial.println("waiting for a reply.");
+            j = -1;
+            continue;
           }
+        } else if (this->reply.replystatus > 0) { // response was a packet of some kind
+          if (this->rcvpacket->getMode() == mode) {
+            // this is a reply packet to our original command
+            Serial.println("This is a reply to the command I just sent");
+            this->reply.data = this->rcvpacket->getData();
+            break;
+          } else {
+            // this is a reply packet for another command, we should assume it's already been parsed elsewhere and ignore it here.
+            Serial.println("This is a reply to another command, ignoring");
+          }
+        } else {
+          Serial.print("Unexpected reply status of ");
+          Serial.println(this->reply.replystatus);
         }
       }
-
-      if (!gotgoodreply) {
-        Serial.println("Timed out waiting for a reply from MDR");
-      }
+    }
+    if (this->reply.replystatus != 0) {
+      // If the reply is still a timeout or invalid response, don't return it until we've exhausted all of our resends
+      return this->reply;
     }
   }
-
+  // if we get this far, we have failed to get a valid response to our sent command. :(
   return this->reply;
 }
 
@@ -487,7 +441,7 @@ command_reply PrestonDuino::who() {
 
 command_reply PrestonDuino::data(byte datadescription) {
   this->sendpacket->packetFromCommandWithData(0x04, &datadescription, 1);
-  return this->sendCommand(this->sendpacket, true);
+  return this->sendCommand(this->sendpacket, false); // requests for data do not need to wait for a reply - MDR skips the ACK step and directly replies
 }
 
 command_reply PrestonDuino::data(byte* datadescription, int datalen) {
