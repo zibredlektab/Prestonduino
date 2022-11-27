@@ -210,11 +210,11 @@ void PrestonPacket::compilePacket() {
   this->packet_ascii[outputlen++] = 0x03; // ETX
 
   if (outputlen != this->packetlen) {
-    Serial.print("outputlen (");
+    Serial.print("during prestonpacket creation, outputlen (");
     Serial.print(outputlen);
     Serial.print(") does not match packetlen (");
     Serial.print(this->packetlen);
-    Serial.println(")");
+    Serial.println("), which it should.");
   }
 }
 

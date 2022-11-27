@@ -379,7 +379,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
           Serial.print("Command acknowledged, ");
           if (!withreply) {
             Serial.println("no reply expected.");
-            break;
+            return this->reply;
           } else {
             // this command needs a reply, so start the count over and wait for another response
             Serial.println("waiting for a reply.");
@@ -391,7 +391,7 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
             // this is a reply packet to our original command
             Serial.println("This is a reply to the command I just sent");
             this->reply.data = this->rcvpacket->getData();
-            break;
+            return this->reply;
           } else {
             // this is a reply packet for another command, we should assume it's already been parsed elsewhere and ignore it here.
             Serial.println("This is a reply to another command, ignoring");
@@ -401,10 +401,6 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
           Serial.println(this->reply.replystatus);
         }
       }
-    }
-    if (this->reply.replystatus != 0) {
-      // If the reply is still a timeout or invalid response, don't return it until we've exhausted all of our resends
-      return this->reply;
     }
   }
   // if we get this far, we have failed to get a valid response to our sent command. :(
