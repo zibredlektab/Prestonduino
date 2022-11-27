@@ -178,11 +178,11 @@ int PrestonDuino::parseRcv() {
     Serial.println("Set up new rcvpacket.");
 
     // check validity of message todo
-    /*
+    
     if (!this->validatePacket()) {
       Serial.println("Packet failed validity check!");
       return -2;
-    }*/
+    }
     
     switch (this->rcvpacket->getMode()) {
       case 0x11: {
@@ -300,17 +300,15 @@ int PrestonDuino::parseRcv() {
 
 bool PrestonDuino::validatePacket() {
   // Check validity of incoming packet, using its checksum
-  //Serial.print("checksum of incoming message is 0x");
-  //Serial.println(this->rcvpacket->getSum(), HEX);
+  Serial.print("checksum of incoming message is 0x");
+  Serial.println(this->rcvpacket->getSum(), HEX);
 
-  int corelen = this->rcvpacket->getPacketLen() - 4; // ignore STX, ETX, and message checksum bytes
-  byte packetcore[corelen];
-  memcpy(packetcore, &this->rcvpacket->getPacket()[1], corelen);
+  int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
-  int sum = this->rcvpacket->computeSum(packetcore, corelen);
+  int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
-  //Serial.print("calculated checksum is 0x");
-  //Serial.println(sum, HEX);
+  Serial.print("calculated checksum is 0x");
+  Serial.println(sum, HEX);
 
   return (sum == this->rcvpacket->getSum());
 }

@@ -178,28 +178,44 @@ void PrestonPacket::compilePacket() {
   // Finished encoding core
 
   // Compute sum, encode sum
-  this->checksum = this->computeSum(coreascii, coreasciilen);
+  /*byte tosum[coreasciilen+1];
+  tosum[0] = 2; // STX;
+  memcpy(&tosum[1], coreascii, coreasciilen);
+  this->checksum = this->computeSum(tosum, coreasciilen+1);
   char sumascii[3];
-  sprintf(sumascii, "%02X", this->checksum);
+  sprintf(sumascii, "%02X", this->checksum);*/
   // Finished with sum
 
 
   // Put it all together
-  int ioutput = 0;
-  this->packet_ascii[ioutput++] = 0x02; // STX
+  int outputlen = 0;
+  this->packet_ascii[outputlen++] = 0x02; // STX
 
   
   for (int i = 0; i < coreasciilen; i++) {
     // Iterate through coreascii
-    this->packet_ascii[ioutput++] = coreascii[i]; // Don't overwrite STX
+    this->packet_ascii[outputlen++] = coreascii[i]; // Don't overwrite STX
   }
+
+  // Compute sum from packet assembled thus far
+  this->checksum = this->computeSum(this->packet_ascii, outputlen);
+  char sumascii[3];
+  sprintf(sumascii, "%02X", this->checksum);
 
   for (int i = 0; i < 2; i++) {
     // Iterate through sumascii
-    this->packet_ascii[ioutput++] = sumascii[i]; // Don't overwrite core
+    this->packet_ascii[outputlen++] = sumascii[i]; // Don't overwrite core
   }
   
-  this->packet_ascii[ioutput++] = 0x03; // ETX
+  this->packet_ascii[outputlen++] = 0x03; // ETX
+
+  if (outputlen != this->packetlen) {
+    Serial.print("outputlen (");
+    Serial.print(outputlen);
+    Serial.print(") does not match packetlen (");
+    Serial.print(this->packetlen);
+    Serial.println(")");
+  }
 }
 
 
@@ -208,9 +224,9 @@ void PrestonPacket::compilePacket() {
 
 
 int PrestonPacket::computeSum(byte* input, int len) {
-  // byte* input is an ascii-encoded array
+  // byte* input is an ascii-encoded array, including STX
   
-  int sum = 2; // STX is included in sum
+  int sum = 0; 
   for (int i = 0; i < len; i++) {
     // iterate through the ascii core
     sum += input[i];
