@@ -76,12 +76,12 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     ////Serial.println(inputbuffer[0]);
     return;
   } else {
-    //Serial.print("Bytes to parse:");
+    Serial.print("Bytes to parse:");
     for (int i = 0; i < len; i++) {
-      //Serial.print(" 0x");
-      //Serial.print(inputbuffer[i], HEX);
+      Serial.print(" 0x");
+      Serial.print(inputbuffer[i], HEX);
     }
-    //Serial.println();
+    Serial.println();
 
 
     // Ascii decode the packet header
@@ -105,7 +105,7 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     this->datalen = decodedheader[1];
     this->corelen = this->datalen + 2;
 
-
+    int decodeddatalen = this->datalen;
 
     if (this->mode == 0x0E) {
       // Data should be treated as literal ascii, not encoded ascii
@@ -117,20 +117,21 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
       byte decodedcore[this->datalen];
       this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore);
       // set data
-      //Serial.print("Decoded core is as follows:");
+      Serial.print("Decoded core is as follows:");
       for (int i = 0; i < this->datalen; i++) {
         this->data[i] = decodedcore[i];
-        //Serial.print(" 0x");
-        //Serial.print(this->data[i], HEX);
+        Serial.print(" 0x");
+        Serial.print(this->data[i], HEX);
       }
-      //Serial.println();
+      Serial.println();
 
+      decodeddatalen = this->datalen*2;
     }
 
     
     // set sum
     byte decodedsum[1];
-    this->asciiDecode(&inputbuffer[5+(this->datalen*2)], 2, decodedsum);
+    this->asciiDecode(&inputbuffer[5+(decodeddatalen)], 2, decodedsum);
     this->checksum = decodedsum[0];
     //Serial.print("Checksum is ");
     //Serial.println(this->checksum, HEX);
