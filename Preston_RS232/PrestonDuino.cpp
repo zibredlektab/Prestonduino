@@ -27,8 +27,8 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   ser->setTimeout(this->timeout);
 
-  // TODO get & store MDR number 
-  this->info(0x1);
+  // Get & store MDR number 
+  this->info(0x0);
   //Serial.print("Status of reply from info command: ");
   //Serial.println(mdrinfo.replystatus);
   
@@ -196,6 +196,14 @@ int PrestonDuino::parseRcv() {
         // Reply is a data packet
         Serial.println("This is a data packet");
         response = this->rcvpacket->getDataLen();
+
+        /*Serial.print("The data is: ");
+        for (int i = 0; i <= response; i++) {
+          Serial.print(" 0x");
+          Serial.print(this->rcvpacket->getData()[i], HEX);
+        }
+        Serial.println();*/
+
         int dataindex = 0;
         byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
         if (datadescriptor & 1) {
@@ -229,7 +237,7 @@ int PrestonDuino::parseRcv() {
           this->aux = this->rcvpacket->getData()[dataindex++] << 8;
           this->aux += this->rcvpacket->getData()[dataindex++];  
           Serial.print(" aux: ");
-          Serial.print(this->aux);          
+          Serial.print(this->aux);
         }
         if (datadescriptor & 16) {
           // describes resolution of data (unused)
@@ -248,7 +256,7 @@ int PrestonDuino::parseRcv() {
           // describes status of MDR (unused, and I'm not even sure what this means tbh)
         }
 
-        //Serial.println();
+        Serial.println();
         break;
       }
 

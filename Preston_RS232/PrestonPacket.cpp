@@ -76,12 +76,12 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     ////Serial.println(inputbuffer[0]);
     return;
   } else {
-    Serial.print("Bytes to parse:");
+    /*Serial.print("Bytes to parse:");
     for (int i = 0; i < len; i++) {
       Serial.print(" 0x");
       Serial.print(inputbuffer[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
 
 
     // Ascii decode the packet header
@@ -117,13 +117,13 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
       byte decodedcore[this->datalen];
       this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore);
       // set data
-      Serial.print("Decoded core is as follows:");
+      //Serial.print("Decoded core is as follows:");
       for (int i = 0; i < this->datalen; i++) {
         this->data[i] = decodedcore[i];
-        Serial.print(" 0x");
-        Serial.print(this->data[i], HEX);
+        //Serial.print(" 0x");
+        //Serial.print(this->data[i], HEX);
       }
-      Serial.println();
+      //Serial.println();
 
       decodeddatalen = this->datalen*2;
     }
