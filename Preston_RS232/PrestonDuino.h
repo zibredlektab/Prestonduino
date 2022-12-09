@@ -11,7 +11,7 @@
 #define DEFAULTTIMEOUT 2000
 
 struct command_reply {
-  int8_t replystatus;
+   int8_t replystatus;
   byte* data;
 };
 
@@ -53,6 +53,7 @@ class PrestonDuino {
     bool validatePacket(); // true if packet validates with checksum
     void sendBytesToMDR(byte* tosend, int len); // sends raw bytes to MDR.
     void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
+    void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name
 
   public:
 

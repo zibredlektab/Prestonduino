@@ -241,7 +241,8 @@ int PrestonDuino::parseRcv() {
         if (datadescriptor & 4) {
           // has focal length/zoom
           this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
-          this->zoom += this->rcvpacket->getData()[dataindex++];  
+          this->zoom += this->rcvpacket->getData()[dataindex++];
+
           ////Serial.print(" zoom: ");
           ////Serial.print(this->zoom);          
         }
@@ -434,6 +435,12 @@ command_reply PrestonDuino::sendCommand(PrestonPacket* pak, bool withreply) {
   return this->reply;
 }
 
+void PrestonDuino::zoomFromLensName() {
+  char *firsthalf = strchr(this->getLensName(), '|');
+  char *zminname = strchr(&firsthalf[2], '|');
+  this->zoom = atoi(&zminname[1]);
+}
+
 
 /*
  *  Preston-specified commands
@@ -550,6 +557,11 @@ uint32_t PrestonDuino::getFocus() {
 
 
 int PrestonDuino::getZoom() {
+
+  if (this->zoom == 0) {
+    this->zoomFromLensName();
+  }
+
   return this->zoom;
 }
 

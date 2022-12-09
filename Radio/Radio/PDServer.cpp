@@ -45,7 +45,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   
   // Open file system on the flash
   if ( !fatfs.begin(flash) ) {
-    Serial.println("Error: filesystem is not existed. Please try SdFat_format example to make one.");
+    Serial.println("Error: filesystem does not exist. Please try SdFat_format example to make one.");
     while(1) yield();
   } else {
     Serial.println("done.");
