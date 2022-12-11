@@ -68,8 +68,8 @@ class PDClient {
     void arrayToCommandReply(byte* input);
     bool handleErrors();
 
-    uint16_t iris = 340;
-    uint16_t flength = 25;
+    uint16_t iris = 370;
+    uint16_t flength = 78;
     uint32_t focus = 8873;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range

@@ -169,16 +169,16 @@ command_reply PDClient::sendPacket(PrestonPacket *pak) {
   }
 }
 
-command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
+/*command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
   PrestonPacket *pak = new PrestonPacket(command, args, len);
   Serial.println("Packet created");
   return this->sendPacket(pak);
-}
-
+}*/
+/*
 command_reply PDClient::sendCommand(uint8_t command) {
   PrestonPacket *pak = new PrestonPacket(command);
   return this->sendPacket(pak);
-}
+}*/
 
 void PDClient::onLoop() {
   
