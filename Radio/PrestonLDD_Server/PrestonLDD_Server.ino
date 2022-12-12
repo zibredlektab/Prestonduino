@@ -36,7 +36,7 @@ void loop() {
 }
 
 uint8_t readSwitch() {
-  return 0xA;
+  return 0xA; // for now
   uint8_t value = 0;
   for (int i = 0; i < 4; i++) {
     if (!digitalRead(pins[i])) {

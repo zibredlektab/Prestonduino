@@ -357,7 +357,7 @@ void setup() {
   oled.print("PDClient initialized.\n");
   oled.display();
 
-  pd->subscribe(DATA); //FIZ data + lens name, for default display
+  //pd->subscribe(DATA); //FIZ data + lens name, for default display
 
   oled.setTextWrap(false);
 
@@ -441,9 +441,9 @@ void drawScreen() {
       drawError(er);
     } else {
     
-      uint16_t ap = pd->getAperture();
-      uint16_t fl = pd->getFocalLength();
-      uint32_t fd = pd->getFocusDistance();
+      uint16_t ap = pd->getIris();
+      uint16_t fl = pd->getZoom();
+      uint16_t fd = pd->getFocus();
       const char* br = pd->getLensBrand();
       const char* sr = pd->getLensSeries();
       const char* nm = pd->getLensName();

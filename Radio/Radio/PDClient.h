@@ -1,8 +1,10 @@
 #include "Arduino.h"
-#include <PrestonPacket.h>
+//#include <PrestonPacket.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
-#include <errorcodes.h>
+#ifndef ERR_NOTX
+  #include <errorcodes.h>
+#endif
 #include <datatypes.h>
 
 

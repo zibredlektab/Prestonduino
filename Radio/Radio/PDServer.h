@@ -17,7 +17,9 @@
 #include <Adafruit_InternalFlash.h>
 
 
-#include <errorcodes.h>
+#ifndef ERR_NOTX
+  #include <errorcodes.h>
+#endif
 #include <datatypes.h>
 
 #define REFRESHRATE 5

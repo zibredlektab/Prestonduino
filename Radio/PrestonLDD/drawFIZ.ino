@@ -275,7 +275,7 @@ void focusMath (uint32_t focus, unsigned int* ft, unsigned int* in) {
 
 void setChannel() {
   if (pd->setChannel(channel)) {
-    pd->subscribe(DATA);
+    //pd->subscribe(DATA);
   } else {
     Serial.println(F("failed to set new channel"));
   }
