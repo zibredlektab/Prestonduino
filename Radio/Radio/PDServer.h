@@ -46,8 +46,8 @@
 
 /*
  * First byte of message will always be uint8_t describing the mode of the message:
- * 0x0 = Raw data request/reply
- * 0x1 = Single-time data request, second byte is data type (see datatypes.h)
+ * 0x0 = Raw data request/reply (not supported at this time)
+ * 0x1 = Single-time data request, second byte is data type (see datatypes.h) (not supported at this time)
  * 0x2 = Subscription data request, second byte same as 0x1
  * 0x3 = OK (usually meaning start lens map or continue lens mapping)
  * 0x4 = NO (do not map lens or cancel mapping)
@@ -69,31 +69,27 @@ class PDServer {
     File lensfile;
 
     uint8_t channel; // A is default
-    uint8_t address;
+    uint8_t address; // should always be channel * 0x10
     HardwareSerial *ser;
     PrestonDuino *mdr;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t buf[75];
+    uint8_t buf[75]; // incoming message buffer from clients
     uint8_t buflen;
-    uint8_t lastfrom;
-    subscription subs[16];
+    uint8_t lastfrom; // address of sender of last-received message
+    subscription subs[16]; // array of currently active clients and what data they want
+
+    /* lens data */
     uint16_t iris = 0;
     uint16_t zoom = 0;
-    uint32_t focus = 0;
+    uint16_t focus = 0;
     char* fulllensname;
     uint8_t lensnamelen = 0;
     
-
-    char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-    uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
-    uint16_t lensmap[10];
-    bool mapped = false;
-    int8_t curmappingav = -1;
-    char mdrlens[40];
-    char curlens[40];
-    char lenspath[25];
-    char filename[25];
+    char mdrlens[40]; // active lens name as reported by MDR
+    char curlens[40]; // last-known active lens name
+    char lenspath[25]; // file path where the current lens map is stored
+    char filename[25]; // file name the current lens map is stored in
     unsigned long long lastmdrupdate = 0; // last time we asked MDR for updated data
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
 
@@ -101,11 +97,19 @@ class PDServer {
     void subscribe(uint8_t addr, uint8_t desc);
     bool unsubscribe(uint8_t addr); // returns true if the subscription was removed
     bool updateSubs(); // returns false if a message failed to send
-    uint8_t* commandReplyToArray(command_reply input);
+    //uint8_t* commandReplyToArray(command_reply input);
+  
+
+    /* OneRing */
+    const char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
+    const uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
+    uint16_t lensmap[10]; // currently active lens mapping
+    bool mapped = false;
+    int8_t curmappingav = -1;
+
     void startMap();
     void mapLens(uint8_t curav);
     void finishMap();
-
     void makePath();
     void irisToAux();
 
@@ -117,8 +121,8 @@ class PDServer {
     void setAddress(uint8_t newaddress);
     void setChannel(uint8_t newchannel);
 
-    int sendToMDR(PrestonPacket* pak);
-    command_reply getMDRReply();
+    //int sendToMDR(PrestonPacket* pak);
+    //command_reply getMDRReply();
   
 };
 

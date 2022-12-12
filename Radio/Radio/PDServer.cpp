@@ -3,7 +3,7 @@
 PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   //Serial.begin(115200);
   this->channel = chan;
-  Serial.print("channel is ");
+  Serial.print("Starting server on channel ");
   Serial.println(chan, HEX);
   this->address = chan * 0x10;
   this->ser = &mdrSerial;
@@ -14,7 +14,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->mdr->setMDRTimeout(10);
 
-  this->mdr->mode(0x01, 0x40); // take command of the AUX channel
+  //this->mdr->mode(0x01, 0x40); // take command of the AUX channel
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
@@ -80,7 +80,9 @@ void PDServer::onLoop() {
       //Serial.println(type);
       
       switch (type) {
-        case 1: {
+        case 0: {
+          break;
+          /*
           // This message contains raw data for the MDR
           Serial.println("This is data for the MDR");
           PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-2);
@@ -88,11 +90,11 @@ void PDServer::onLoop() {
           if (replystat == -1) {
             Serial.println(F("MDR acknowledged the packet"));
             // MDR acknowledged the packet, didn't send any other data
-            /*if(!this->manager->sendtoWait((uint8_t*)3, 1, &this->lastfrom)) { // 0x3 is ack
+            if(!this->manager->sendtoWait((uint8_t*)3, 1, &this->lastfrom)) { // 0x3 is ack
               Serial.println(F("failed to send reply"));
             } else {
               Serial.println("reply sent");
-            }*/
+            }
           } else if (replystat > 0) {
             // MDR sent data
             Serial.println(F("got data back from MDR"));
@@ -113,16 +115,25 @@ void PDServer::onLoop() {
             }
           }
           break;
+          */
         }
         case 2: {
-          // This message is requesting processed data
+          // This message is registering a client for subscription
           //Serial.println(F("Data is being requested"));
           uint8_t datatype = this->buf[1];
           if (datatype == DATA_UNSUB) {
             Serial.println(F("Actually, unsubscription is being requested."));
             this->unsubscribe(this->lastfrom);
-            return;
+          } else {
+            if (this->lastfrom & 0xF) {
+              // this client needs a new address
+              // todo: determine next available address and send to client
+            }
+            this->subscribe(this->lastfrom, datatype);
+            break;
           }
+
+          /*
           bool subscribe = false;
           if (this->buflen > 2) {
             subscribe = this->buf[2];
@@ -155,6 +166,7 @@ void PDServer::onLoop() {
             this->subscribe(this->lastfrom, datatype);
           }
           break;
+          */
         }
 
         case 3: {
@@ -190,13 +202,16 @@ void PDServer::onLoop() {
 }
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
+  // Gets up-to-date data from MDR and builds it into an array ready to send to clients
+  // Returns length of array
+
   uint8_t sendlen = 2; // first two bytes are 0x2 and data type
   databuf[0] = 0x2;
   databuf[1] = datatype;
   if (millis() > this->lastmdrupdate + 5) {
-    this->iris = mdr->getAperture();
-    this->focus = mdr->getFocusDistance();
-    this->zoom = mdr->getFocalLength();
+    this->iris = mdr->getIris();
+    this->focus = mdr->getFocus();
+    this->zoom = mdr->getZoom();
 
     //Serial.print("zoom is ");
     //Serial.println(this->zoom);
@@ -217,7 +232,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
 
     
     this->lastmdrupdate = millis();
-    if (this->iris == 0 || this->focus == 0 || this->zoom == 0) {
+    if (this->focus == 0) {
       // No data was recieved, return an error
       Serial.println("Didn't get any data from MDR");
       databuf[0] = 0xF;
@@ -234,7 +249,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   }
   if (datatype & DATA_FOCUS) {
     //Serial.print(F("focus "));
-    sendlen += snprintf(&databuf[sendlen], 20, "%08lu", (unsigned long)this->focus);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
     //Serial.print(F("zoom "));
@@ -248,9 +263,8 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   }
   if (datatype & DATA_NAME) {
     //Serial.print(F("name "));
-    char* lensname = this->fulllensname;
-    this->lensnamelen = lensname[0] - 1; // lens name includes length of lens name, which we disregard
-    strncpy(mdrlens, &lensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
+    this->lensnamelen = this->fulllensname[0] - 1; // lens name includes length of lens name, which we disregard
+    strncpy(mdrlens, &this->fulllensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
     mdrlens[this->lensnamelen] = '\0'; // null character to terminate string
     
     if (strcmp(mdrlens, curlens) != 0) {
@@ -268,7 +282,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     
     int i;
     for (i = 0; i < this->lensnamelen; i++) {
-      databuf[sendlen+i] = lensname[i];
+      databuf[sendlen+i] = this->fulllensname[i];
       
     }
     sendlen += i;
@@ -360,6 +374,7 @@ bool PDServer::unsubscribe(uint8_t addr) {
   }
 }
 
+/*
 uint8_t* PDServer::commandReplyToArray(command_reply input) {
   uint8_t output[input.replystatus + 2];
   output[0] = 0;
@@ -368,7 +383,7 @@ uint8_t* PDServer::commandReplyToArray(command_reply input) {
     output[i+2] = input.data[i];
   }
   return output;
-}
+}*/
 
 uint8_t PDServer::getAddress() {
   return this->address;
@@ -390,18 +405,20 @@ void PDServer::setChannel(uint8_t newchannel) {
   Serial.print("new channel is ");
   Serial.println(this->channel, HEX);
   setAddress(this->channel * 0x10);
+  // todo remove all old subscriptions
 }
 
+/*
 int PDServer::sendToMDR(PrestonPacket* pak) {
   return this->mdr->sendToMDR(pak);
 }
 
 command_reply PDServer::getMDRReply() {
   return this->mdr->getReply();
-}
+}*/
 
 
-
+/* OneRing */
 
 void PDServer::startMap() {
   Serial.println("Starting map");
