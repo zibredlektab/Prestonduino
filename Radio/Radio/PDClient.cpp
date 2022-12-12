@@ -5,10 +5,10 @@ PDClient::PDClient(int chan) {
   randomSeed(analogRead(0));
   this->driver = new RH_RF95(SSPIN,INTPIN);
   this->channel = chan;
-  Serial.print(F("channel is "));
+  Serial.print(F("Starting up on channel "));
   Serial.println(this->channel, HEX);
   this->server_address = this->channel * 0x10;
-  Serial.print(F("server address is 0x"));
+  Serial.print(F("Server address is 0x"));
   Serial.println(this->server_address, HEX);
   this->address += this->server_address;
 
@@ -61,8 +61,6 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
     tosend[i+1] = data[i];
   }
 
-
-  
   Serial.print(F("Sending message: "));
   for (int i = 0; i < messagelength; i++) {
     Serial.print("0x");
@@ -71,7 +69,6 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
   }
   Serial.print(F(" to server at 0x"));
   Serial.println(this->server_address, HEX);
-  
   
   if (this->manager->sendtoWait(tosend, messagelength, this->server_address)) {
     // Got an acknowledgement of our message
@@ -98,24 +95,31 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
           }
           Serial.println();
           // Reply was received
-          waitforreply = false;
+          this->waitforreply = false;
           
           if (this->buf[0] == 0) {
             Serial.println(F("Reply is a CR"));
             // Reply message is a commandreply
             this->arrayToCommandReply(this->buf);
+
+          } else if (this->buf[0] == 2) {
+            // Response is an address change request from the server
+            this->address = this->buf[1]; // set our address to the newly specified address
+            this->final_address = true;
+            Serial.print("Set final address to 0x");
+            Serial.println(this->address, HEX);
             
           } else if (this->buf[0] == 3) {
             Serial.println(F("MDR acknowledges command"));
             // Response is an MDR ack, no further processing needed
             
           } else if (this->buf[0] > 3 && this->buf[0] != 0xF) {
-            Serial.print(F("Reply is data: "));
+            Serial.print(F("Reply is data:"));
             // Response is a data set
             for (int i = 0; i < len-1; i++) {
               this->buf[i] = this->buf[i+1]; // shift buf elements by one (no longer need type identifier)
-              Serial.print(this->buf[i]);
-              Serial.print(F(" "));
+              Serial.print(" 0x");
+              Serial.print(this->buf[i], HEX);
             }
   
             len -= 1;
@@ -124,7 +128,7 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
             Serial.println();
           } else {
             Serial.print(F("Server sent back an error code: 0x"));
-            Serial.println(this->buf[1]);
+            Serial.println(this->buf[1], HEX);
             this->error(this->buf[1]);
           }
           return true;
@@ -158,7 +162,7 @@ void PDClient::arrayToCommandReply(byte* input) {
   }
 }
 
-command_reply PDClient::sendPacket(PrestonPacket *pak) {
+/*command_reply PDClient::sendPacket(PrestonPacket *pak) {
   if (this->sendMessage(1, pak->getPacket(), pak->getPacketLen())){
     delete pak;
     return this->response;
@@ -169,64 +173,60 @@ command_reply PDClient::sendPacket(PrestonPacket *pak) {
   }
 }
 
-/*command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
+command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
   PrestonPacket *pak = new PrestonPacket(command, args, len);
   Serial.println("Packet created");
   return this->sendPacket(pak);
-}*/
-/*
+}
+
 command_reply PDClient::sendCommand(uint8_t command) {
   PrestonPacket *pak = new PrestonPacket(command);
   return this->sendPacket(pak);
-}*/
+}
+*/
 
 void PDClient::onLoop() {
   
-  if (!this->final_address) {
-    this->findAddress();
-    
-  } else {
-    if (this->manager->available()) {
-      Serial.println();
-      Serial.print(F("Message available, this long: "));
-      uint8_t from;
-      this->buflen = sizeof(this->buf);
-      if (manager->recvfrom(this->buf, &this->buflen, &from)) {
-        Serial.println(this->buflen);
-        this->timeoflastmessagefromserver = millis();
-        this->clearError(); // Server is responding
-        
-        for (int i = 0; i < this->buflen; i++) {
-          if (i < 2) {
-            Serial.print(F("0x"));
-            Serial.print(this->buf[i], HEX);
-            Serial.print(F(" "));
-          } else {
-            Serial.print((char)this->buf[i]);
-          }
+  if (this->manager->available()) {
+    Serial.println();
+    Serial.print(F("Message available, this long: "));
+    uint8_t from;
+    this->buflen = sizeof(this->buf);
+    if (manager->recvfrom(this->buf, &this->buflen, &from)) {
+      Serial.println(this->buflen);
+      this->timeoflastmessagefromserver = millis();
+      this->clearError(); // Server is responding
+      
+      for (int i = 0; i < this->buflen; i++) {
+        if (i < 2) {
+          Serial.print(F("0x"));
+          Serial.print(this->buf[i], HEX);
+          Serial.print(F(" "));
+        } else {
+          Serial.print((char)this->buf[i]);
         }
-        
-        Serial.println();
-        
-        this->parseMessage();
-
       }
+      
+      Serial.println();
+      
+      this->parseMessage();
+
     }
+  }
 
 
-    if (this->timeoflastmessagefromserver + PING < millis()) {
-      Serial.println("Haven't heard from the server in a while...");
-      this->error(ERR_NOTX);
-    }
+  if (this->timeoflastmessagefromserver + PING < millis()) {
+    Serial.println("Haven't heard from the server in a while...");
+    this->error(ERR_NOTX);
+  }
 
-    if (this->lastsubscriptionattempt + PING < millis()) {
-      Serial.println("Time to resubscribe");
-      this->subscribe(this->substate);
-    }
-  
-    if (this->errorstate > 0) {
-      this->handleErrors();
-    }
+  if (this->lastregistration + PING < millis()) {
+    Serial.println("Time to resubscribe");
+    this->registerWithServer();
+  }
+
+  if (this->errorstate > 0) {
+    this->handleErrors();
   }
 }
 
@@ -257,7 +257,7 @@ void PDClient::parseMessage() {
         Serial.println(F("Received data includes iris"));
         char data[5];
         for (int i = 0; i < 4; i++) {
-          data[i] = this->buf[index + i];
+          data[i] = this->buf[index++];
           Serial.print(data[i]);
           Serial.print(F(" "));
         }
@@ -266,23 +266,21 @@ void PDClient::parseMessage() {
         this->iris = atoi(data);
         Serial.print(F("Iris is "));
         Serial.println(this->iris);
-        index += 4;
       }
 
       if (datatype & DATA_FOCUS) {
         Serial.println(F("Received data includes focus"));
         char data[9];
-        for (int i = 0; i < 8; i++) {
-          data[i] = this->buf[index + i];
+        for (int i = 0; i < 4; i++) {
+          data[i] = this->buf[index++];
           Serial.print(data[i]);
           Serial.print(F(" "));
         }
-        data[8] = '\0';
+        data[4] = '\0';
         Serial.println();
-        this->focus = strtoul(data, NULL, 10);
+        this->focus = atoi(data);
         Serial.print(F("Focus is "));
         Serial.println(this->focus);
-        index += 8;
         
       }
 
@@ -290,16 +288,15 @@ void PDClient::parseMessage() {
         Serial.println(F("Received data includes zoom"));
         char data[5];
         for (int i = 0; i < 4; i++) {
-          data[i] = this->buf[index + i];
+          data[i] = this->buf[index++];
           Serial.print(data[i]);
           Serial.print(F(" "));
         }
         data[4] = '\0';
         Serial.println();
-        this->flength = atoi(data);
+        this->zoom = atoi(data);
         Serial.print(F("Zoom is "));
-        Serial.println(this->flength);
-        index += 4;
+        Serial.println(this->zoom);
       }
 
       if (datatype & DATA_NAME) {
@@ -308,12 +305,10 @@ void PDClient::parseMessage() {
 
         
         for (int i = 0; i < namelen; i++) {
-          this->fulllensname[i] = this->buf[index+i];
+          this->fulllensname[i] = this->buf[index++];
         }
         
         this->processLensName();
-
-        index += namelen;
       }
       break;
 
@@ -365,8 +360,8 @@ bool PDClient::processLensName() {
     this->wfl = w;
     this->tfl = t;
   } else {
-    this->wfl = this->flength;
-    this->tfl = this->flength;
+    this->wfl = this->zoom;
+    this->tfl = this->zoom;
   }
   
   return true;
@@ -375,7 +370,7 @@ bool PDClient::processLensName() {
 #define SWAPCT 5
 
 void PDClient::abbreviateName() {
-  char* swaps[SWAPCT][2] = {{"Panavision", "PV\0"}, {"Angenieux", "Ang\0"}, {"Angeniux", "Ang\0"}, {"Servicevision", "SV"}, {"Other", "\0"}};
+  const char* swaps[SWAPCT][2] = {{"Panavision", "PV\0"}, {"Angenieux", "Ang\0"}, {"Angeniux", "Ang\0"}, {"Servicevision", "SV"}, {"Other", "\0"}};
 
   for (int i = 0; i < SWAPCT; i++) {
 
@@ -415,6 +410,11 @@ bool PDClient::handleErrors() {
 }
 
 
+uint8_t PDClient::getErrorState() {
+  return this->errorstate;
+}
+
+
 uint8_t PDClient::getAddress() {
   return this->address;
 }
@@ -425,20 +425,53 @@ uint8_t PDClient::getChannel() {
 
 
 bool PDClient::setChannel(uint8_t newchannel) {
+  if (!this->unregisterWithServer()) {
+    return false;
+  }
   this->channel = newchannel;
   this->server_address = this->channel * 0x10;
+  this->address = this->server_address + 0x0F;
+  this->final_address = false;
   Serial.print("Server address is 0x");
   Serial.println(this->server_address, HEX);
-  this->findAddress();
+  if (!this->registerWithServer()) {
+    return false;
+  }
+
   return true;
 }
 
+bool PDClient::registerWithServer() {
+  // Say hello to the server.
+  // If this is the first time we're talking, server should reply with next available client address
+  // Either way, server should (re)subscribe this client at that address
 
-uint8_t PDClient::getErrorState() {
-  return this->errorstate;
+  this->waitforreply = !this->final_address;
+
+  if (this->sendMessage(2, 0x17)) {
+    Serial.print("Established contact with server at address 0x");
+    Serial.println(this->server_address, HEX);
+    return true;
+  } else {
+    this->error(ERR_NOTX);
+    Serial.print("Failed to establish contact with server at address 0x");
+    Serial.println(this->server_address, HEX);
+    return false;
+  }
 }
 
+bool PDClient::unregisterWithServer() {
+  this->waitforreply = false;
+  if (this->sendMessage(2, 0)) {
+    Serial.println(F("Sent unsubscription request"));
+    return true;
+  } else {
+    Serial.println(F("Failed to send unsub request"));
+    return false;
+  }
+}
 
+/*
 void PDClient::findAddress() {
   for (int i = 1; i <= 0xF; i++) {
     Serial.print(F("Trying address 0x"));
@@ -450,7 +483,6 @@ void PDClient::findAddress() {
       this->address = this->server_address + i;
       this->manager->setThisAddress(this->address);
       this->final_address = true;
-      this->manager->setRetries(RETRIES);
       break;
     }
     Serial.println(F("Got a reply, trying the next address"));
@@ -460,6 +492,7 @@ void PDClient::findAddress() {
   Serial.print(F("My final address is 0x"));
   Serial.println(this->address, HEX);
 }
+*/
 
 
 
@@ -471,7 +504,7 @@ bool PDClient::haveData() {
 /*
  * Subscription
  */
-
+/*
 bool PDClient::subscribe(uint8_t subtype) {
   Serial.print("Attempting to subscribe to data of type ");
   Serial.println(subtype);
@@ -486,7 +519,7 @@ bool PDClient::subscribe(uint8_t subtype) {
   tosend[2] = 1;
   
   
-  this->lastsubscriptionattempt = millis();
+  this->lastregistration = millis();
 
   
   this->manager->setTimeout(1);
@@ -495,17 +528,6 @@ bool PDClient::subscribe(uint8_t subtype) {
 
   return true;
   
-  /*
-  uint8_t data[2] = {type, 1};
-  if (this->sendMessage(2, data, 2)) {
-
-    Serial.print(F("Requested subscription for "));
-    Serial.println(type);
-    return true;
-  } else {
-    Serial.println("Subscription request failed");
-    return false;
-  }*/
 }
 
 bool PDClient::subAperture() {
@@ -522,22 +544,13 @@ bool PDClient::subZoom() {
   this->subscribe(4);
   return true;
 }
+*/
 
-bool PDClient::unsub() {
-  this->waitforreply = false;
-  if (this->sendMessage(2, 0)) {
-    Serial.println(F("Sent unsubscription request"));
-    return true;
-  } else {
-    Serial.println(F("Failed to send unsub request"));
-    return false;
-  }
-}
 
 /* 
  *  Single-time data retrieval
  */
-
+/*
 uint8_t* PDClient::getFIZDataOnce() {
   this->waitforreply = true;
   if (this->sendMessage(2, 7)) {
@@ -588,18 +601,18 @@ char* PDClient::getLensNameOnce() {
     return NULL;
   }
 }
-
+*/
 
 /*
 *  Subscribed data retrieval
 */
 
-uint16_t PDClient::getAperture() {
+uint16_t PDClient::getIris() {
   return this->iris;
 }
 
-uint16_t PDClient::getFocalLength() {
-  return this->flength;
+uint16_t PDClient::getZoom() {
+  return this->zoom;
 }
 
 uint16_t PDClient::getWFl() {
@@ -610,7 +623,7 @@ uint16_t PDClient::getTFl() {
   return this->tfl;
 }
 
-uint32_t PDClient::getFocusDistance() {
+uint16_t PDClient::getFocus() {
   return this->focus;
 }
 
@@ -648,6 +661,8 @@ bool PDClient::isZoom() {
 bool PDClient::isNewLens() {
   return this->newlens;
 }
+
+/* OneRing */
 
 void PDClient::mapLater() {
   Serial.println("mapping later");

@@ -10,9 +10,9 @@
 #define PDClient_h
 
 
-#define RETRIES 20
-#define TIMEOUT 30
-#define PING 3000
+#define RETRIES 20 // for radiohead sending attempts
+#define TIMEOUT 30 // for radiohead sending attempts
+#define PING 3000 // period between resubscriptions, and period of assumed server timeout
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -38,11 +38,11 @@ struct command_reply {
   byte* data;
 };
 
-struct message {
-  uint8_t type;
-  uint8_t data[3]; //arbitrary
-  uint8_t datalen;
-};
+//struct message {
+//  uint8_t type;
+//  uint8_t data[3]; //arbitrary
+//  uint8_t datalen;
+//};
 
 
 class PDClient {
@@ -50,26 +50,21 @@ class PDClient {
     uint8_t address = 0xF; // start address
     uint8_t channel;
     uint8_t server_address;
-    bool final_address = false;
+    bool final_address = false; // has the server assigned us an address?
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t errorstate = 0b11; //start with the assumption that the server is not responding and we have no data
-    unsigned char buf[75];
+    uint8_t errorstate = 0b11; // start with the assumption that the server is not responding and we have no data
+    unsigned char buf[75]; // incoming message (from server) buffer
     uint8_t buflen;
-    bool waitforreply = false;
-    command_reply response;
+    bool waitforreply = false; // does the message we are currently sending need a reply from the server?
+    command_reply response; // holds the most recently received response from the server
     unsigned long timeoflastmessagefromserver = 0;
-    unsigned long lastsubscriptionattempt = 0;
-    uint8_t substate = 0;
-    
-    bool sendMessage(uint8_t type, uint8_t data);
-    bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen);
-    void findAddress();
-    void arrayToCommandReply(byte* input);
-    bool handleErrors();
+    unsigned long lastregistration = 0;
+    uint8_t substate = 0; // data type currently subscribed to
 
+    // Lens data
     uint16_t iris = 370;
-    uint16_t flength = 78;
+    uint16_t zoom = 78;
     uint32_t focus = 8873;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range
@@ -80,31 +75,43 @@ class PDClient {
     char* lensnote;
     bool newlens = false;
     
+    bool haveData(); // do we have valid lens data from the server?
+
+    bool sendMessage(uint8_t type, uint8_t data); // send a single datum to the server
+    bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen); // send a data array to the server
+    //void findAddress();
+    void arrayToCommandReply(byte* input); // convert an incoming char buffer to a structured command reply
     void parseMessage();
-    bool processLensName();
-    void abbreviateName();
-    void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
-    bool haveData();
+    bool processLensName(); // split up lens name into component parts
+    void abbreviateName(); // shorten lengthy lens brands
+    //void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
+
+    bool registerWithServer();
+    bool unregisterWithServer();
+
+    // Error handling
     bool error(uint8_t err);
     void clearError();
+    bool handleErrors();
 
 
   public:
     PDClient(int chan = 0xA);
     void onLoop();
-    command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
-    command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return
-    command_reply sendCommand(uint8_t command); // Same as above, for commands with no arguments
-    uint8_t* getFIZDataOnce(); // Ask for FIZ data
-    uint32_t getFocusDistance();
-    uint16_t getAperture();
-    uint16_t getFocalLength();
+
+    //command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
+    //command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return
+    //command_reply sendCommand(uint8_t command); // Same as above, for commands with no arguments
+    //uint8_t* getFIZDataOnce(); // Ask for FIZ data
+    uint16_t getFocus();
+    uint16_t getIris();
+    uint16_t getZoom();
     uint16_t getWFl();
     uint16_t getTFl();
-    uint32_t getFocusDistanceOnce();
-    uint16_t getApertureOnce();
-    uint16_t getFocalLengthOnce();
-    char* getLensNameOnce();
+    //uint32_t getFocusDistanceOnce();
+    //uint16_t getApertureOnce();
+    //uint16_t getFocalLengthOnce();
+    //char* getLensNameOnce();
     char* getFullLensName();
     char* getLensBrand();
     char* getLensSeries();
@@ -117,11 +124,11 @@ class PDClient {
     bool setChannel(uint8_t newchannel);
     uint8_t getErrorState();
 
-    bool subscribe(uint8_t type);
-    bool subAperture();
-    bool subFocus();
-    bool subZoom();
-    bool unsub();
+    //bool subscribe(uint8_t type);
+    //bool subAperture();
+    //bool subFocus();
+    //bool subZoom();
+    //bool unsub();
 
     void mapLater();
     void startMap();
