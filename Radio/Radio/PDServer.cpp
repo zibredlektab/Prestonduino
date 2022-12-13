@@ -14,7 +14,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->mdr->setMDRTimeout(10);
 
-  //this->mdr->mode(0x01, 0x40); // take command of the AUX channel
+  //this->mdr->mode(0x01, 0x40); // take command of the AUX channel (disabled for now)
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
@@ -61,116 +61,53 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 void PDServer::onLoop() {
   while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
-    //Serial.println(F("Message available"));
+    Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
     if (this->manager->recvfromAck(this->buf, &this->buflen, &this->lastfrom)) {
-      //Serial.print(F("got message of "));
-      //Serial.print(this->buflen);
-      //Serial.print(F(" characters from 0x"));
-      //Serial.print(this->lastfrom, HEX);
-      //Serial.print(": ");
+      Serial.print(F("got message of "));
+      Serial.print(this->buflen);
+      Serial.print(F(" characters from 0x"));
+      Serial.print(this->lastfrom, HEX);
+      Serial.print(": ");
       for (int i = 0; i < this->buflen; i++) {
-        //Serial.print(this->buf[i]);
-        //Serial.print(" ");
+        Serial.print(" 0x");
+        Serial.print(this->buf[i], HEX);
       }
-      //Serial.println();
+      Serial.println();
       
       int type = this->buf[0];
-      //Serial.print("type of message is ");
-      //Serial.println(type);
+      Serial.print("type of message is 0x");
+      Serial.println(type, HEX);
       
       switch (type) {
-        case 0: {
-          break;
-          /*
-          // This message contains raw data for the MDR
-          Serial.println("This is data for the MDR");
-          PrestonPacket *pak = new PrestonPacket(&this->buf[1], this->buflen-2);
-          int replystat = this->mdr->sendToMDR(pak);
-          if (replystat == -1) {
-            Serial.println(F("MDR acknowledged the packet"));
-            // MDR acknowledged the packet, didn't send any other data
-            if(!this->manager->sendtoWait((uint8_t*)3, 1, &this->lastfrom)) { // 0x3 is ack
-              Serial.println(F("failed to send reply"));
-            } else {
-              Serial.println("reply sent");
-            }
-          } else if (replystat > 0) {
-            // MDR sent data
-            Serial.println(F("got data back from MDR"));
-            command_reply reply = this->mdr->getReply();
-            if(!this->manager->sendtoWait(this->commandReplyToArray(reply), reply.replystatus + 1, this->lastfrom)) {
-              Serial.println(F("failed to send reply"));
-            } else {
-              Serial.println("reply sent");
-            }
-          } else if (replystat == 0) {
-            // MDR didn't respond, something has gone wrong
-            Serial.println(F("MDR didn't respond..."));
-            uint8_t err[] = {0xF, ERR_NOMDR};
-            if (!this->manager->sendtoWait(err, 2, this->lastfrom)) {
-              Serial.println(F("failed to send reply"));
-            } else {
-              Serial.println("reply sent");
-            }
+        case 0: { // request for a new address
+          Serial.print("Sending new address (0x");
+          Serial.print(this->nextavailaddress, HEX);
+          Serial.print(") to client...");
+
+          uint8_t newaddr[2] = {0x0, this->nextavailaddress};
+          if (!this->manager->sendtoWait(newaddr, 2, this->lastfrom)) {
+            Serial.println("Failed.");
+          } else {
+            Serial.println("Done.");
           }
           break;
-          */
         }
-        case 2: {
-          // This message is registering a client for subscription
+
+        case 1: { // This message is registering a client for subscription
           //Serial.println(F("Data is being requested"));
           uint8_t datatype = this->buf[1];
-          if (datatype == DATA_UNSUB) {
-            Serial.println(F("Actually, unsubscription is being requested."));
-            this->unsubscribe(this->lastfrom);
-          } else {
-            if (this->lastfrom & 0xF) {
-              // this client needs a new address
-              // todo: determine next available address and send to client
-            }
-            this->subscribe(this->lastfrom, datatype);
-            break;
-          }
-
-          /*
-          bool subscribe = false;
-          if (this->buflen > 2) {
-            subscribe = this->buf[2];
-          }
-          
-          if (!subscribe) {
-            // Client only wants this data once, now
-            char tosend[20];
-            uint8_t sendlen = getData(datatype, tosend);
-            
-    
-            Serial.print(F("Sending "));
-            for (int i = 0; i <= sendlen; i++) {
-              Serial.print(tosend[i]);
-            }
-            Serial.print(F(" back to 0x"));
-            Serial.println(this->lastfrom, HEX);
-            if(!this->manager->sendto((uint8_t*)tosend, sendlen, this->lastfrom)) {
-              Serial.println(F("Failed to send reply"));
-            } else {
-              Serial.println(F("Reply sent"));
-            }
-          } else {
-            // Client wants to subscribe to this data
-            //Serial.print(F("Subscribing client at 0x"));
-            //Serial.print(this->lastfrom, HEX);
-            //Serial.print(F(" to receive data of type 0b"));
-            //Serial.print(datatype, BIN);
-            //Serial.println(F(" every loop"));
-            this->subscribe(this->lastfrom, datatype);
-          }
+          this->subscribe(this->lastfrom, datatype);
           break;
-          */
         }
 
-        case 3: {
-          // "OK" message, or start mapping
+        case 2: { // unsubscription
+          Serial.println(F("Actually, unsubscription is being requested."));
+          this->unsubscribe(this->lastfrom);
+          break;
+        }
+
+        case 3: { // "OK" message, or start mapping
           if (this->curmappingav == -1) {
             this->startMap();
           }
@@ -179,9 +116,12 @@ void PDServer::onLoop() {
           break;
         }
 
-        case 4: {
-          // "NO" message, or don't map
+        case 4: { // "NO" message, or don't map
           this->finishMap();
+        }
+
+        default: {
+          Serial.println("Unknown message type");
         }
       }
     } else {
@@ -198,15 +138,15 @@ void PDServer::onLoop() {
     }
   }
 
-  this->irisToAux();
+  //this->irisToAux(); // (for now)
 }
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   // Gets up-to-date data from MDR and builds it into an array ready to send to clients
   // Returns length of array
 
-  uint8_t sendlen = 2; // first two bytes are 0x2 and data type
-  databuf[0] = 0x2;
+  uint8_t sendlen = 2; // first two bytes are 0x1 and data type
+  databuf[0] = 0x1; // message type is 0x1 for data
   databuf[1] = datatype;
   if (millis() > this->lastmdrupdate + 5) {
     this->iris = mdr->getIris();
@@ -303,17 +243,16 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   return sendlen;
 }
 
-
-
 bool PDServer::updateSubs() {
   char tosend[100];
   uint8_t sendlen = 0;
- 
-  for (int i = 0; i < 16; i++) {
+
+  for (int i = 0x0E; i > 0; i--) {
     sendlen = 0;
     
     if (this->subs[i].data_descriptor == 0) {
       // if the subscription doesn't want any data, skip it
+      this->nextavailaddress = (this->channel * 0x10) + i;
       continue;
     }
     
@@ -374,17 +313,6 @@ bool PDServer::unsubscribe(uint8_t addr) {
   }
 }
 
-/*
-uint8_t* PDServer::commandReplyToArray(command_reply input) {
-  uint8_t output[input.replystatus + 2];
-  output[0] = 0;
-  output[1] = input.replystatus;
-  for (int i = 0; i < input.replystatus+1; i++) {
-    output[i+2] = input.data[i];
-  }
-  return output;
-}*/
-
 uint8_t PDServer::getAddress() {
   return this->address;
 }
@@ -407,16 +335,6 @@ void PDServer::setChannel(uint8_t newchannel) {
   setAddress(this->channel * 0x10);
   // todo remove all old subscriptions
 }
-
-/*
-int PDServer::sendToMDR(PrestonPacket* pak) {
-  return this->mdr->sendToMDR(pak);
-}
-
-command_reply PDServer::getMDRReply() {
-  return this->mdr->getReply();
-}*/
-
 
 /* OneRing */
 

@@ -88,6 +88,8 @@ class PDClient {
     void abbreviateName(); // shorten lengthy lens brands
     //void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
 
+    bool changeAddress(uint8_t newAddress);
+
     bool registerWithServer();
     bool unregisterWithServer();
 

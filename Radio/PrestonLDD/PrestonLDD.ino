@@ -12,7 +12,7 @@
 #include "Fonts/Roboto_34.h"
 #include <Fonts/FreeSerifItalic9pt7b.h>
 
-#define IGNOREERRORS true
+#define IGNOREERRORS false
 
 #define CHAR_FONT &FreeSerifItalic9pt7b
 #define XLARGE_FONT &Roboto_34

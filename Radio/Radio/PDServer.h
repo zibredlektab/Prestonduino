@@ -48,10 +48,10 @@
 
 /*
  * First byte of message will always be uint8_t describing the mode of the message:
- * 0x0 = Raw data request/reply (not supported at this time)
- * 0x1 = Single-time data request, second byte is data type (see datatypes.h) (not supported at this time)
- * 0x2 = Subscription data request, second byte same as 0x1
- * 0x3 = OK (usually meaning start lens map or continue lens mapping)
+ * 0x0 = Request for new address
+ * 0x1 = Subscription data request, second byte is data type (see datatypes.h)
+ * 0x2 = Unsubscription request
+ * 0x3 = OK (start or continue lens mapping)
  * 0x4 = NO (do not map lens or cancel mapping)
  * 0xF = error, second byte determines error type (see errorcodes.h)
  * 
@@ -80,6 +80,7 @@ class PDServer {
     uint8_t buflen;
     uint8_t lastfrom; // address of sender of last-received message
     subscription subs[16]; // array of currently active clients and what data they want
+    uint8_t nextavailaddress = 0xF;
 
     /* lens data */
     uint16_t iris = 0;

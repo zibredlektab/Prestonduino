@@ -53,7 +53,7 @@ bool PDClient::sendMessage(uint8_t type, uint8_t data) {
 
 bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
   
-  uint8_t messagelength = datalen+1; // type + data
+  uint8_t messagelength = datalen + 1; // type + data
   uint8_t tosend[messagelength];
   
   tosend[0] = msgtype;
@@ -86,7 +86,7 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
         // got a message
         uint8_t len = sizeof(this->buf);
         uint8_t from;
-        if (this->manager->recvfrom(this->buf, &len, &from)) {
+        if (this->manager->recvfromAck(this->buf, &len, &from)) {
           this->clearError();
           Serial.print(F("Got a reply: "));
           for (int i = 0; i < len; i++) {
@@ -96,43 +96,10 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
           Serial.println();
           // Reply was received
           this->waitforreply = false;
-          
-          if (this->buf[0] == 0) {
-            Serial.println(F("Reply is a CR"));
-            // Reply message is a commandreply
-            this->arrayToCommandReply(this->buf);
-
-          } else if (this->buf[0] == 2) {
-            // Response is an address change request from the server
-            this->address = this->buf[1]; // set our address to the newly specified address
-            this->final_address = true;
-            Serial.print("Set final address to 0x");
-            Serial.println(this->address, HEX);
-            
-          } else if (this->buf[0] == 3) {
-            Serial.println(F("MDR acknowledges command"));
-            // Response is an MDR ack, no further processing needed
-            
-          } else if (this->buf[0] > 3 && this->buf[0] != 0xF) {
-            Serial.print(F("Reply is data:"));
-            // Response is a data set
-            for (int i = 0; i < len-1; i++) {
-              this->buf[i] = this->buf[i+1]; // shift buf elements by one (no longer need type identifier)
-              Serial.print(" 0x");
-              Serial.print(this->buf[i], HEX);
-            }
-  
-            len -= 1;
-            this->buf[len] = (uint8_t)'\0';
-  
-            Serial.println();
-          } else {
-            Serial.print(F("Server sent back an error code: 0x"));
-            Serial.println(this->buf[1], HEX);
-            this->error(this->buf[1]);
-          }
+          this->parseMessage();
           return true;
-
+        } else {
+          Serial.println("failed to receive message, even though one is available");
         }
       } else {
         Serial.println(F("No reply received (timeout)"));
@@ -154,36 +121,6 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
   return true;
   
 }
-
-void PDClient::arrayToCommandReply(byte* input) {
-  this->response.replystatus = input[0];
-  for (int i = 0; i < input[0]; i++) {
-    this->response.data[i] = input[i+1];
-  }
-}
-
-/*command_reply PDClient::sendPacket(PrestonPacket *pak) {
-  if (this->sendMessage(1, pak->getPacket(), pak->getPacketLen())){
-    delete pak;
-    return this->response;
-  } else {
-    command_reply badresponse;
-    badresponse.replystatus = 0;
-    return badresponse;
-  }
-}
-
-command_reply PDClient::sendCommand(uint8_t command, uint8_t* args, uint8_t len) {
-  PrestonPacket *pak = new PrestonPacket(command, args, len);
-  Serial.println("Packet created");
-  return this->sendPacket(pak);
-}
-
-command_reply PDClient::sendCommand(uint8_t command) {
-  PrestonPacket *pak = new PrestonPacket(command);
-  return this->sendPacket(pak);
-}
-*/
 
 void PDClient::onLoop() {
   
@@ -242,14 +179,26 @@ void PDClient::parseMessage() {
       this->error(this->buf[1]);
       break;
       
-    case 0x0:
-      // Raw data reply from MDR
+    case 0x0: {// new address
+      this->changeAddress(this->buf[1]); // set our address to the newly specified address
+      Serial.print("Set new address to 0x");
+      Serial.println(this->address, HEX);
       break;
-    case 0x1:
-      // Single-time data reply
-      break;
-    case 0x2:
-      // Subscription update
+    }
+    case 0x1:{ // data
+      Serial.print(F("Reply is data:"));
+      // Response is a data set
+      for (int i = 0; i < this->buflen-1; i++) {
+        this->buf[i] = this->buf[i+1]; // shift buf elements by one (no longer need type identifier)
+        Serial.print(" 0x");
+        Serial.print(this->buf[i], HEX);
+      }
+
+      this->buflen -= 1;
+      this->buf[this->buflen] = (uint8_t)'\0';
+
+      Serial.println();
+      
       uint8_t datatype = this->buf[1];
       uint8_t index = 2;
       
@@ -311,6 +260,7 @@ void PDClient::parseMessage() {
         this->processLensName();
       }
       break;
+    }
 
     return;
   }
@@ -419,9 +369,21 @@ uint8_t PDClient::getAddress() {
   return this->address;
 }
 
+bool PDClient::changeAddress(uint8_t newaddress) {
+  Serial.print("Changing address to 0x");
+  Serial.print(newaddress, HEX);
+  Serial.print("...");
+
+  this->manager->setThisAddress(newaddress);
+  Serial.println("done");
+  this->final_address = true;
+  return true;
+}
+
 uint8_t PDClient::getChannel() {
   return this->channel;
 }
+
 
 
 bool PDClient::setChannel(uint8_t newchannel) {
@@ -446,17 +408,31 @@ bool PDClient::registerWithServer() {
   // If this is the first time we're talking, server should reply with next available client address
   // Either way, server should (re)subscribe this client at that address
 
-  this->waitforreply = !this->final_address;
-
-  if (this->sendMessage(2, 0x17)) {
-    Serial.print("Established contact with server at address 0x");
-    Serial.println(this->server_address, HEX);
-    return true;
+  if (!this->final_address) {
+    this->waitforreply = true;
+    if (this->sendMessage(0, 0)) {
+      Serial.print("Established contact with server at address 0x");
+      Serial.println(this->server_address, HEX);
+      return true;
+    } else {
+      this->error(ERR_NOTX);
+      Serial.print("Failed to establish contact with server at address 0x");
+      Serial.println(this->server_address, HEX);
+      return false;
+    }
   } else {
-    this->error(ERR_NOTX);
-    Serial.print("Failed to establish contact with server at address 0x");
-    Serial.println(this->server_address, HEX);
-    return false;
+    this->waitforreply = false;
+    if (this->sendMessage(1, 0x17)) {
+      Serial.print("Subscribed to data with server at address 0x");
+      Serial.println(this->server_address, HEX);
+      return true;
+    } else {
+      Serial.print("Failed to subscribe to data with server at address 0x");
+      Serial.println(this->server_address, HEX);
+      return false;
+    }
+
+    this->lastregistration = millis();
   }
 }
 
@@ -470,31 +446,6 @@ bool PDClient::unregisterWithServer() {
     return false;
   }
 }
-
-/*
-void PDClient::findAddress() {
-  for (int i = 1; i <= 0xF; i++) {
-    Serial.print(F("Trying address 0x"));
-    Serial.println(this->server_address + i, HEX);
-    this->manager->setRetries(2);
-    if (!this->manager->sendtoWait((uint8_t*)"ping", 4, this->server_address + i)) {
-      Serial.println(F("Didn't get a response from this address, taking it for myself"));
-      // Did not get an ack from this address, so this address is available
-      this->address = this->server_address + i;
-      this->manager->setThisAddress(this->address);
-      this->final_address = true;
-      break;
-    }
-    Serial.println(F("Got a reply, trying the next address"));
-  }
-
-  this->manager->setRetries(RETRIES);
-  Serial.print(F("My final address is 0x"));
-  Serial.println(this->address, HEX);
-}
-*/
-
-
 
 
 bool PDClient::haveData() {
@@ -546,62 +497,6 @@ bool PDClient::subZoom() {
 }
 */
 
-
-/* 
- *  Single-time data retrieval
- */
-/*
-uint8_t* PDClient::getFIZDataOnce() {
-  this->waitforreply = true;
-  if (this->sendMessage(2, 7)) {
-    // Message acknowledged
-    return (uint8_t*)buf;
-  } else {
-    return NULL;
-  }
-}
-
-uint32_t PDClient::getFocusDistanceOnce() {
-  Serial.println(F("Asking for focus distance"));
-  this->waitforreply = true;
-  if (this->sendMessage(2, 2)) {
-    // Message acknowledged
-    return strtoul((const char*)this->buf, NULL, 10);
-  } else {
-    return 0;
-  }
-}
-
-uint16_t PDClient::getApertureOnce() {
-  this->waitforreply = true;
-  if (this->sendMessage(1, 1)) {
-    // Message acknowledged
-    return atoi((const char*)this->buf);
-  } else {
-    return 0;
-  }
-}
-
-uint16_t PDClient::getFocalLengthOnce() {
-  this->waitforreply = true;
-  if (this->sendMessage(1, 4)) {
-    // Message acknowledged
-    return atoi((const char*)this->buf);
-  } else {
-    return 0;
-  }
-}
-
-char* PDClient::getLensNameOnce() {
-  this->waitforreply = true;
-  if (this->sendMessage(1, 16)) {
-    // Message acknowledged
-    return (char*)buf;
-  } else {
-    return NULL;
-  }
-}
-*/
 
 /*
 *  Subscribed data retrieval
