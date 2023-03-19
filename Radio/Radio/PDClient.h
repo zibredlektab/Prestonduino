@@ -81,14 +81,12 @@ class PDClient {
 
     bool sendMessage(uint8_t type, uint8_t data); // send a single datum to the server
     bool sendMessage(uint8_t type, uint8_t* data, uint8_t datalen); // send a data array to the server
-    //void findAddress();
     void arrayToCommandReply(byte* input); // convert an incoming char buffer to a structured command reply
     void parseMessage();
     bool processLensName(); // split up lens name into component parts
     void abbreviateName(); // shorten lengthy lens brands
-    //void shiftArrayBytesRight(uint8_t* toshift, uint8_t len, uint8_t num);
 
-    bool changeAddress(uint8_t newAddress);
+    bool setAddress(uint8_t newAddress);
 
     bool registerWithServer();
     bool unregisterWithServer();
@@ -103,19 +101,11 @@ class PDClient {
     PDClient(int chan = 0xA);
     void onLoop();
 
-    //command_reply sendPacket(PrestonPacket *pak); // Send a PrestonPacket, get a command_reply in return
-    //command_reply sendCommand(uint8_t command, uint8_t* args, uint8_t len); // Send an MDR command with arguments, get a command_reply in return
-    //command_reply sendCommand(uint8_t command); // Same as above, for commands with no arguments
-    //uint8_t* getFIZDataOnce(); // Ask for FIZ data
     uint16_t getFocus();
     uint16_t getIris();
     uint16_t getZoom();
     uint16_t getWFl();
     uint16_t getTFl();
-    //uint32_t getFocusDistanceOnce();
-    //uint16_t getApertureOnce();
-    //uint16_t getFocalLengthOnce();
-    //char* getLensNameOnce();
     char* getFullLensName();
     char* getLensBrand();
     char* getLensSeries();
@@ -123,16 +113,12 @@ class PDClient {
     char* getLensNote();
     bool isNewLens();
     bool isZoom();
+
     uint8_t getAddress();
     uint8_t getChannel();
     bool setChannel(uint8_t newchannel);
+    bool changeChannel(uint8_t newchannel); // unregister with old server before switching
     uint8_t getErrorState();
-
-    //bool subscribe(uint8_t type);
-    //bool subAperture();
-    //bool subFocus();
-    //bool subZoom();
-    //bool unsub();
 
     void mapLater();
     void startMap();

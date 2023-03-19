@@ -88,6 +88,7 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
         uint8_t from;
         if (this->manager->recvfromAck(this->buf, &len, &from)) {
           this->clearError();
+          this->timeoflastmessagefromserver = millis();
           Serial.print(F("Got a reply: "));
           for (int i = 0; i < len; i++) {
             Serial.print(this->buf[i]);
@@ -151,20 +152,21 @@ void PDClient::onLoop() {
     }
   }
 
-
+/*
   if (this->timeoflastmessagefromserver + PING < millis()) {
     Serial.println("Haven't heard from the server in a while...");
     this->error(ERR_NOTX);
+    this->registerWithServer();
   }
 
-  if (this->lastregistration + PING < millis()) {
+  if (0 && this->lastregistration + PING < millis()) {
     Serial.println("Time to resubscribe");
     this->registerWithServer();
   }
 
   if (this->errorstate > 0) {
     this->handleErrors();
-  }
+  }*/
 }
 
 void PDClient::parseMessage() {
@@ -180,7 +182,10 @@ void PDClient::parseMessage() {
       break;
       
     case 0x0: {// new address
-      this->changeAddress(this->buf[1]); // set our address to the newly specified address
+      this->address = this->buf[1];
+      if (this->setAddress(this->buf[1])) { // set our address to the newly specified address
+        this->final_address = true;
+      }
       Serial.print("Set new address to 0x");
       Serial.println(this->address, HEX);
       break;
@@ -188,19 +193,16 @@ void PDClient::parseMessage() {
     case 0x1:{ // data
       Serial.print(F("Reply is data:"));
       // Response is a data set
-      for (int i = 0; i < this->buflen-1; i++) {
-        this->buf[i] = this->buf[i+1]; // shift buf elements by one (no longer need type identifier)
-        Serial.print(" 0x");
-        Serial.print(this->buf[i], HEX);
-      }
 
-      this->buflen -= 1;
       this->buf[this->buflen] = (uint8_t)'\0';
+
+      uint8_t index = 1;
 
       Serial.println();
       
-      uint8_t datatype = this->buf[1];
-      uint8_t index = 2;
+      uint8_t datatype = this->buf[index++];
+      Serial.print("data type of data is 0x");
+      Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
         Serial.println(F("Received data includes iris"));
@@ -369,14 +371,13 @@ uint8_t PDClient::getAddress() {
   return this->address;
 }
 
-bool PDClient::changeAddress(uint8_t newaddress) {
-  Serial.print("Changing address to 0x");
+bool PDClient::setAddress(uint8_t newaddress) {
+  Serial.print("Setting address to 0x");
   Serial.print(newaddress, HEX);
   Serial.print("...");
 
   this->manager->setThisAddress(newaddress);
   Serial.println("done");
-  this->final_address = true;
   return true;
 }
 
@@ -387,20 +388,21 @@ uint8_t PDClient::getChannel() {
 
 
 bool PDClient::setChannel(uint8_t newchannel) {
-  if (!this->unregisterWithServer()) {
-    return false;
-  }
   this->channel = newchannel;
   this->server_address = this->channel * 0x10;
   this->address = this->server_address + 0x0F;
+  this->setAddress(this->address);
   this->final_address = false;
   Serial.print("Server address is 0x");
   Serial.println(this->server_address, HEX);
-  if (!this->registerWithServer()) {
+  return this->registerWithServer();
+}
+
+bool PDClient::changeChannel(uint8_t newchannel) {
+  if (!this->unregisterWithServer()) {
     return false;
   }
-
-  return true;
+  return this->setChannel(newchannel);  
 }
 
 bool PDClient::registerWithServer() {
@@ -421,6 +423,7 @@ bool PDClient::registerWithServer() {
       return false;
     }
   } else {
+    this->lastregistration = millis();
     this->waitforreply = false;
     if (this->sendMessage(1, 0x17)) {
       Serial.print("Subscribed to data with server at address 0x");
@@ -431,9 +434,8 @@ bool PDClient::registerWithServer() {
       Serial.println(this->server_address, HEX);
       return false;
     }
-
-    this->lastregistration = millis();
   }
+
 }
 
 bool PDClient::unregisterWithServer() {

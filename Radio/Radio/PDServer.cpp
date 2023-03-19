@@ -12,7 +12,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->flash = new Adafruit_InternalFlash(INTERNAL_FLASH_FILESYSTEM_START_ADDR, INTERNAL_FLASH_FILESYSTEM_SIZE);
 
-  this->mdr->setMDRTimeout(10);
+  //this->mdr->setMDRTimeout(10);
 
   //this->mdr->mode(0x01, 0x40); // take command of the AUX channel (disabled for now)
 
@@ -33,7 +33,6 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   if (!this->driver->setModemConfig(RH_RF95::Bw500Cr45Sf128)) {
     Serial.println(F("Driver failed to configure modem"));
   }
-
 
   this->driver->setTxPower(23, false);
 
@@ -59,6 +58,9 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
 
 void PDServer::onLoop() {
+
+  mdr->onLoop();
+
   while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
     Serial.println(F("Message available"));
@@ -90,13 +92,15 @@ void PDServer::onLoop() {
             Serial.println("Failed.");
           } else {
             Serial.println("Done.");
+            this->subscribe(this->nextavailaddress, 0x17);
           }
           break;
         }
 
         case 1: { // This message is registering a client for subscription
-          //Serial.println(F("Data is being requested"));
+          Serial.print(F("This is a subsciption request for data type 0x"));
           uint8_t datatype = this->buf[1];
+          Serial.println(datatype, HEX);
           this->subscribe(this->lastfrom, datatype);
           break;
         }
@@ -148,76 +152,83 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   uint8_t sendlen = 2; // first two bytes are 0x1 and data type
   databuf[0] = 0x1; // message type is 0x1 for data
   databuf[1] = datatype;
-  if (millis() > this->lastmdrupdate + 5) {
-    this->iris = mdr->getIris();
-    this->focus = mdr->getFocus();
-    this->zoom = mdr->getZoom();
 
-    //Serial.print("zoom is ");
-    //Serial.println(this->zoom);
-    
-    this->fulllensname = mdr->getLensName();
-    //Serial.print(F("New lens name: "));
-    for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
-      if (i == 0) {
-        //Serial.print(F("[0x"));
-        //Serial.print(this->fulllensname[i], HEX);
-        //Serial.print(F("]"));
-      } else {
-        //Serial.print(this->fulllensname[i]);
-      }
-      //Serial.print(" ");
-    }
-    //Serial.println();
+  this->iris = mdr->getIris();
+  this->focus = mdr->getFocus();
+  this->zoom = mdr->getZoom();
 
-    
-    this->lastmdrupdate = millis();
-    if (this->focus == 0) {
-      // No data was recieved, return an error
-      Serial.println("Didn't get any data from MDR");
-      databuf[0] = 0xF;
-      databuf[1] = ERR_NOMDR;
-      return sendlen;
+  //Serial.print("zoom is ");
+  //Serial.println(this->zoom);
+  
+  this->fulllensname = mdr->getLensName();
+  //Serial.print(F("New lens name: "));
+  for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
+    if (i == 0) {
+      //Serial.print(F("[0x"));
+      //Serial.print(this->fulllensname[i], HEX);
+      //Serial.print(F("]"));
+    } else {
+      //Serial.print(this->fulllensname[i]);
     }
+    //Serial.print(" ");
+  }
+  //Serial.println();
+
+  
+  if (0 && this->focus == 0) { //TODO
+    // No data was recieved, return an error
+    Serial.println("Didn't get any data from MDR");
+    databuf[0] = 0xF;
+    databuf[1] = ERR_NOMDR;
+    return sendlen;
   }
 
-  //Serial.print(F("Getting following data: "));
+  Serial.print(F("Getting following data: "));
   
   if (datatype & DATA_IRIS) {
-    //Serial.print(F("iris "));
+    Serial.print(F("iris ("));
+    Serial.print(this->iris);
+    Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
+
   }
   if (datatype & DATA_FOCUS) {
-    //Serial.print(F("focus "));
+    Serial.print(F("focus ("));
+    Serial.print(this->focus);
+    Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
-    //Serial.print(F("zoom "));
+    Serial.print(F("zoom ("));
+    Serial.print(this->zoom);
+    Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
   }
   if (datatype & DATA_AUX) {
-    //Serial.print(F("aux (we don't do that yet) "));
+    Serial.print(F("aux (we don't do that yet) "));
   }
   if (datatype & DATA_DIST) {
-    //Serial.print(F("distance (we don't do that yet) "));
+    Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & DATA_NAME) {
-    //Serial.print(F("name "));
+    Serial.print(F("name "));
     this->lensnamelen = this->fulllensname[0] - 1; // lens name includes length of lens name, which we disregard
     strncpy(mdrlens, &this->fulllensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
     mdrlens[this->lensnamelen] = '\0'; // null character to terminate string
     
+    strncpy(curlens, mdrlens, this->lensnamelen);
+    /*
     if (strcmp(mdrlens, curlens) != 0) {
       Serial.println("Lens changed");
       // current mdr lens is different from our lens
-      this->mapped = false;
+      this->mapped = false; (todo)
       databuf[sendlen++] = '*'; // send an asterisk before lens name
       for (int i = 0; i <= this->lensnamelen; i++) {
         curlens[i] = '\0'; // null-out previous lens name
       }
       strncpy(curlens, mdrlens, this->lensnamelen); // copy our new lens to current lens name
       curlens[this->lensnamelen] = '\0'; // make absolutely sure it ends with a null
-    }
+    }*/
 
     
     int i;
@@ -228,17 +239,17 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     sendlen += i;
   }
   if (sendlen > 0) {
-    //Serial.println();
+    Serial.println();
     databuf[sendlen++] = '\0';
   } else {
-    //Serial.println(F("...nothing?"));
+    Serial.println(F("...nothing?"));
   }
   for (int i = 0; i < sendlen; i++) {
-    //Serial.print(F("0x"));
-    //Serial.print(databuf[i], HEX);
-    //Serial.print(F(" "));
+    Serial.print(F("0x"));
+    Serial.print(databuf[i], HEX);
+    Serial.print(F(" "));
   }
-  //Serial.println();
+  Serial.println();
   
   return sendlen;
 }
@@ -256,7 +267,7 @@ bool PDServer::updateSubs() {
       continue;
     }
     
-    if (this->subs[i].keepalive + SUBLIFE < millis()) { // Check if sub has expired
+    if (0 && this->subs[i].keepalive + SUBLIFE < millis()) { // TODO Check if sub has expired
       Serial.print("Subscription of client at 0x");
       Serial.print((this->channel * 0x10) + i, HEX);
       Serial.println(" has expired");
@@ -269,18 +280,20 @@ bool PDServer::updateSubs() {
     //Serial.print((this->channel * 0x10) + i, HEX);
     //Serial.println();
     sendlen = this->getData(desc, tosend);
-    //Serial.print(F("Sending "));
-    //Serial.print(sendlen);
-    //Serial.println(F(" bytes:"));
+    Serial.print(F("Sending "));
+    Serial.print(sendlen);
+    Serial.println(F(" bytes:"));
     for (int i = 0; i < sendlen; i++) {
-      //Serial.print("0x");
-      //Serial.print(tosend[i], HEX);
-      //Serial.print(" ");
+      Serial.print(" 0x");
+      Serial.print(tosend[i], HEX);
     }
-    //Serial.println();
+    Serial.println();
+    
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
-      //Serial.println(F("Failed to send message"));
+      Serial.println(F("Failed to send message"));
       return false;
+    } else {
+      Serial.println("Update sent.");
     }
   }
   return true;
@@ -290,10 +303,10 @@ void PDServer::subscribe(uint8_t addr, uint8_t desc) {
   uint8_t subaddr = addr - (this->channel * 0x10);
   this->subs[subaddr].data_descriptor = desc;
   this->subs[subaddr].keepalive = millis();
-  //Serial.print("Subscribed client at address 0x");
-  //Serial.print((this->channel * 0x10) + subaddr, HEX);
-  //Serial.print(" to data of type ");
-  //Serial.println(this->subs[subaddr].data_descriptor, BIN);
+  Serial.print("Subscribed client at address 0x");
+  Serial.print((this->channel * 0x10) + subaddr, HEX);
+  Serial.print(" to data of type 0x");
+  Serial.println(this->subs[subaddr].data_descriptor, HEX);
 }
 
 bool PDServer::unsubscribe(uint8_t addr) {
@@ -413,7 +426,7 @@ void PDServer::makePath() {
 }
 
 void PDServer::mapLens(uint8_t curav) {
-  Serial.print("Mapping lens at AV ");
+  /*Serial.print("Mapping lens at AV ");
   Serial.print(curav);
 
   command_reply auxdata = mdr->data(0x58); // 0x58 for Aux, 0x52 for F (for MDR4 testing)
@@ -423,7 +436,7 @@ void PDServer::mapLens(uint8_t curav) {
   Serial.print(" to encoder position 0x");
   Serial.println(aux, HEX);
   
-  this->lensmap[curav] = aux; // aux encoder position
+  this->lensmap[curav] = aux; // aux encoder position*/
 }
 
 void PDServer::finishMap() {
@@ -456,7 +469,7 @@ void PDServer::finishMap() {
 
 
 void PDServer::irisToAux() {
-  command_reply irisdata = mdr->data(0x41); // get encoder position of iris channel
+  /*command_reply irisdata = mdr->data(0x41); // get encoder position of iris channel
   uint16_t iris = 0;
 
   if (irisdata.replystatus > 0) {
@@ -505,5 +518,5 @@ void PDServer::irisToAux() {
   uint8_t auxh = auxpos >> 8;
   uint8_t auxl = auxpos & 0xFF;
   uint8_t auxdata[3] = {0x48, auxh, auxl}; //0x48 is AUX, 0x42 is F
-  mdr->data(auxdata, 3);
+  mdr->data(auxdata, 3);*/
 }

@@ -8,7 +8,8 @@
 #ifndef PrestonDuino_h
 #define PrestonDuino_h
 
-#define DEFAULTTIMEOUT 2000
+#define DEFAULTTIMEOUT 20
+#define PERIOD 6
 
 struct command_reply {
    int8_t replystatus;
@@ -26,10 +27,13 @@ class PrestonDuino {
     HardwareSerial *ser; // serial port connected to MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
+    byte sendbuf[100]; // buffer for outgoing data to MDR
+    int sendlen = 0;
     PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
     PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
-    command_reply reply; // most recent received reply from MDR
+    command_reply reply; // most recent received reply from MDR (not currently used)
     int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
+    uint32_t lastsend = 0; // last time a message was sent to MDR
 
     // MDR Data
     // Basic lens data - can be assumed to be up to date
@@ -49,9 +53,10 @@ class PrestonDuino {
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not 
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
-    command_reply sendCommand(PrestonPacket* pak, bool withreply); // Generic command. See description below for the list of commands and returned array format. If withreply is true, attempts to get a reply from MDR after ACK.
+    void sendCommand(PrestonPacket* pak); // Generic command. See description below for the list of commands and returned array format.
     bool validatePacket(); // true if packet validates with checksum
-    void sendBytesToMDR(byte* tosend, int len); // sends raw bytes to MDR.
+    void queueForSend(byte* tosend, int len); // adds raw bytes to the current send buffer
+    void sendBytesToMDR(); // sends the current send buffer to MDR.
     void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
     void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name
 
@@ -68,31 +73,31 @@ class PrestonDuino {
      * data is a byte array representing the data section of the MDR reply
      */
 
-    command_reply mode(byte datah, byte datal);
-    command_reply stat();
-    command_reply who();
-    command_reply data(byte datadescription);
-    command_reply data(byte* datadescription, int datalen);
-    command_reply rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
-    command_reply setl(byte motors);
-    command_reply ct(); // MDR2 only
-    command_reply ct(byte cameratype); // MDR2 only
-    command_reply mset(byte mseth, byte msetl); //MDR3/4 only
-    command_reply mstat(byte motor);
-    command_reply r_s(bool rs);
-    command_reply tcstat();
-    command_reply ld(); // MDR3/4 only
-    command_reply info(byte type); // MDR3/4 only, first element of array is size of payload
-    command_reply dist(byte type, uint32_t dist);
-    command_reply err(); // Here for completeness but unused as a client command
+    void mode(byte datah, byte datal);
+    void stat();
+    void who();
+    void data(byte datadescription);
+    void data(byte* datadescription, int datalen);
+    void rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
+    void setl(byte motors);
+    void ct(); // MDR2 only
+    void ct(byte cameratype); // MDR2 only
+    void mset(byte mseth, byte msetl); //MDR3/4 only
+    void mstat(byte motor);
+    void r_s(bool rs);
+    void tcstat();
+    void ld(); // MDR3/4 only
+    void info(byte type); // MDR3/4 only, first element of array is size of payload
+    void dist(byte type, uint32_t dist);
+    void err(); // Here for completeness but unused as a client command
 
     // The following are helper methods, simplifying common tasks
     // Lens data requires lens to be calibrated (mapped) from the hand unit
 
     // Getters
-    uint32_t getFocus(); // Focus distance, in mm (1mm precision)
-    int getZoom(); // Focal length, in mm (1mm precision)
-    int getIris(); // Iris (*100, ex T-5.6 returns as 560)
+    uint16_t getFocus(); // Focus distance, in mm (1mm precision)
+    uint16_t getZoom(); // Focal length, in mm (1mm precision)
+    uint16_t getIris(); // Iris (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
 };
 

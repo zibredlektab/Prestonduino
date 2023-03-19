@@ -23,8 +23,8 @@
 #include <datatypes.h>
 
 #define REFRESHRATE 5
-#define SUBLIFE 6000 // how long to keep subscriptions active before purging them
-#define UPDATEDELAY 10 // how long to wait between updating subs
+#define SUBLIFE 10000 // how long to keep subscriptions active before purging them
+#define UPDATEDELAY 100 // how long to wait between updating subs
 
 #define INTERNAL_FLASH_FILESYSTEM_SIZE (64*1024)
 #define INTERNAL_FLASH_FILESYSTEM_START_ADDR (0x00040000 - 256 - 0 - INTERNAL_FLASH_FILESYSTEM_SIZE)
@@ -93,7 +93,6 @@ class PDServer {
     char curlens[40]; // last-known active lens name
     char lenspath[25]; // file path where the current lens map is stored
     char filename[25]; // file name the current lens map is stored in
-    unsigned long long lastmdrupdate = 0; // last time we asked MDR for updated data
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
 
     uint8_t getData(uint8_t datatype, char* databuf);

@@ -43,7 +43,7 @@ void loop() {
       Serial.print(focus);
       Serial.print("mm zoom: ");
       Serial.println(mdr->getZoom());
-      mdr->info(1);
+      //mdr->info(1);
       Serial.println(mdr->getLensName());
     }
   /*
@@ -62,7 +62,7 @@ void loop() {
       mdr->data(irisdata, 3);
     }*/
 
-    if (0 && time + 16000 < millis()) {
+    if (time + 3000 < millis()) {
       mdr->mode(0,0);
       delay(500);
       continuelooping = false;
