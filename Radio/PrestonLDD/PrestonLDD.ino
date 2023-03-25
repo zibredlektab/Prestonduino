@@ -344,7 +344,7 @@ void setup() {
   oled.setFont(SMALL_FONT);
   oled.setCursor(0, 30);
   
-  Serial.begin(115200);
+  Serial.begin(9600);
   oled.print("Starting Serial...\n");
   oled.display();
   while(!Serial && millis() < 3000);

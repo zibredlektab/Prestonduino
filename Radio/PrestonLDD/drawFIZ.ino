@@ -131,6 +131,7 @@ void drawZoom(uint16_t fl, bool big) {
 
   uint8_t flbase = fl/100;
 
+
   if (big) {
     x = X_OFFSET_BIG;
     y = Y_OFFSET_BIG;
