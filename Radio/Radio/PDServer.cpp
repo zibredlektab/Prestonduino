@@ -10,8 +10,6 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
-  this->flash = new Adafruit_InternalFlash(INTERNAL_FLASH_FILESYSTEM_START_ADDR, INTERNAL_FLASH_FILESYSTEM_SIZE);
-
   //this->mdr->setMDRTimeout(10);
 
   //this->mdr->mode(0x01, 0x40); // take command of the AUX channel (disabled for now)
@@ -38,8 +36,9 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->driver->setPromiscuous(false);
 
-
-  Serial.print("Initializing flash...");
+  /*
+  this->flash = new Adafruit_InternalFlash(INTERNAL_FLASH_FILESYSTEM_START_ADDR, INTERNAL_FLASH_FILESYSTEM_SIZE);
+  Serial.print("Initializing flash..."); // TODO Flash stuff
   flash->begin();
   
   // Open file system on the flash
@@ -48,7 +47,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
     while(1) yield();
   } else {
     Serial.println("done.");
-  }
+  }*/
   
   Serial.print(F("Done with setup, my address is 0x"));
   Serial.println(this->address, HEX);
@@ -189,20 +188,20 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     Serial.print(F("iris ("));
     Serial.print(this->iris);
     Serial.print(") ");
-    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->iris);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
 
   }
   if (datatype & DATA_FOCUS) {
     Serial.print(F("focus ("));
     Serial.print(this->focus);
     Serial.print(") ");
-    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->focus);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
     Serial.print(F("zoom ("));
     Serial.print(this->zoom);
     Serial.print(") ");
-    sendlen += snprintf(&databuf[sendlen], 20, "%04lu", (unsigned long)this->zoom);
+    sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->zoom);
   }
   if (datatype & DATA_AUX) {
     Serial.print(F("aux (we don't do that yet) "));

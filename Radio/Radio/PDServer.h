@@ -12,8 +12,6 @@
 #include <FreeStack.h>
 #include <MinimumSerial.h>
 #include <SdFat.h>
-//#include <BlockDriver.h>
-//#include <SysCall.h>
 #include <Adafruit_InternalFlash.h>
 
 
@@ -22,7 +20,6 @@
 #endif
 #include <datatypes.h>
 
-#define REFRESHRATE 5
 #define SUBLIFE 10000 // how long to keep subscriptions active before purging them
 #define UPDATEDELAY 100 // how long to wait between updating subs
 

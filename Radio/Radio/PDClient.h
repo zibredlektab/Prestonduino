@@ -18,7 +18,7 @@
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
-//  #define INTPIN 9
+  #define INTPIN 9
 #elif defined(ARDUINO_SAMD_ZERO)
   #define SSPIN 8
   #define INTPIN 3
@@ -56,7 +56,7 @@ class PDClient {
     RH_RF95 *driver;
     RHReliableDatagram *manager;
     uint8_t errorstate = 0b11; // start with the assumption that the server is not responding and we have no data
-    unsigned char buf[75]; // incoming message (from server) buffer
+    char buf[75]; // incoming message (from server) buffer
     uint8_t buflen;
     bool waitforreply = false; // does the message we are currently sending need a reply from the server?
     command_reply response; // holds the most recently received response from the server
@@ -67,7 +67,7 @@ class PDClient {
     // Lens data
     uint16_t iris = 370;
     uint16_t zoom = 78;
-    uint32_t focus = 8873;
+    uint16_t focus = 8873;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range
     char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";
