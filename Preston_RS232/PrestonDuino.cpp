@@ -71,6 +71,12 @@ void PrestonDuino::onLoop () {
   if (this->sendlen > 0 && millis() >= this->lastsend + PERIOD) {
     this->sendBytesToMDR();
   }
+
+  if (millis() >= this->lastnamecheck + NAMECHECK) {
+    Serial.println("Asking for lens name");
+    this->info(0x1);
+    this->lastnamecheck = millis();
+  }
 }
 
 
@@ -291,7 +297,7 @@ int PrestonDuino::parseRcv() {
       }
 
       case 0x0E: { // info
-        //Serial.println("This is an Info packet");
+        Serial.println("This is an Info packet");
         response = this->rcvpacket->getDataLen();
         char* arraytofill = this->fwname;
         if (this->rcvpacket->getData()[1] == '1') {
@@ -308,8 +314,8 @@ int PrestonDuino::parseRcv() {
         memcpy(arraytofill, &this->rcvpacket->getData()[2], this->rcvpacket->getDataLen()-2);
         arraytofill[this->rcvpacket->getDataLen()-2] = 0;
 
-        //Serial.print("info updated: ");
-        //Serial.println(arraytofill);
+        Serial.print("info updated: ");
+        Serial.println(arraytofill);
         break;
       }
 

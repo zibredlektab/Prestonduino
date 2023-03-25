@@ -10,6 +10,7 @@
 
 #define DEFAULTTIMEOUT 20
 #define PERIOD 6
+#define NAMECHECK 2000
 
 struct command_reply {
    int8_t replystatus;
@@ -34,6 +35,7 @@ class PrestonDuino {
     command_reply reply; // most recent received reply from MDR (not currently used)
     int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
     uint32_t lastsend = 0; // last time a message was sent to MDR
+    uint32_t lastnamecheck = 0; // last time we asked MDR for a lens name
 
     // MDR Data
     // Basic lens data - can be assumed to be up to date

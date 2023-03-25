@@ -253,13 +253,12 @@ void PDClient::parseMessage() {
       }
 
       if (datatype & DATA_NAME) {
-        Serial.println(F("Recieved data includes lens name"));
+        Serial.print("Recieved data includes lens name: ");
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
 
+        strncpy(this->fulllensname, &this->buf[index], namelen);
         
-        for (int i = 0; i < namelen; i++) {
-          this->fulllensname[i] = this->buf[index++];
-        }
+        Serial.println(this->fulllensname);
         
         this->processLensName();
       }

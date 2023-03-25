@@ -155,23 +155,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   this->iris = mdr->getIris();
   this->focus = mdr->getFocus();
   this->zoom = mdr->getZoom();
-
-  //Serial.print("zoom is ");
-  //Serial.println(this->zoom);
-  
   this->fulllensname = mdr->getLensName();
-  //Serial.print(F("New lens name: "));
-  for (int i = 0; i < this->fulllensname[0] - 1 ; i++) {
-    if (i == 0) {
-      //Serial.print(F("[0x"));
-      //Serial.print(this->fulllensname[i], HEX);
-      //Serial.print(F("]"));
-    } else {
-      //Serial.print(this->fulllensname[i]);
-    }
-    //Serial.print(" ");
-  }
-  //Serial.println();
 
   
   if (0 && this->focus == 0) { //TODO
@@ -181,6 +165,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     databuf[1] = ERR_NOMDR;
     return sendlen;
   }
+
 
   Serial.print(F("Getting following data: "));
   
@@ -210,12 +195,17 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & DATA_NAME) {
-    Serial.print(F("name "));
+    Serial.print(F("name ("));
     this->lensnamelen = this->fulllensname[0] - 1; // lens name includes length of lens name, which we disregard
-    strncpy(mdrlens, &this->fulllensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
-    mdrlens[this->lensnamelen] = '\0'; // null character to terminate string
+    Serial.print(this->lensnamelen);
+    Serial.print(" characters long, ");
+
+
+    //strncpy(mdrlens, &this->fulllensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
+    //mdrlens[this->lensnamelen] = 0; // null character to terminate string, just in case
     
-    strncpy(curlens, mdrlens, this->lensnamelen);
+
+    //strncpy(curlens, mdrlens, this->lensnamelen);
     /*
     if (strcmp(mdrlens, curlens) != 0) {
       Serial.println("Lens changed");
@@ -229,13 +219,8 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
       curlens[this->lensnamelen] = '\0'; // make absolutely sure it ends with a null
     }*/
 
-    
-    int i;
-    for (i = 0; i < this->lensnamelen; i++) {
-      databuf[sendlen+i] = this->fulllensname[i];
-      
-    }
-    sendlen += i;
+    strncpy(&databuf[sendlen], this->fulllensname, this->lensnamelen);
+    sendlen += this->lensnamelen;
   }
   if (sendlen > 0) {
     Serial.println();
