@@ -297,8 +297,10 @@ int PrestonDuino::parseRcv() {
       }
 
       case 0x0E: { // info
-        response = this->rcvpacket->getDataLen();
-        char* arraytofill = this->fwname;
+        // zeroth byte of data will always be zero
+        // first byte will be identifier of type of info
+        // info starts at byte 2 
+        char* arraytofill;
         if (this->rcvpacket->getData()[1] == '1') {
           // lens name
           arraytofill = this->lensname;
@@ -309,9 +311,17 @@ int PrestonDuino::parseRcv() {
           //Serial.println("unknown info type received, something has gone wrong.");
           break;
         }
-      
-        memcpy(arraytofill, &this->rcvpacket->getData()[2], this->rcvpacket->getDataLen()-2);
-        arraytofill[this->rcvpacket->getDataLen()-2] = 0;
+
+        this->lensnamelen = this->rcvpacket->getDataLen() - 1; // we ignore those first two bytes from now on, but add one for the null terminator
+
+        memcpy(arraytofill, &this->rcvpacket->getData()[2], this->lensnamelen - 1);
+        arraytofill[this->lensnamelen] = 0; // null terminate the string
+        /*Serial.print("new info: ");
+        for (int i = 0; i < this->rcvpacket->getDataLen() - 1; i++) {
+          Serial.print(" 0x");
+          Serial.print(arraytofill[i], HEX);
+        }
+        Serial.println();*/
         break;
       }
 
@@ -550,6 +560,10 @@ uint16_t PrestonDuino::getIris() {
 
 char* PrestonDuino::getLensName() {
   return this->lensname;
+}
+
+uint8_t PrestonDuino::getLensNameLen() {
+  return this->lensnamelen;
 }
 
 

@@ -49,6 +49,8 @@ class PrestonDuino {
     char lensname[50];
     char fwname[50];
 
+    uint8_t lensnamelen = 0;
+
     // methods
     void sendACK();
     void sendNAK();
@@ -101,6 +103,7 @@ class PrestonDuino {
     uint16_t getZoom(); // Focal length, in mm (1mm precision)
     uint16_t getIris(); // Iris (*100, ex T-5.6 returns as 560)
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
+    uint8_t getLensNameLen(); // Length of lens name
 };
 
 #endif
