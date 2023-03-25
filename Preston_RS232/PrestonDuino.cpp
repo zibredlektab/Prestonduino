@@ -67,11 +67,8 @@ void PrestonDuino::onLoop () {
       this->sendNAK();
     }
   }
-  Serial.print("focus: ");
-  Serial.println(this->focus);
 
   if (this->sendlen > 0 && millis() >= this->lastsend + PERIOD) {
-    Serial.println("Got something to send, let's send it");
     this->sendBytesToMDR();
   }
 }
@@ -205,8 +202,12 @@ int PrestonDuino::parseRcv() {
     // check validity of message todo
     
     if (!this->validatePacket()) {
-      Serial.println("Packet failed validity check!");
-      this->info(0x1);
+      Serial.print("Packet failed validity check: ");
+      for (int i = 0; i < this->rcvlen; i++) {
+        Serial.print(" 0x");
+        Serial.print(this->rcvbuf[i], HEX);
+      }
+      Serial.println();
       return -2;
     }
     
