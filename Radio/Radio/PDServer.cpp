@@ -167,66 +167,57 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   }
 
 
-  Serial.print(F("Getting following data: "));
+  //Serial.print(F("Getting following data: "));
   
   if (datatype & DATA_IRIS) {
-    Serial.print(F("iris ("));
-    Serial.print(this->iris);
-    Serial.print(") ");
+    //Serial.print(F("iris ("));
+    //Serial.print(this->iris);
+    //Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
 
   }
   if (datatype & DATA_FOCUS) {
-    Serial.print(F("focus ("));
-    Serial.print(this->focus);
-    Serial.print(") ");
+    //Serial.print(F("focus ("));
+    //Serial.print(this->focus);
+    //Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
-    Serial.print(F("zoom ("));
-    Serial.print(this->zoom);
-    Serial.print(") ");
+    //Serial.print(F("zoom ("));
+    //Serial.print(this->zoom);
+    //Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->zoom);
   }
   if (datatype & DATA_AUX) {
-    Serial.print(F("aux (we don't do that yet) "));
+    //Serial.print(F("aux (we don't do that yet) "));
   }
   if (datatype & DATA_DIST) {
-    Serial.print(F("distance (we don't do that yet) "));
+    //Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & DATA_NAME) {
-    Serial.print(F("name ("));
-    this->lensnamelen = this->fulllensname[0] - 1; // lens name includes length of lens name, which we disregard
-    Serial.print(this->lensnamelen);
-    Serial.print(" characters long, ");
-
-
-    //strncpy(mdrlens, &this->fulllensname[1], this->lensnamelen); // copy mdr data, sans length of lens name, to local buffer
-    //mdrlens[this->lensnamelen] = 0; // null character to terminate string, just in case
+    this->lensnamelen = this->mdr->getLensNameLen();
     
-
-    //strncpy(curlens, mdrlens, this->lensnamelen);
-    /*
-    if (strcmp(mdrlens, curlens) != 0) {
+    if (strcmp(this->fulllensname, curlens) != 0) {
       Serial.println("Lens changed");
+      Serial.print("Old lens was ");
+      Serial.println(curlens);
+      Serial.print("New lens is ");
+      Serial.println(this->fulllensname);
+      
       // current mdr lens is different from our lens
-      this->mapped = false; (todo)
-      databuf[sendlen++] = '*'; // send an asterisk before lens name
-      for (int i = 0; i <= this->lensnamelen; i++) {
-        curlens[i] = '\0'; // null-out previous lens name
-      }
-      strncpy(curlens, mdrlens, this->lensnamelen); // copy our new lens to current lens name
-      curlens[this->lensnamelen] = '\0'; // make absolutely sure it ends with a null
-    }*/
+      this->mapped = false; //(todo)
+      strncpy(&databuf[sendlen++], "*", 1); // send an asterisk before lens name
+      strcpy(curlens, this->fulllensname); // copy our new lens to current lens name, including the null
+    }
 
-    strncpy(&databuf[sendlen], this->fulllensname, this->lensnamelen);
+    strcpy(&databuf[sendlen], curlens);
     sendlen += this->lensnamelen;
   }
   if (sendlen > 0) {
-    Serial.println();
+    //Serial.println();
     databuf[sendlen++] = '\0';
   } else {
-    Serial.println(F("...nothing?"));
+    //Serial.println(F("...nothing?"));
   }
   
   return sendlen;
@@ -258,14 +249,14 @@ bool PDServer::updateSubs() {
     //Serial.print((this->channel * 0x10) + i, HEX);
     //Serial.println();
     sendlen = this->getData(desc, tosend);
-    /*Serial.print("Sending");
+    Serial.print("Sending");
     Serial.print(sendlen);
     Serial.println(F(" bytes:"));
     for (int i = 0; i < sendlen; i++) {
       Serial.print(" 0x");
       Serial.print(tosend[i], HEX);
     }
-    Serial.println();*/
+    Serial.println();
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
       Serial.println(F("Failed to send message"));

@@ -248,8 +248,8 @@ void PDClient::parseMessage() {
         sscanf(data, "%4hx", &this->zoom);
 
 
-        Serial.print("Zoom is ");
-        Serial.println(this->zoom); 
+        //Serial.print("Zoom is ");
+        //Serial.println(this->zoom); 
       }
 
       if (datatype & DATA_NAME) {
@@ -311,15 +311,11 @@ bool PDClient::processLensName() {
     sscanf (this->lensname, "%hu-%hu", &this->wfl, &this->tfl);
   } else {
     uint8_t i;
-    sscanf(this->lensname, "%hu", &this->zoom);
-    this->zoom *= 100; // prime focal lengths are sent in low-res form for some reason...
+    sscanf(this->lensname, "%hu", &this->zoom); // prime focal length is not reported with standard lens data
+    this->zoom *= 100; // need to convert to "high res" focal length format
     this->wfl = this->zoom;
     this->tfl = this->zoom;
   }
-  
-  Serial.print("Focal length is ");
-  Serial.print(this->zoom);
-  Serial.println("mm");
   
   return true;
 }
