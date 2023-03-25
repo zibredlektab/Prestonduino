@@ -13,7 +13,7 @@ void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
     oled.print(nt);
 }
 
-void drawFocus(uint32_t fd, bool big) {
+void drawFocus(uint16_t fd, bool big) {
 
   uint8_t x, y;
   
@@ -126,8 +126,10 @@ void drawIris(uint16_t ap, bool big) {
 }
 
 
-void drawZoom(uint8_t fl, bool big) {
+void drawZoom(uint16_t fl, bool big) {
   uint8_t x, y;
+
+  uint8_t flbase = fl/100;
 
   if (big) {
     x = X_OFFSET_BIG;
@@ -138,19 +140,19 @@ void drawZoom(uint8_t fl, bool big) {
 
     if (fl == 0) {
       oled.setFont(SMALL_FONT);
-      oled.print("No Zoom");
+      oled.print("CAL");
     } else {
-      oled.print(fl);
+      oled.print(flbase);
       oled.setFont(SMALL_FONT);
       oled.print(F("mm"));
     
       if (pd->isZoom()) {
         oled.drawLine(x, y + 7, x + 62, y + 7, SH110X_WHITE); // horiz scale
-        uint8_t zoompos = map(fl, pd->getWFl(), pd->getTFl(), x, x + 62);
+        uint8_t zoompos = map(flbase, pd->getWFl(), pd->getTFl(), x, x + 62);
         oled.drawLine(zoompos, y + 4, zoompos, y + 10, SH110X_WHITE); // pointer
       }
     }
-  } else {
+  } else { //small
     x = X_OFFSET_SMALL;
     if (oled.getCursorY() > 42) {
       y = Y_OFFSET_TOP;
@@ -163,10 +165,10 @@ void drawZoom(uint8_t fl, bool big) {
 
     if (fl == 0) {
       if (showna) {
-        oled.print("No Zoom");
+        oled.print("CAL");
       }
     } else {
-      oled.print(fl);
+      oled.print(flbase);
       oled.print("mm");
     }
   }

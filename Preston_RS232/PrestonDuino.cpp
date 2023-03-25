@@ -56,7 +56,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   this->mode(0x1,0x0); // start streaming mode, not controlling any channels
 
-  this->data(0x13); // request low res (for easy debugging) focus iris and zoom data
+  this->data(0x17); // request low res (for easy debugging) focus iris and zoom data
   
 }
 
@@ -73,7 +73,6 @@ void PrestonDuino::onLoop () {
   }
 
   if (millis() >= this->lastnamecheck + NAMECHECK) {
-    Serial.println("Asking for lens name");
     this->info(0x1);
     this->lastnamecheck = millis();
   }
@@ -231,12 +230,12 @@ int PrestonDuino::parseRcv() {
         response = this->rcvpacket->getDataLen();
 
         /*
-        //Serial.print("The data is: ");
-        for (int i = 0; i <= response; i++) {
-          //Serial.print(" 0x");
-          //Serial.print(this->rcvpacket->getData()[i], HEX);
+        Serial.print("The data is: ");
+        for (int i = 0; i < response; i++) {
+          Serial.print(" 0x");
+          Serial.print(this->rcvpacket->getData()[i], HEX);
         }
-        //Serial.println();
+        Serial.println();
         */
 
         int dataindex = 0;
@@ -246,8 +245,9 @@ int PrestonDuino::parseRcv() {
 
           this->iris = this->rcvpacket->getData()[dataindex++] << 8;
           this->iris += this->rcvpacket->getData()[dataindex++];
-          ////Serial.print("iris: ");
-          ////Serial.print(this->iris);
+          
+          //Serial.print("iris: ");
+          //Serial.print(this->iris);
         }
         if (datadescriptor & 2) {
           // has focus
@@ -265,8 +265,8 @@ int PrestonDuino::parseRcv() {
           this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
           this->zoom += this->rcvpacket->getData()[dataindex++];
 
-          ////Serial.print(" zoom: ");
-          ////Serial.print(this->zoom);          
+          //Serial.print(" zoom: ");
+          //Serial.print(this->zoom);          
         }
         if (datadescriptor & 8) {
           // has AUX
@@ -297,7 +297,6 @@ int PrestonDuino::parseRcv() {
       }
 
       case 0x0E: { // info
-        Serial.println("This is an Info packet");
         response = this->rcvpacket->getDataLen();
         char* arraytofill = this->fwname;
         if (this->rcvpacket->getData()[1] == '1') {
@@ -313,9 +312,6 @@ int PrestonDuino::parseRcv() {
       
         memcpy(arraytofill, &this->rcvpacket->getData()[2], this->rcvpacket->getDataLen()-2);
         arraytofill[this->rcvpacket->getDataLen()-2] = 0;
-
-        Serial.print("info updated: ");
-        Serial.println(arraytofill);
         break;
       }
 
@@ -344,15 +340,17 @@ int PrestonDuino::parseRcv() {
 
 bool PrestonDuino::validatePacket() {
   // Check validity of incoming packet, using its checksum
-  //Serial.print("checksum of incoming message is 0x");
-  //Serial.println(this->rcvpacket->getSum(), HEX);
 
   int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
   int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
-  //Serial.print("calculated checksum is 0x");
-  //Serial.println(sum, HEX);
+  if (sum != this->rcvpacket->getSum()) {
+    Serial.print("checksum of incoming message is ");
+    Serial.print(this->rcvpacket->getSum());
+    Serial.print(", calculated checksum is ");
+    Serial.println(sum);
+  }
 
   return (sum == this->rcvpacket->getSum());
 }
@@ -369,7 +367,7 @@ void PrestonDuino::sendACK() {
 
 void PrestonDuino::sendNAK() {
   // Resend last packet
-  this->sendPacketToMDR(this->sendpacket);
+  //this->sendPacketToMDR(this->sendpacket);
   // Send NAK, don't wait for a reply (that will be handled elsewhere)
   /*Serial.println("Sending NAK to MDR");
   byte nak[1] = {NAK};

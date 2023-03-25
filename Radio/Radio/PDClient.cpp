@@ -172,8 +172,8 @@ void PDClient::onLoop() {
 void PDClient::parseMessage() {
   // Determine message type
   uint8_t messagetype = this->buf[0];
-  Serial.print(F("Message is of type 0x"));
-  Serial.println(messagetype, HEX);
+  //Serial.print(F("Message is of type 0x"));
+  //Serial.println(messagetype, HEX);
   switch (messagetype) {
     case 0xF:
       Serial.print(F("Message is an error, of type "));
@@ -191,7 +191,7 @@ void PDClient::parseMessage() {
       break;
     }
     case 0x1:{ // data
-      Serial.println("Reply is data");
+      //Serial.println("Reply is data");
       // Response is a data set
 
       this->buf[this->buflen] = 0;
@@ -199,16 +199,16 @@ void PDClient::parseMessage() {
       uint8_t index = 1;
       
       uint8_t datatype = this->buf[index++];
-      Serial.print("data type of data is 0x");
-      Serial.println(datatype, HEX);
+      //Serial.print("data type of data is 0x");
+      //Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
-        Serial.print("Received data includes iris: ");
+        //Serial.print("Received data includes iris: ");
         char data[5];
         strncpy(data, &this->buf[index], 4);
         data[4] = 0;
         index += 4;
-        Serial.println(data);
+        //Serial.println(data);
 
         //static uint16_t tempiris = 0;
 
@@ -216,49 +216,49 @@ void PDClient::parseMessage() {
 
         //this->iris = tempiris;
 
-        Serial.print("Iris is ");
-        Serial.println(this->iris);
+        //Serial.print("Iris is ");
+        //Serial.println(this->iris);
       }
 
       if (datatype & DATA_FOCUS) {
-        Serial.print("Received data includes focus: ");
+        //Serial.print("Received data includes focus: ");
         char data[5];
         strncpy(data, &this->buf[index], 4);
         data[4] = 0;
         index += 4;
-        Serial.println(data);
+        //Serial.println(data);
 
 
         sscanf(data, "%4hx", &this->focus);
 
 
-        Serial.print("Focus is ");
-        Serial.println(this->focus);     
+        //Serial.print("Focus is ");
+        //Serial.println(this->focus);     
       }
 
       if (datatype & DATA_ZOOM) {
-        Serial.print("Received data includes zoom: ");
+        //Serial.print("Received data includes zoom: ");
         char data[5];
         strncpy(data, &this->buf[index], 4);
         data[4] = 0;
         index += 4;
-        Serial.println(data);
+        //Serial.println(data);
 
 
         sscanf(data, "%4hx", &this->zoom);
 
 
-        Serial.print("Zoom is ");
-        Serial.println(this->zoom); 
+        //Serial.print("Zoom is ");
+        //Serial.println(this->zoom); 
       }
 
       if (datatype & DATA_NAME) {
-        Serial.print("Recieved data includes lens name: ");
+        //Serial.print("Recieved data includes lens name: ");
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
 
         strncpy(this->fulllensname, &this->buf[index], namelen);
         
-        Serial.println(this->fulllensname);
+        //Serial.println(this->fulllensname);
         
         this->processLensName();
       }
@@ -547,10 +547,10 @@ char* PDClient::getLensNote() {
 
 bool PDClient::isZoom() {
   if (strchr(this->lensname, '-')) {
-    Serial.println("This is a zoom");
+    //Serial.println("This is a zoom");
     return true;
   } else {
-    Serial.println("This is not a zoom");
+    //Serial.println("This is not a zoom");
   }
 
   return false;

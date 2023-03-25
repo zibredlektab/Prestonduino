@@ -228,12 +228,6 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   } else {
     Serial.println(F("...nothing?"));
   }
-  for (int i = 0; i < sendlen; i++) {
-    Serial.print(F("0x"));
-    Serial.print(databuf[i], HEX);
-    Serial.print(F(" "));
-  }
-  Serial.println();
   
   return sendlen;
 }
@@ -264,20 +258,18 @@ bool PDServer::updateSubs() {
     //Serial.print((this->channel * 0x10) + i, HEX);
     //Serial.println();
     sendlen = this->getData(desc, tosend);
-    Serial.print(F("Sending "));
+    /*Serial.print("Sending");
     Serial.print(sendlen);
     Serial.println(F(" bytes:"));
     for (int i = 0; i < sendlen; i++) {
       Serial.print(" 0x");
       Serial.print(tosend[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
       Serial.println(F("Failed to send message"));
       return false;
-    } else {
-      Serial.println("Update sent.");
     }
   }
   return true;
