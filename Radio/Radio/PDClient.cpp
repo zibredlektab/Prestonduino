@@ -126,15 +126,15 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 void PDClient::onLoop() {
   
   if (this->manager->available()) {
-    Serial.println();
-    Serial.print("Message available, this long: ");
+    //Serial.print("Message available, this long: ");
     uint8_t from;
     this->buflen = sizeof(this->buf);
     if (manager->recvfrom((uint8_t*)this->buf, &this->buflen, &from)) {
-      Serial.println(this->buflen);
+      //Serial.println(this->buflen);
       this->timeoflastmessagefromserver = millis();
       this->clearError(); // Server is responding
       
+      /*
       for (int i = 0; i < this->buflen; i++) {
         if (i < 2) {
           Serial.print(F("0x"));
@@ -145,7 +145,7 @@ void PDClient::onLoop() {
         }
       }
       
-      Serial.println();
+      Serial.println();*/
       
       this->parseMessage();
 
@@ -275,12 +275,12 @@ bool PDClient::processLensName() {
   //Serial.print("full name is ");
   //Serial.println(this->fulllensname);
 
-  int processfrom = 1;
+  int processfrom = 0;
 
   if (this->fulllensname[0] == '*') {
     Serial.println("this is a new lens");
     this->newlens = true;
-    processfrom = 2;
+    processfrom = 1;
   }
   
   this->lensbrand = &this->fulllensname[processfrom]; // first element of name is length of full name

@@ -91,6 +91,7 @@ class PDServer {
     char lenspath[25]; // file path where the current lens map is stored
     char filename[25]; // file name the current lens map is stored in
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
+    unsigned long long lastmotorcommand = 0; // last time we sent a motor command
 
     uint8_t getData(uint8_t datatype, char* databuf);
     void subscribe(uint8_t addr, uint8_t desc);
@@ -101,7 +102,7 @@ class PDServer {
 
     /* OneRing */
     const char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-    const uint16_t ringmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
+    const uint16_t ringmap[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
     uint16_t lensmap[10]; // currently active lens mapping
     bool mapped = false;
     int8_t curmappingav = -1;
