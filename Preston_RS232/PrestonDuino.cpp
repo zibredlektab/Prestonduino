@@ -17,6 +17,10 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
 
+  Serial.println("Starting PrestonDuino");
+
+  this->rootmsg = new mdr_message;
+
   // tell the mdr to shut up for a second
   uint8_t shutup[12] = {0x02, 0x30, 0x31, 0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x38, 0x35, 0x03};
   ser->write(shutup, 12);
@@ -27,6 +31,8 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   ser->setTimeout(this->timeout);
 
+  Serial.println("Getting lens name");
+
   for (int i = 0; i < 50; i++) {
     this->lensname[i] = 0;
   }
@@ -34,30 +40,18 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->lensname[0] = '?';
   // Get & store lens name 
   this->info(0x1);
-  
-  long int time = millis();
-/*
-  while (mdrinfo.replystatus == 0) {
-    // TODO slightly more robust way of checking for connection?
-    mdrinfo = this->info(0x1);
-    if (time + 100 < millis()) {
-      //Serial.print(".");
-      time = millis();
-    }
-  }*/
+  this->sendBytesToMDR();
+  delay(PERIOD);
 
-  //Serial.print("Current lens: ");
-  /*for(int i = 2; i < mdrinfo.replystatus; i++){ // skip the first two characters for info(), they describe the type of info - in this case, lens name
-    //Serial.print((char)mdrinfo.data[i]);
-  }*/
-  //Serial.print(this->lensname);
-  //Serial.println();
-  
+  Serial.println("Setting MDR mode");
 
-  this->mode(0x1,0x0); // start streaming mode, not controlling any channels
+  this->mode(0x11,0x40); // start streaming mode, requesting commanded positions, not controlling any channels (for now)
+  this->sendBytesToMDR();
+  delay(PERIOD);
 
-  this->data(0x17); // request low res (for easy debugging) focus iris and zoom data
-  
+  this->data(0x17); // request high res focus iris zoom data
+  this->sendBytesToMDR();
+  delay(PERIOD);
 }
 
 void PrestonDuino::onLoop () {
@@ -68,7 +62,7 @@ void PrestonDuino::onLoop () {
     }
   }
 
-  if (this->sendlen > 0 && millis() >= this->lastsend + PERIOD) {
+  if (this->rootmsg->nextmsg != NULL && millis() >= this->lastsend + PERIOD) {
     this->sendBytesToMDR();
   }
 
@@ -116,7 +110,7 @@ bool PrestonDuino::rcv() {
     if (currentchar != -1) {
       switch (currentchar) {
         case ACK: {
-          //Serial.println("ACK received");
+          Serial.println("ACK received");
           this->rcvbuf[0] = ser->read();
           this->rcvlen = 1;
           return true;
@@ -207,12 +201,12 @@ int PrestonDuino::parseRcv() {
     // check validity of message todo
     
     if (!this->validatePacket()) {
-      Serial.print("Packet failed validity check: ");
+      /*Serial.print("Packet failed validity check: ");
       for (int i = 0; i < this->rcvlen; i++) {
         Serial.print(" 0x");
         Serial.print(this->rcvbuf[i], HEX);
       }
-      Serial.println();
+      Serial.println();*/
       return -2;
     }
     
@@ -355,7 +349,7 @@ bool PrestonDuino::validatePacket() {
 
   int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
-  if (sum != this->rcvpacket->getSum()) {
+  if (0 && sum != this->rcvpacket->getSum()) {
     Serial.print("checksum of incoming message is ");
     Serial.print(this->rcvpacket->getSum());
     Serial.print(", calculated checksum is ");
@@ -387,22 +381,56 @@ void PrestonDuino::sendNAK() {
 
 void PrestonDuino::queueForSend(byte* tosend, int len) {
   // Add bytes to the send queue
-  memcpy(&this->sendbuf[this->sendlen], tosend, len);
-  this->sendlen += len;
+
+  Serial.println("Queuing a new message to be sent.");
+
+  mdr_message* newmsg = this->rootmsg;
+
+  while (newmsg->nextmsg != NULL) {
+    Serial.print("There's already a message queued in this position:");
+    for (int i = 0; i < newmsg->nextmsg->msglen; i++) {
+      Serial.print(" 0x");
+      Serial.print(newmsg->nextmsg->data[i], HEX);
+    }
+    Serial.println();
+
+    newmsg = newmsg->nextmsg;
+  }
+  newmsg->nextmsg = new mdr_message;
+  newmsg = newmsg->nextmsg;
+  memcpy(&newmsg->data, tosend, len);
+  newmsg->msglen = len;
+
+  Serial.print("Queued message:");
+  for (int i = 0; i < len; i++) {
+    Serial.print(" 0x");
+    Serial.print(newmsg->data[i], HEX);
+  }
+  Serial.println();
 }
 
 
 void PrestonDuino::sendBytesToMDR() {
   // The most basic send function, simply writes a byte array out to ser
 
-  for (int i = 0; i < this->sendlen; i++) {
-    ////Serial.print("Sending 0x");
-    ////Serial.println(tosend[i], HEX);
-    ser->write(this->sendbuf[i]);
-    ser->flush(); // wait for byte to finish sending
+  mdr_message* msgtosend = this->rootmsg->nextmsg;
+
+  if (msgtosend != NULL) {
+    Serial.print("Sending to MDR:");
+    for (int i = 0; i < msgtosend->msglen; i++) {
+      Serial.print(" 0x");
+      Serial.print(msgtosend->data[i], HEX);
+
+      ser->write(msgtosend->data[i]);
+      ser->flush(); // wait for byte to finish sending
+    }
+    Serial.println();
+    this->rootmsg->nextmsg = msgtosend->nextmsg;
+    free(msgtosend);
   }
+
   this->lastsend = millis();
-  this->sendlen = 0;
+
 }
 
 void PrestonDuino::sendPacketToMDR(PrestonPacket* packet, bool retry) {
@@ -555,6 +583,10 @@ uint16_t PrestonDuino::getZoom() {
 
 uint16_t PrestonDuino::getIris() {
   return this->iris;
+}
+
+uint16_t PrestonDuino::getAux() {
+  return this->aux;
 }
 
 

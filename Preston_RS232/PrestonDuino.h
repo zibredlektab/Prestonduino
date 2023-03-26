@@ -13,8 +13,14 @@
 #define NAMECHECK 2000
 
 struct command_reply {
-   int8_t replystatus;
+  int8_t replystatus;
   byte* data;
+};
+
+struct mdr_message {
+  mdr_message* nextmsg = NULL;
+  uint8_t msglen;
+  byte data[100];
 };
 
 
@@ -28,8 +34,7 @@ class PrestonDuino {
     HardwareSerial *ser; // serial port connected to MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
-    byte sendbuf[100]; // buffer for outgoing data to MDR
-    int sendlen = 0;
+    mdr_message* rootmsg = NULL;
     PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
     PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
     command_reply reply; // most recent received reply from MDR (not currently used)
@@ -102,6 +107,7 @@ class PrestonDuino {
     uint16_t getFocus(); // Focus distance, in mm (1mm precision)
     uint16_t getZoom(); // Focal length, in mm (1mm precision)
     uint16_t getIris(); // Iris (*100, ex T-5.6 returns as 560)
+    uint16_t getAux();
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
     uint8_t getLensNameLen(); // Length of lens name
 };
