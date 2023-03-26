@@ -11,6 +11,7 @@
 #define DEFAULTTIMEOUT 20
 #define PERIOD 6
 #define NAMECHECK 2000
+#define MSGQUEUELIMIT 10
 
 struct command_reply {
   int8_t replystatus;
@@ -35,6 +36,7 @@ class PrestonDuino {
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
     mdr_message* rootmsg = NULL;
+    uint8_t totalmessages = 0; // number of queued messages
     PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
     PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
     command_reply reply; // most recent received reply from MDR (not currently used)
@@ -64,7 +66,7 @@ class PrestonDuino {
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     void sendCommand(PrestonPacket* pak); // Generic command. See description below for the list of commands and returned array format.
     bool validatePacket(); // true if packet validates with checksum
-    void queueForSend(byte* tosend, int len); // adds raw bytes to the current send buffer
+    bool queueForSend(byte* tosend, int len); // adds raw bytes to the current send buffer
     void sendBytesToMDR(); // sends the current send buffer to MDR.
     void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
     void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name

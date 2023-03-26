@@ -379,10 +379,16 @@ void PrestonDuino::sendNAK() {
 }
 
 
-void PrestonDuino::queueForSend(byte* tosend, int len) {
+bool PrestonDuino::queueForSend(byte* tosend, int len) {
   // Add bytes to the send queue
+  // Returns true if there is room to store another message, false otherwise.
 
   Serial.println("Queuing a new message to be sent.");
+
+  if (this->totalmessages > 10) {
+    Serial.println("PD has reached the limit on queued messages, can't store anymore.");
+    return false;
+  }
 
   mdr_message* newmsg = this->rootmsg;
 
@@ -401,12 +407,16 @@ void PrestonDuino::queueForSend(byte* tosend, int len) {
   memcpy(&newmsg->data, tosend, len);
   newmsg->msglen = len;
 
+  this->totalmessages++;
+
   Serial.print("Queued message:");
   for (int i = 0; i < len; i++) {
     Serial.print(" 0x");
     Serial.print(newmsg->data[i], HEX);
   }
   Serial.println();
+
+  return true;
 }
 
 
@@ -427,8 +437,8 @@ void PrestonDuino::sendBytesToMDR() {
     Serial.println();
     this->rootmsg->nextmsg = msgtosend->nextmsg;
     free(msgtosend);
+    this->totalmessages--;
   }
-
   this->lastsend = millis();
 
 }
