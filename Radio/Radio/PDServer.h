@@ -22,6 +22,7 @@
 
 #define SUBLIFE 10000 // how long to keep subscriptions active before purging them
 #define UPDATEDELAY 100 // how long to wait between updating subs
+#define REPEATSEND 5 // how many times to repeat a motor command to the mdr when the command hasn't changed
 
 #define INTERNAL_FLASH_FILESYSTEM_SIZE (64*1024)
 #define INTERNAL_FLASH_FILESYSTEM_START_ADDR (0x00040000 - 256 - 0 - INTERNAL_FLASH_FILESYSTEM_SIZE)

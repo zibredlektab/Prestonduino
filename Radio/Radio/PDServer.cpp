@@ -441,7 +441,9 @@ void PDServer::finishMap() {
 
 
 void PDServer::irisToAux() {
-  if (1|| millis() < this->lastmotorcommand + PERIOD) {
+
+
+  if (millis() < this->lastmotorcommand + PERIOD) {
     // only send aux commands once per period
     return;    
   }
@@ -470,27 +472,45 @@ void PDServer::irisToAux() {
 
   // map iris data to aux encoder setting
 
-  uint16_t auxpos;
+  static uint16_t curaux = 0;
+  uint16_t newaux = 0;
+  static uint8_t repeatsendct = REPEATSEND;
 
   if (this->curmappingav == -1 && mapped) {
     // not currently mapping, but the lens has been mapped
     Serial.print("mapped lens, ");
-    auxpos = map(avnumber*100, avnfloor*100, avnceil*100, lensmap[avnfloor], lensmap[avnceil]);
+    newaux = map(avnumber*100, avnfloor*100, avnceil*100, lensmap[avnfloor], lensmap[avnceil]);
   } else {
     // if mapping is in progress, or if there is no current map, move aux linearly through entire range of encoder (no look up table)
     Serial.print("unmapped lens, ");
-    auxpos = map(avnumber*100, 0, 1000, 0, 0xFFFF);
+    newaux = map(avnumber*100, 0, 1000, 0, 0xFFFF);
   }
   
   Serial.print("Iris pos 0x");
-  Serial.print(iris, HEX);
+  Serial.print(mdr->getIris(), HEX);
   Serial.print("-> Aux pos 0x");
-  Serial.println(auxpos, HEX);
+  Serial.println(newaux, HEX);
+
+  if (curaux == newaux) {
+    Serial.print("Aux position hasn't changed,");
+    if (repeatsendct <= 0) {
+      Serial.println(" not sending to MDR anymore.");
+      return;
+    } else {
+      Serial.print(" but we'll send it ");
+      Serial.print(repeatsendct);
+      Serial.println(" more time(s) to be safe.");
+      repeatsendct--;
+    }
+  } else {
+    repeatsendct = REPEATSEND;
+  }
 
   // set aux motor to encoder setting
-  uint8_t auxh = auxpos >> 8;
-  uint8_t auxl = auxpos & 0xFF;
+  uint8_t auxh = newaux >> 8;
+  uint8_t auxl = newaux & 0xFF;
   uint8_t auxdata[3] = {0x48, auxh, auxl}; //0x48 is AUX, 0x42 is F
   mdr->data(auxdata, 3);
+  curaux = newaux;
   this->lastmotorcommand = millis();
 }

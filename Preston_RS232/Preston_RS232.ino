@@ -48,7 +48,7 @@ void loop() {
       Serial.println(mdr->getLensName());
     }
   
-    if (time + 2 < millis()) {
+    if (time + 12 < millis()) {
 
       time = millis();
       //command_reply lens = mdr->info(1);
