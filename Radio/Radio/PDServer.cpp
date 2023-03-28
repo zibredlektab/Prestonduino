@@ -111,11 +111,12 @@ void PDServer::onLoop() {
         }
 
         case 3: { // "OK" message, or start mapping
-          if (this->curmappingav == -1) {
+          if (this->buf[1] == '*') {
             this->startMap();
+          } else {
+            this->mapLens(this->curmappingav);
+            this->curmappingav = this->buf[1];
           }
-          this->curmappingav = this->buf[1];
-          this->mapLens(this->curmappingav);
           break;
         }
 
@@ -141,7 +142,7 @@ void PDServer::onLoop() {
     }
   }
 
-  this->irisToAux(); // (for now)
+  this->irisToAux();
 }
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
@@ -323,12 +324,14 @@ void PDServer::setChannel(uint8_t newchannel) {
 void PDServer::startMap() {
   Serial.println("Starting map");
 
-  mdr->data(0x48); // Switch MDR over to reading AUX only
+  this->mapping = true;
 
-  for (int i = 0;i < 10; i++) {
+  mdr->data(0x49); // Switch MDR over to reading iris and aux encoder positions
+
+  for (int i = 0; i < 10; i++) {
     this->lensmap[i] = 0;
   }
-
+/*
   this->makePath();
   this->fatfs.chdir(); // move to SD root
   this->fatfs.mkdir(this->lenspath, true);
@@ -358,7 +361,7 @@ void PDServer::startMap() {
       // lens needs to be mapped
 
     }
-  }
+  }*/
 }
 
 void PDServer::makePath() {
@@ -415,11 +418,12 @@ void PDServer::finishMap() {
     this->lensmap[i] = 0xFFFF;
   }
   this->mapped = true;
+  this->mapping = false;
   this->curmappingav = -1;
 
   for (int i = 0; i < 10; i++) { 
     Serial.print("[F/");
-    Serial.print(this->wholestops[i]);
+    Serial.print(this->stops[i]);
     Serial.print(": 0x");
     Serial.print(this->lensmap[i], HEX);
     Serial.print("] ");
@@ -436,7 +440,7 @@ void PDServer::finishMap() {
     Serial.println("Failed to write lens data to file");
   }
 
-  this->mdr->data(0x17); // restore normal data operation
+  this->mdr->data(NORMALDATAMODE); // restore normal data operation
 }
 
 
@@ -449,26 +453,32 @@ void PDServer::irisToAux() {
   }
 
   uint16_t curiris = mdr->getIris();
-  Serial.print("Iris is ");
-  Serial.print(curiris);
 
-  int ringmapindex = 0;
-  for (ringmapindex; ringmapindex < 9; ringmapindex++) { // Find our current position within the ringmap to find our whole AV number
-    if (curiris >= this->ringmap[ringmapindex] && curiris < this->ringmap[ringmapindex+1]) {
-      // iris position is greater than ringmapindex and less than the next index...so we have found our place
-      break;
+  uint8_t avnfloor, avnceil, avnfrac;
+  double avnumber;
+
+  if (!mapping) {
+
+    // determine AV number
+    int ringmapindex = 0;
+    for (ringmapindex; ringmapindex < 9; ringmapindex++) { // Find our current position within the ringmap to find our whole AV number
+      if (curiris >= this->stops[ringmapindex] && curiris < this->stops[ringmapindex+1]) {
+        // iris position is greater than ringmapindex and less than the next index...so we have found our place
+        break;
+      }
     }
+
+    avnfloor = ringmapindex; // whole portion of our AV number
+    avnceil = ringmapindex+1; // next highest AV number
+
+    // Calculate precise position between avnfloor and avnceil to find our fractional AV number
+    avnfrac = map(curiris, this->stops[avnfloor], this->stops[avnceil], 0, 100);
+    
+    avnumber = avnfloor + (avnfrac/100.0); // complete AV number, with whole and fraction
+
+    Serial.print(", AV number is ");
+    Serial.println(avnumber);
   }
-
-  uint8_t avnfloor = ringmapindex; // whole portion of our AV number
-  uint8_t avnceil = ringmapindex+1; // next highest AV number
-
-  // Calculate precise position between avnfloor and avnceil to find our fractional AV number
-  uint8_t avnfrac = map(curiris, this->ringmap[avnfloor], this->ringmap[avnceil], 0, 100);
-  double avnumber = avnfloor + (avnfrac/100.0); // complete AV number, with whole and fraction
-
-  Serial.print(", AV number is ");
-  Serial.println(avnumber);
 
   // map iris data to aux encoder setting
 
@@ -476,14 +486,19 @@ void PDServer::irisToAux() {
   uint16_t newaux = 0;
   static uint8_t repeatsendct = REPEATSEND;
 
-  if (this->curmappingav == -1 && mapped) {
-    // not currently mapping, but the lens has been mapped
+  if (mapped) {
+    // The lens has been mapped, aux maps to iris AV number using lut
     Serial.print("mapped lens, ");
     newaux = map(avnumber*100, avnfloor*100, avnceil*100, lensmap[avnfloor], lensmap[avnceil]);
-  } else {
-    // if mapping is in progress, or if there is no current map, move aux linearly through entire range of encoder (no look up table)
-    Serial.print("unmapped lens, ");
-    newaux = map(avnumber*100, 0, 1000, 0, 0xFFFF);
+
+  } else if (!mapped && mapping) {
+    // Currenly mapping a lens, aux should directly match iris encoder (no lut)
+    Serial.print("mapping lens, ");
+    newaux = curiris;
+
+  } else { // default state
+    // Not mapping a lens, and don't already have a map, aux maps directly to linear iris position (no lut)
+    newaux = map(curiris, 140, 2200, 0, 0xFFFF);
   }
   
   Serial.print("Iris pos 0x");
@@ -492,14 +507,14 @@ void PDServer::irisToAux() {
   Serial.println(newaux, HEX);
 
   if (curaux == newaux) {
-    Serial.print("Aux position hasn't changed,");
+    //Serial.print("Aux position hasn't changed,");
     if (repeatsendct <= 0) {
-      Serial.println(" not sending to MDR anymore.");
+      //Serial.println(" not sending to MDR anymore.");
       return;
     } else {
-      Serial.print(" but we'll send it ");
-      Serial.print(repeatsendct);
-      Serial.println(" more time(s) to be safe.");
+      //Serial.print(" but we'll send it ");
+      //Serial.print(repeatsendct);
+      //Serial.println(" more time(s) to be safe.");
       repeatsendct--;
     }
   } else {

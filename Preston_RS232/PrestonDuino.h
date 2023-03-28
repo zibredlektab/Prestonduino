@@ -12,6 +12,7 @@
 #define PERIOD 6
 #define NAMECHECK 2000
 #define MSGQUEUELIMIT 10
+#define NORMALDATAMODE 0x17 // high resolution focus, iris, and zoom position data
 
 struct command_reply {
   int8_t replystatus;

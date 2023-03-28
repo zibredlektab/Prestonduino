@@ -570,6 +570,7 @@ void PDClient::mapLater() {
 
 void PDClient::startMap() {
   this->newlens = false;
+  this->sendMessage(3, '*');
 }
 
 void PDClient::mapLens(uint8_t curav) {

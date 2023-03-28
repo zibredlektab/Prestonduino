@@ -102,10 +102,12 @@ class PDServer {
   
 
     /* OneRing */
-    const char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-    const uint16_t ringmap[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, t/1 to t/22
+    const uint16_t stops[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200}; // standard T stops
+    const uint16_t ringmap[10] = {0xFEFC, 0xE203, 0xCA70, 0xABC0, 0x8E40, 0x7370, 0x529C, 0x371C, 0x19C0, 0x0000};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, T1 to T22
+    
     uint16_t lensmap[10]; // currently active lens mapping
-    bool mapped = false;
+    bool mapped = false; // do we have a valid lens map?
+    bool mapping = false; // are we currently building a lens map?
     int8_t curmappingav = -1;
 
     void startMap();
