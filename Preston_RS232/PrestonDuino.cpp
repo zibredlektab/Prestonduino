@@ -21,13 +21,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   this->rootmsg = new mdr_message;
 
-  // tell the mdr to shut up for a second
-  uint8_t shutup[12] = {0x02, 0x30, 0x31, 0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x38, 0x35, 0x03};
-  ser->write(shutup, 12);
-  delay(100);
-  while(ser->available() > 0) {
-    ser->read(); // dump anything the mdr said before we told it to shut up
-  }
+  this->shutUp();
 
   ser->setTimeout(this->timeout);
 
@@ -43,13 +37,27 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->sendBytesToMDR();
   delay(PERIOD);
 
+  this->setMDRMode(0x1, 0x40, NORMALDATAMODE);
+}
+
+void PrestonDuino::shutUp() {
+  // tell the mdr to shut up for a second
+  uint8_t shutup[12] = {0x02, 0x30, 0x31, 0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x38, 0x35, 0x03};
+  ser->write(shutup, 12);
+  delay(100);
+  while(ser->available() > 0) {
+    ser->read(); // dump anything the mdr said before we told it to shut up
+  }
+}
+
+void PrestonDuino::setMDRMode(uint8_t newmodeh, uint8_t newmodel, uint8_t newdata) {
   Serial.println("Setting MDR mode");
 
-  this->mode(0x1,0x40); // start streaming mode, requesting actual positions, controlling the AUX channel
+  this->mode(newmodeh, newmodel); // start streaming mode, requesting actual positions, controlling the AUX channel
   this->sendBytesToMDR();
   delay(PERIOD);
 
-  this->data(NORMALDATAMODE); // request high res focus iris zoom data
+  this->data(newdata); // request high res focus iris zoom data
   this->sendBytesToMDR();
   delay(PERIOD);
 }
@@ -66,7 +74,7 @@ void PrestonDuino::onLoop () {
     this->sendBytesToMDR();
   }
 
-  if (millis() >= this->lastnamecheck + NAMECHECK) {
+  if (0&&millis() >= this->lastnamecheck + NAMECHECK) { //TODO
     this->info(0x1);
     this->lastnamecheck = millis();
   }
@@ -241,7 +249,7 @@ int PrestonDuino::parseRcv() {
           this->iris += this->rcvpacket->getData()[dataindex++];
           
           //Serial.print("iris: ");
-          //Serial.print(this->iris);
+          //Serial.println(this->iris);
         }
         if (datadescriptor & 2) {
           // has focus
@@ -260,7 +268,7 @@ int PrestonDuino::parseRcv() {
           this->zoom += this->rcvpacket->getData()[dataindex++];
 
           //Serial.print(" zoom: ");
-          //Serial.print(this->zoom);          
+          //Serial.println(this->zoom);          
         }
         if (datadescriptor & 8) {
           // has AUX
@@ -494,8 +502,8 @@ void PrestonDuino::data(byte datadescription) {
   this->sendCommand(this->sendpacket); // requests for data do not need to wait for a reply - MDR skips the ACK step and directly replies
 }
 
-void PrestonDuino::data(byte* datadescription, int datalen) {
-  this->sendpacket->packetFromCommandWithData(0x04, datadescription, datalen);
+void PrestonDuino::data(byte* dataset, int datalen) {
+  this->sendpacket->packetFromCommandWithData(0x04, dataset, datalen);
   this->sendCommand(this->sendpacket);
 }
 
@@ -580,7 +588,7 @@ uint16_t PrestonDuino::getFocus() {
 
 
 
-uint16_t PrestonDuino::getZoom() {
+int16_t PrestonDuino::getZoom() {
 
   if (this->zoom == 0) {
     this->zoomFromLensName();
@@ -606,6 +614,13 @@ char* PrestonDuino::getLensName() {
 
 uint8_t PrestonDuino::getLensNameLen() {
   return this->lensnamelen;
+}
+
+void PrestonDuino::setIris(uint16_t newiris) {
+  byte irish = newiris >> 8;
+  byte irisl = newiris && 0xFF;
+  byte dataset[3] = {0x41, irish, irisl};
+  this->data(dataset, 3);
 }
 
 

@@ -49,7 +49,7 @@ class PrestonDuino {
     // Basic lens data - can be assumed to be up to date
     uint16_t iris = 0;
     uint16_t focus = 0;
-    uint16_t zoom = 0;
+    int16_t zoom = 0;
     uint16_t aux = 0;
     uint16_t distance = 0; // rangefinder distance
     
@@ -78,7 +78,10 @@ class PrestonDuino {
 
     PrestonDuino(HardwareSerial& serial);
     void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
-    
+    void shutUp();
+    void setMDRMode(uint8_t newmodeh, uint8_t newmodel, uint8_t newdata);
+
+
     /* All of the following are according to the Preston protocol.
      * reply_status is a signed int identifying the type of the response:
      * 0 if timeout, -1 if ACK with no further reply, -2 if NAK, -3 if error, >0 result is length of data section in the MDR reply
@@ -89,7 +92,7 @@ class PrestonDuino {
     void stat();
     void who();
     void data(byte datadescription);
-    void data(byte* datadescription, int datalen);
+    void data(byte* dataset, int datalen);
     void rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
     void setl(byte motors);
     void ct(); // MDR2 only
@@ -108,11 +111,14 @@ class PrestonDuino {
 
     // Getters
     uint16_t getFocus(); // Focus distance, in mm (1mm precision)
-    uint16_t getZoom(); // Focal length, in mm (1mm precision)
+    int16_t getZoom(); // Focal length, in mm (1mm precision)
     uint16_t getIris(); // Iris (*100, ex T-5.6 returns as 560)
     uint16_t getAux();
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
     uint8_t getLensNameLen(); // Length of lens name
+
+    // Setters
+    void setIris(uint16_t newiris);
 };
 
 #endif
