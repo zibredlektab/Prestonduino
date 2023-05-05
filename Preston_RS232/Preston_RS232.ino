@@ -13,6 +13,7 @@ unsigned long long timebuttonreleased = 0;
 const uint16_t stops[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200}; // standard T stops
 const uint16_t lensmap[10] = {0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC};
 
+uint16_t newiris = 0;
 
 void setup() {
 
@@ -37,61 +38,54 @@ void setup() {
 void loop() {
   if (continuelooping) {
     mdr->onLoop();
-    uint16_t iris = mdr->getIris();
 
-    double avnumber = positionToAV(iris);
 
     if (!buttondown && millis() >= timebuttonreleased + 100) {
-      if (!digitalRead(A0)) {
+      double offset = 0.0;
+      if (!digitalRead(A0) || !digitalRead(A1)) {
         buttondown = true;
+        if (!digitalRead(A0)) {
+          offset = -.3;
+        } else if (!digitalRead(A1)) {
+          offset = .3;
+        }
+
+        uint16_t iris = mdr->getIris();
+
         Serial.print("Iris position is 0x");
         Serial.print(iris, HEX);
+
+        double avnumber = positionToAV(iris);
+
         Serial.print(", AV is ");
         Serial.print(avnumber);
 
-        Serial.print(", stop therefore is ");
+        avnumber *= 10;
+        avnumber = round(avnumber);
+        avnumber /= 10;
+
+        Serial.print("(rounding to ");
+        Serial.print(avnumber);
+
+        Serial.print("), stop therefore is ");
         Serial.println(AVToStop(avnumber));
 
-        Serial.print("Opening up. New AV is ");
-        double newav = avnumber - 0.33;
+        double newav = avnumber - offset;
 
+        Serial.print("New AV is ");
         Serial.print(newav);
 
-        uint16_t newiris = AVToPosition(newav);
+        newiris = AVToPosition(newav);
 
         Serial.print(", new stop should be ");
         Serial.print(AVToStop(newav));
         Serial.print(", and new iris should be 0x");
         Serial.println(newiris, HEX);
+        Serial.println();
 
         byte dataset[3] = {0x1, highByte(newiris), lowByte(newiris)};
         mdr->data(dataset, 3);
 
-      } else if (!digitalRead(A1)) {
-        buttondown = true;
-
-        Serial.print("Iris position is 0x");
-        Serial.print(iris, HEX);
-        Serial.print(", AV is ");
-        Serial.print(avnumber);
-
-        Serial.print(", stop therefore is ");
-        Serial.println(AVToStop(avnumber));
-
-        Serial.print("Closing down. New AV is ");
-        double newav = avnumber + 0.33;
-
-        Serial.print(newav);
-
-        uint16_t newiris = AVToPosition(newav);
-
-        Serial.print(", new stop should be ");
-        Serial.print(AVToStop(newav));
-        Serial.print(", and new iris should be 0x");
-        Serial.println(newiris, HEX);
-
-        byte dataset[3] = {0x1, highByte(newiris), lowByte(newiris)};
-        mdr->data(dataset, 3);
       }
     } else {
       if (digitalRead(A0) && digitalRead(A1)) {
