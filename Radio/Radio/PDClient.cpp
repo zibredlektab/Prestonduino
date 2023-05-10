@@ -152,6 +152,12 @@ void PDClient::onLoop() {
     }
   }
 
+  if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY && this->newiris != this->iris) {
+    uint8_t dataset[2] = {highByte(this->newiris), lowByte(this->newiris)};
+    this->sendMessage(0x5, dataset, 2);
+    this->timesinceiriscommand = millis();
+  }
+
 /*
   if (this->timeoflastmessagefromserver + PING < millis()) {
     Serial.println("Haven't heard from the server in a while...");
@@ -203,6 +209,9 @@ void PDClient::parseMessage() {
       //Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
+        // Iris data is either raw position data if a lens is not mapped, or AV number if the lens is mapped
+        // For now we don't care which
+
         //Serial.print("Received data includes iris: ");
         char data[5];
         strncpy(data, &this->buf[index], 4);
@@ -280,6 +289,8 @@ bool PDClient::processLensName() {
   if (this->fulllensname[0] == '*') {
     Serial.println("this is a new lens");
     this->newlens = true;
+    this->mapped = false;
+    this->mapping = false;
     processfrom = 1;
   }
   
@@ -560,16 +571,28 @@ bool PDClient::isNewLens() {
   return this->newlens;
 }
 
+bool PDClient::isMapped() {
+  return this->mapped;
+}
+
+bool PDClient::isMapping() {
+  return this->mapping;
+}
+
 /* OneRing */
 
 void PDClient::mapLater() {
   Serial.println("mapping later");
   this->newlens = false;
+  this->mapped = false;
+  this->mapping = false;
   this->sendMessage(4, 0);
 }
 
 void PDClient::startMap() {
   this->newlens = false;
+  this->mapped = false;
+  this->mapping = true;
   this->sendMessage(3, '*');
 }
 
@@ -582,4 +605,14 @@ void PDClient::mapLens(uint8_t curav) {
 void PDClient::finishMap() {
   Serial.println("Finishing map");
   this->sendMessage(4, 0);
+  this->mapped = true;
+  this->mapping = false;
+}
+
+/* IrisBuddy */
+void PDClient::setIris(uint16_t newiris) {
+  Serial.print("Setting newiris to ");
+  Serial.println(newiris);
+
+  this->newiris = newiris;
 }

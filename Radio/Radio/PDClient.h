@@ -15,6 +15,7 @@
 #define RETRIES 20 // for radiohead sending attempts
 #define TIMEOUT 30 // for radiohead sending attempts
 #define PING 3000 // period between resubscriptions, and period of assumed server timeout
+#define IRISCOMMANDDELAY 250 // period between sending new iris commands to not overload the mdr
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -63,6 +64,7 @@ class PDClient {
     unsigned long timeoflastmessagefromserver = 0;
     unsigned long lastregistration = 0;
     uint8_t substate = 0; // data type currently subscribed to
+    bool irisbuddy = true;
 
     // Lens data
     uint16_t iris = 370;
@@ -75,7 +77,12 @@ class PDClient {
     char* lensseries;
     char* lensname;
     char* lensnote;
+
     bool newlens = false;
+    bool mapped = false;
+    bool mapping = false;
+    uint16_t newiris = 0x8E40;
+    unsigned long long timesinceiriscommand = 0;
     
     bool haveData(); // do we have valid lens data from the server?
 
@@ -124,6 +131,12 @@ class PDClient {
     void startMap();
     void mapLens(uint8_t curav);
     void finishMap();
+
+    bool isMapped();
+    bool isMapping();
+
+    void setIris(uint16_t newiris);
+
 
   
 };

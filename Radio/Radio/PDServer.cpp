@@ -10,13 +10,20 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
-  //this->mdr->setMDRTimeout(10);
+  this->irisbuddy = true;
 
-  //this->mdr->mode(0x01, 0x40); // take command of the AUX channel (disabled for now)
+  if (this->onering) this->mdr->mode(0x01, 0x40); // onering mode needs control of the AUX channel (disabled for now)
+
+  if (this->irisbuddy) {
+    this->mdr->shutUp();
+    this->mdr->mode(0x01, 0x01);
+    this->mdr->data(0x41); // irisbuddy only cares about iris data, and only encoder counts
+  }
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
   Serial.println(F("Manager created, initializing"));
+
   int managerstatus = this->manager->init();
   if (!managerstatus) {
     Serial.print(F("RH manager init failed with error: 0x"));
@@ -64,7 +71,7 @@ void PDServer::onLoop() {
   if (this->manager->available()) {
     Serial.println(F("Message available"));
     this->buflen = sizeof(this->buf);
-    if (this->manager->recvfromAck(this->buf, &this->buflen, &this->lastfrom)) {
+    if (this->manager->recvfromAck((uint8_t*)this->buf, &this->buflen, &this->lastfrom)) {
       Serial.print(F("got message of "));
       Serial.print(this->buflen);
       Serial.print(F(" characters from 0x"));
@@ -91,13 +98,13 @@ void PDServer::onLoop() {
             Serial.println("Failed.");
           } else {
             Serial.println("Done.");
-            this->subscribe(this->nextavailaddress, 0x17);
+            this->subscribe(this->nextavailaddress, 0x1); //TODO, client needs to manually subscribe
           }
           break;
         }
 
         case 1: { // This message is registering a client for subscription
-          Serial.print(F("This is a subsciption request for data type 0x"));
+          Serial.print("This is a subsciption request for data type 0x");
           uint8_t datatype = this->buf[1];
           Serial.println(datatype, HEX);
           this->subscribe(this->lastfrom, datatype);
@@ -105,13 +112,13 @@ void PDServer::onLoop() {
         }
 
         case 2: { // unsubscription
-          Serial.println(F("Actually, unsubscription is being requested."));
+          Serial.println("Unsubscription is being requested.");
           this->unsubscribe(this->lastfrom);
           break;
         }
 
         case 3: { // "OK" message, or start mapping
-          if (this->buf[1] == '*') {
+          if (this->buf[1] == '*') { // starting aperture value will be an asterisk
             this->startMap();
           } else {
             this->mapLens(this->curmappingav);
@@ -122,6 +129,32 @@ void PDServer::onLoop() {
 
         case 4: { // "NO" message, or don't map
           this->finishMap();
+          break;
+        }
+
+        case 5: { // new data
+          // TODO determine if we control desired axis & take control if needed
+          // for now, assuming iris axis and assuming we have control
+          if (this->irisbuddy) {
+            char newdata[5];
+            uint16_t newiris = 0;
+            strncpy(newdata, &this->buf[1], 4); // move data from buf into a string
+            newdata[4] = 0; // null terminate string
+
+            sscanf(newdata, "%4hx", newiris); // parse uint16_t out of string
+
+            uint16_t newpos = 0;
+            if (mapped) {
+              newpos = AVToPosition(newiris); // get encoder position from parsed AV
+            } else {
+              // if mapping is not complete, this data is a raw encoder value so it can be passed straight along
+              newpos = newiris;
+            }
+            byte dataset[3] = {0x1, highByte(newpos), lowByte(newpos)};
+            mdr->data(dataset, 3); // spin the iris motor to that position
+          }
+
+          break;
         }
 
         default: {
@@ -142,7 +175,9 @@ void PDServer::onLoop() {
     }
   }
 
-  this->irisToAux();
+  if (onering) {
+    this->irisToAux();
+  }
 }
 
 uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
@@ -159,7 +194,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   this->fulllensname = mdr->getLensName();
 
   
-  if (0 && this->focus == 0) { //TODO
+  if (!this->iris && !this->focus && !this->zoom) {
     // No data was recieved, return an error
     Serial.println("Didn't get any data from MDR");
     databuf[0] = 0xF;
@@ -168,19 +203,19 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   }
 
 
-  //Serial.print(F("Getting following data: "));
+  Serial.print(F("Getting following data: "));
   
   if (datatype & DATA_IRIS) {
-    //Serial.print(F("iris ("));
-    //Serial.print(this->iris);
-    //Serial.print(") ");
+    Serial.print(F("iris ("));
+    Serial.print(this->iris);
+    Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
 
   }
   if (datatype & DATA_FOCUS) {
-    //Serial.print(F("focus ("));
-    //Serial.print(this->focus);
-    //Serial.print(") ");
+    Serial.print(F("focus ("));
+    Serial.print(this->focus);
+    Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
@@ -215,10 +250,10 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     sendlen += this->lensnamelen;
   }
   if (sendlen > 0) {
-    //Serial.println();
+    Serial.println();
     databuf[sendlen++] = '\0';
   } else {
-    //Serial.println(F("...nothing?"));
+    Serial.println(F("...nothing?"));
   }
   
   return sendlen;
@@ -326,7 +361,7 @@ void PDServer::startMap() {
 
   this->mapping = true;
 
-  mdr->data(0x49); // Switch MDR over to reading iris and aux encoder positions
+  if (onering) mdr->data(0x49); // Switch MDR over to reading iris and aux encoder positions (irisbuddy mode is already reading the correct info)
 
   for (int i = 0; i < 10; i++) {
     this->lensmap[i] = 0;
@@ -404,12 +439,17 @@ void PDServer::mapLens(uint8_t curav) {
   Serial.print("Mapping lens at AV ");
   Serial.print(curav);
 
-  uint16_t aux = mdr->getAux();
+  uint16_t position = 0;
+  if (onering) {
+    position = mdr->getAux();
+  } else if (irisbuddy) {
+    position = mdr->getIris();
+  }
 
   Serial.print(" to encoder position 0x");
-  Serial.println(aux, HEX);
+  Serial.println(position, HEX);
   
-  this->lensmap[curav] = aux; // aux encoder position
+  this->lensmap[curav] = position;
 }
 
 void PDServer::finishMap() {
@@ -429,7 +469,7 @@ void PDServer::finishMap() {
     Serial.print("] ");
   }
   Serial.println();
-
+/*
   this->lensfile = this->fatfs.open(this->filename, FILE_WRITE);
   int written = this->lensfile.write((uint8_t*)lensmap, 20);
   this->lensfile.close();
@@ -438,14 +478,14 @@ void PDServer::finishMap() {
     Serial.println("Wrote lens data to file.");
   } else {
     Serial.println("Failed to write lens data to file");
-  }
+  }*/
 
-  this->mdr->data(NORMALDATAMODE); // restore normal data operation
+  if (onering) this->mdr->data(NORMALDATAMODE); // restore normal data operation
 }
 
 
 void PDServer::irisToAux() {
-
+  // turn aux motor to mapped iris position, for OneRing mode
 
   if (millis() < this->lastmotorcommand + PERIOD) {
     // only send aux commands once per period
@@ -528,4 +568,51 @@ void PDServer::irisToAux() {
   mdr->data(auxdata, 3);
   curaux = newaux;
   this->lastmotorcommand = millis();
+}
+
+uint16_t PDServer::AVToPosition(uint16_t avnumber) {
+  if (!this->mapped) {
+    return 0;
+  }
+  if (avnumber >= 9) { // we don't support above t22
+    return this->lensmap[9];
+  } else if (avnumber <= 0) { // nor do we support below t1.0
+    return this->lensmap[0];
+  }
+
+  // find whole AV
+  uint16_t avnfloor, avnceil;
+  avnfloor = ((avnumber + 1) / 100) * 100;
+  avnceil = avnfloor + 100;
+  uint16_t newposition = map(avnumber, avnfloor, avnceil, this->lensmap[avnfloor], this->lensmap[avnceil]);
+
+  return newposition;
+}
+
+uint16_t PDServer::positionToAV(uint16_t position) {
+  if (!this->mapped) {
+    Serial.println("Lens is not mapped, cannot find AV");
+    return 0;
+  }
+  
+  uint16_t avnfloor, avnceil, avnfrac;
+  uint16_t avnumber;
+  // determine AV number
+  int lensmapindex = 0;
+  for (lensmapindex; lensmapindex < 9; lensmapindex++) { // Find our current position within the ringmap to find our whole AV number
+    if (position >= this->lensmap[lensmapindex] && position < this->lensmap[lensmapindex+1]) {
+      // iris position is greater than ringmapindex and less than the next index...so we have found our place
+      break;
+    }
+  }
+
+  avnfloor = lensmapindex; // whole portion of our AV number
+  avnceil = lensmapindex + 1; // next highest AV number
+
+  // Calculate precise position between avnfloor and avnceil to find our fractional AV number
+  avnfrac = map(position, this->lensmap[avnfloor], this->lensmap[avnceil], 0, 100);
+  
+  avnumber = (avnfloor * 100) + avnfrac; // complete AV number, with whole and fraction
+
+  return avnumber;
 }
