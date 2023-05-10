@@ -45,9 +45,9 @@ void loop() {
       if (!digitalRead(A0) || !digitalRead(A1)) {
         buttondown = true;
         if (!digitalRead(A0)) {
-          offset = -.3;
+          offset = -.1;
         } else if (!digitalRead(A1)) {
-          offset = .3;
+          offset = .1;
         }
 
         uint16_t iris = mdr->getIris();

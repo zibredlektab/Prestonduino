@@ -74,7 +74,7 @@ void PrestonDuino::onLoop () {
     this->sendBytesToMDR();
   }
 
-  if (0&&millis() >= this->lastnamecheck + NAMECHECK) { //TODO
+  if (millis() >= this->lastnamecheck + NAMECHECK) {
     this->info(0x1);
     this->lastnamecheck = millis();
   }
