@@ -51,6 +51,7 @@
  * 0x2 = Unsubscription request
  * 0x3 = OK (start or continue lens mapping)
  * 0x4 = NO (do not map lens or cancel mapping)
+ * 0x5 = New data value for mdr - second byte is data type, then uint16 for new data (only one axis at a time for now, please)
  * 0xF = error, second byte determines error type (see errorcodes.h)
  * 
  */
@@ -74,7 +75,7 @@ class PDServer {
     PrestonDuino *mdr;
     RH_RF95 *driver;
     RHReliableDatagram *manager;
-    uint8_t buf[75]; // incoming message buffer from clients
+    char buf[75]; // incoming message buffer from clients
     uint8_t buflen;
     uint8_t lastfrom; // address of sender of last-received message
     subscription subs[16]; // array of currently active clients and what data they want
@@ -102,6 +103,8 @@ class PDServer {
   
 
     /* OneRing */
+    bool onering = false;
+    bool irisbuddy = true;
     const uint16_t stops[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200}; // standard T stops
     const uint16_t ringmap[10] = {0xFEFC, 0xE203, 0xCA70, 0xABC0, 0x8E40, 0x7370, 0x529C, 0x371C, 0x19C0, 0x0000};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, T1 to T22
     
@@ -115,6 +118,9 @@ class PDServer {
     void finishMap();
     void makePath();
     void irisToAux();
+
+    uint16_t AVToPosition(uint16_t avnumber);
+    uint16_t positionToAV(uint16_t position);
 
   public:
     PDServer(uint8_t chan = 0xA, HardwareSerial& mdrserial = Serial1);
