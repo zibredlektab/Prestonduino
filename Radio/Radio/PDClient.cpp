@@ -126,15 +126,15 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 void PDClient::onLoop() {
   
   if (this->manager->available()) {
-    //Serial.print("Message available, this long: ");
+    Serial.print("Message available, this long: ");
     uint8_t from;
     this->buflen = sizeof(this->buf);
     if (manager->recvfrom((uint8_t*)this->buf, &this->buflen, &from)) {
-      //Serial.println(this->buflen);
+      Serial.println(this->buflen);
       this->timeoflastmessagefromserver = millis();
       this->clearError(); // Server is responding
       
-      /*
+      
       for (int i = 0; i < this->buflen; i++) {
         if (i < 2) {
           Serial.print(F("0x"));
@@ -145,17 +145,19 @@ void PDClient::onLoop() {
         }
       }
       
-      Serial.println();*/
+      Serial.println();
       
       this->parseMessage();
 
     }
   }
 
-  if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY && this->newiris != this->iris) {
+  if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY) {
+    Serial.println("Updating iris");
     uint8_t dataset[2] = {highByte(this->newiris), lowByte(this->newiris)};
     this->sendMessage(0x5, dataset, 2);
     this->timesinceiriscommand = millis();
+    this->setIris(this->iris + 100);
   }
 
 /*
@@ -281,8 +283,8 @@ void PDClient::parseMessage() {
 
 bool PDClient::processLensName() {
   // Format of name is: [asterisk for new lens][length of name][brand]|[series]|[name] [note]
-  //Serial.print("full name is ");
-  //Serial.println(this->fulllensname);
+  Serial.print("full name is ");
+  Serial.println(this->fulllensname);
 
   int processfrom = 0;
 

@@ -10,15 +10,6 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
   this->mdr = new PrestonDuino(*ser);
   delay(100); // give PD time to connect
 
-  this->irisbuddy = true;
-
-  if (this->onering) this->mdr->mode(0x01, 0x40); // onering mode needs control of the AUX channel (disabled for now)
-
-  if (this->irisbuddy) {
-    this->mdr->shutUp();
-    this->mdr->mode(0x01, 0x01);
-    this->mdr->data(0x41); // irisbuddy only cares about iris data, and only encoder counts
-  }
 
   this->driver = new RH_RF95(SSPIN, INTPIN);
   this->manager = new RHReliableDatagram(*this->driver, this->address);
@@ -56,6 +47,19 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
     Serial.println("done.");
   }*/
   
+
+  this->irisbuddy = true;
+  this->onering = false;
+
+  if (this->onering) this->mdr->mode(0x01, 0x40); // onering mode needs control of the AUX channel (disabled for now)
+
+  if (this->irisbuddy) {
+    Serial.println("Setting up IrisBuddy");
+    this->mdr->shutUp();
+    this->mdr->mode(0x01, 0x01);
+    this->mdr->data(0x41); // irisbuddy only cares about iris data, and only encoder counts
+  }
+
   Serial.print(F("Done with setup, my address is 0x"));
   Serial.println(this->address, HEX);
   Serial.println("Waiting for clients...");
@@ -138,10 +142,8 @@ void PDServer::onLoop() {
           if (this->irisbuddy) {
             char newdata[5];
             uint16_t newiris = 0;
-            strncpy(newdata, &this->buf[1], 4); // move data from buf into a string
-            newdata[4] = 0; // null terminate string
-
-            sscanf(newdata, "%4hx", newiris); // parse uint16_t out of string
+            newiris = this->buf[1] << 8;
+            newiris += this->buf[2];
 
             uint16_t newpos = 0;
             if (mapped) {
@@ -150,6 +152,9 @@ void PDServer::onLoop() {
               // if mapping is not complete, this data is a raw encoder value so it can be passed straight along
               newpos = newiris;
             }
+
+            Serial.print("Moving iris to 0x");
+            Serial.println(newpos, HEX);
             byte dataset[3] = {0x1, highByte(newpos), lowByte(newpos)};
             mdr->data(dataset, 3); // spin the iris motor to that position
           }
@@ -203,19 +208,19 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   }
 
 
-  Serial.print(F("Getting following data: "));
+  //Serial.print(F("Getting following data: "));
   
   if (datatype & DATA_IRIS) {
-    Serial.print(F("iris ("));
-    Serial.print(this->iris);
-    Serial.print(") ");
+    //Serial.print(F("iris ("));
+    //Serial.print(this->iris);
+    //Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
 
   }
   if (datatype & DATA_FOCUS) {
-    Serial.print(F("focus ("));
-    Serial.print(this->focus);
-    Serial.print(") ");
+    //Serial.print(F("focus ("));
+    //Serial.print(this->focus);
+    //Serial.print(") ");
     sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->focus);
   }
   if (datatype & DATA_ZOOM) {
@@ -250,7 +255,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     sendlen += this->lensnamelen;
   }
   if (sendlen > 0) {
-    Serial.println();
+    //Serial.println();
     databuf[sendlen++] = '\0';
   } else {
     Serial.println(F("...nothing?"));
