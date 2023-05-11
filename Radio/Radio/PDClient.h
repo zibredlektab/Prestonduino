@@ -15,7 +15,7 @@
 #define RETRIES 20 // for radiohead sending attempts
 #define TIMEOUT 30 // for radiohead sending attempts
 #define PING 3000 // period between resubscriptions, and period of assumed server timeout
-#define IRISCOMMANDDELAY 250 // period between sending new iris commands to not overload the mdr
+#define IRISCOMMANDDELAY 2000 // period between sending new iris commands to not overload the mdr
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -67,9 +67,9 @@ class PDClient {
     bool irisbuddy = true;
 
     // Lens data
-    uint16_t iris = 370;
-    uint16_t zoom = 78;
-    uint16_t focus = 8873;
+    uint16_t iris = 0;
+    uint16_t zoom = 0;
+    uint16_t focus = 0;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range
     char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";
@@ -81,7 +81,7 @@ class PDClient {
     bool newlens = false;
     bool mapped = false;
     bool mapping = false;
-    uint16_t newiris = 0x8E40;
+    uint16_t newiris = 0x0;
     unsigned long long timesinceiriscommand = 0;
     
     bool haveData(); // do we have valid lens data from the server?
