@@ -152,12 +152,11 @@ void PDClient::onLoop() {
     }
   }
 
-  if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY) {
+  if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY && this->newiris != this->iris) {
     Serial.println("Updating iris");
     uint8_t dataset[2] = {highByte(this->newiris), lowByte(this->newiris)};
     this->sendMessage(0x5, dataset, 2);
     this->timesinceiriscommand = millis();
-    this->setIris(this->iris + 100);
   }
 
 /*

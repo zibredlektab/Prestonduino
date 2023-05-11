@@ -70,7 +70,17 @@ void callback_pressed(uint8_t pinIn) {
   
   switch(dialog) {
     case 0: {
-      dialog = 1;
+      switch(pinIn) {
+        case BUTTON_A: {
+          pd->setIris(pd->getIris() + 1000);
+          break;
+        }
+        case BUTTON_B: {
+          pd->setIris(pd->getIris() - 1000);
+          break;
+        }
+      }
+      //dialog = 1; // open main menu
       break;
     }
 
