@@ -307,7 +307,17 @@ void setup() {
   oled.setTextWrap(false);
 }
 
+unsigned long long ledtime;
+bool ledon;
+
 void loop() {
+
+  if (millis() > ledtime+500) {
+    ledon ? digitalWrite(13, LOW) : digitalWrite(13, HIGH);
+    ledon = !ledon;
+    ledtime = millis();
+  }
+
   readButtons();
   pd->onLoop();
 

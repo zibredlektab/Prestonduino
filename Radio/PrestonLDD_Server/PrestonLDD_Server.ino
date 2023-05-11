@@ -23,6 +23,9 @@ void setup() {
   lastchannelcheck = millis();
 }
 
+unsigned long long ledtime = 0;
+bool ledon = false;
+
 void loop() {
   pd->onLoop();
 
@@ -32,6 +35,12 @@ void loop() {
       pd->setChannel(newchannel);
     }
     lastchannelcheck = millis();
+  }
+
+  if (millis() > ledtime+500) {
+    ledon ? digitalWrite(13, LOW) : digitalWrite(13, HIGH);
+    ledon = !ledon;
+    ledtime = millis();
   }
 }
 
