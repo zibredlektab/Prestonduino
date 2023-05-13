@@ -285,7 +285,7 @@ bool PDClient::processLensName() {
   Serial.print("full name is ");
   Serial.println(this->fulllensname);
 
-  int processfrom = 0;
+  int processfrom = 0; // index from which to start processing lens name
 
   if (this->fulllensname[0] == '*') {
     Serial.println("this is a new lens");
@@ -299,23 +299,30 @@ bool PDClient::processLensName() {
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
   this->lensseries[-1] = '\0'; // null terminator for brand
   
-  //Serial.print("brand is ");
-  //Serial.println(this->lensbrand);
+  Serial.print("brand is ");
+  Serial.println(this->lensbrand);
   
   this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
   this->lensname[-1] = '\0'; // null terminator for series
   
-  //Serial.print("series is ");
-  //Serial.println(this->lensseries);
+  Serial.print("series is ");
+  Serial.println(this->lensseries);
   
-  this->lensnote = strchr(this->lensname, ' ') + 1; // find separator between name and note
-  this->lensnote[-1] = '\0'; // null terminator for name
+  this->lensnote = strchr(this->lensname, ' '); // find separator between name and note
+  if (this->lensnote == NULL) {
+    // Lens name does not always include further information (no serial number / note)
+    Serial.println("Lens name does not contain a serial number or note");
+    this->lensnote = strchr(this->lensname, 0);
+  } else {
+    this->lensnote = &this->lensnote[1];
+    this->lensnote[-1] = '\0'; // if there is further information, name needs a null terminator
+  }
 
   
-  //Serial.print("name is ");
-  //Serial.println(this->lensname);  
-  //Serial.print("note is ");
-  //Serial.println(this->lensnote);
+  Serial.print("name is ");
+  Serial.println(this->lensname);
+  Serial.print("note is ");
+  Serial.println(this->lensnote);
 
   this->abbreviateName();
   
@@ -329,6 +336,7 @@ bool PDClient::processLensName() {
     this->tfl = this->zoom;
   }
   
+  Serial.println("Done processing lens name");
   return true;
 }
 
