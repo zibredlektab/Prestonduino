@@ -34,19 +34,22 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 
   this->driver->setPromiscuous(false);
 
-  /*
-  this->flash = new Adafruit_InternalFlash(INTERNAL_FLASH_FILESYSTEM_START_ADDR, INTERNAL_FLASH_FILESYSTEM_SIZE);
-  Serial.print("Initializing flash..."); // TODO Flash stuff
-  flash->begin();
   
-  // Open file system on the flash
-  if ( !fatfs.begin(flash) ) {
-    Serial.println("Error: filesystem does not exist. Please try SdFat_format example to make one.");
+  // Open file system on the SD card
+  Serial.print("Intializing SD card...");
+
+  // first, disable the radio
+  pinMode(SSPIN, OUTPUT);
+  digitalWrite(SSPIN, HIGH);
+
+  if ( !SD.begin(19) ) { // 19 was chosen at random and is not the default for Adalogger boards
+    Serial.println("SD card error");
     while(1) yield();
   } else {
     Serial.println("done.");
-  }*/
+  }
   
+  digitalWrite(SSPIN, LOW); // renable radio
 
   this->irisbuddy = true;
   this->onering = false;
@@ -58,6 +61,8 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
     this->mdr->shutUp();
     this->mdr->mode(0x01, 0x01);
     this->mdr->data(0x41); // irisbuddy only cares about iris data, and only encoder counts
+    uint8_t dataset[3] = {0x1, 0x88, 0x88};
+    this->mdr->data(dataset, 3);
   }
 
   Serial.print(F("Done with setup, my address is 0x"));
@@ -102,7 +107,7 @@ void PDServer::onLoop() {
             Serial.println("Failed.");
           } else {
             Serial.println("Done.");
-            this->subscribe(this->nextavailaddress, 0x1); //TODO, client needs to manually subscribe
+            this->subscribe(this->nextavailaddress, 0x11); //TODO, client needs to manually subscribe
           }
           break;
         }
@@ -199,7 +204,7 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   this->fulllensname = mdr->getLensName();
 
   
-  if (!this->iris && !this->focus && !this->zoom) {
+  if (0 && !this->iris && !this->focus && !this->zoom) { // TODO
     // No data was recieved, return an error
     Serial.println("Didn't get any data from MDR");
     databuf[0] = 0xF;
@@ -371,15 +376,20 @@ void PDServer::startMap() {
   for (int i = 0; i < 10; i++) {
     this->lensmap[i] = 0;
   }
-/*
-  this->makePath();
-  this->fatfs.chdir(); // move to SD root
-  this->fatfs.mkdir(this->lenspath, true);
-  this->fatfs.chdir(this->lenspath);
 
-  if (fatfs.exists(this->filename)) {
+  this->makePath();
+  //this->fatfs.chdir(); // move to SD root
+  if (!SD.exists(this->filedirectory)) {
+    Serial.print("Directory ");
+    Serial.print(this->filedirectory);
+    Serial.println(" doesn't exist, making directory...");
+    SD.mkdir(this->filedirectory);
+  }
+  //this->fatfs.chdir(this->filedirectory);
+
+  if (SD.exists(this->filefullname)) {
     Serial.println("lens has already been mapped");
-    this->lensfile = fatfs.open(this->filename, FILE_READ); // open existing file
+    this->lensfile = SD.open(this->filefullname, FILE_READ); // open existing file
 
     if (this->lensfile) {
       // lens file opened successfully
@@ -388,7 +398,7 @@ void PDServer::startMap() {
         this->lensmap[i] = this->lensfile.read();
         this->lensmap[i] += this->lensfile.read() * 0x100;
         Serial.print("[F/");
-        Serial.print(this->wholestops[i]);
+        Serial.print(this->stops[i]);
         Serial.print(": 0x");
         Serial.print(this->lensmap[i], HEX);
         Serial.print("] ");
@@ -401,26 +411,34 @@ void PDServer::startMap() {
       // lens needs to be mapped
 
     }
-  }*/
+  }
 }
 
 void PDServer::makePath() {
+  // step through lens name, swapping pipes for directory levels
+  // once we're two levels deep, store that as the directory name, and keep processing for the full path
+
   int pipecount = 0;
   int pathlen = 0;
 
+  this->filedirectory[0] = '?';
+
   for (int i = 0; i < this->lensnamelen; i++) {
     if (pipecount < 2) {
-      // we are still processing the path, not the filename itself
+      // we are still processing the path, not the filefullname itself
       if (this->curlens[i] == '|') {
-        this->lenspath[i] = '/'; // replace all pipes with directory levels
+        this->filefullname[i] = '/'; // replace all pipes with directory levels
         pipecount++;
       } else {
-        this->lenspath[i] = this->curlens[i];
+        this->filefullname[i] = this->curlens[i];
       }
       pathlen++;
     } else {
-      // we are now processing the filename rather than the path
-      this->filename[i-pathlen] = this->curlens[i];
+      // we are now past the directory portion of the lens name
+      if (this->filedirectory[0] == '?') {
+        strncpy(this->filedirectory, this->filefullname, pathlen);
+      }
+      this->filefullname[i] = this->curlens[i];
     }
 
     if (this->curlens[i] == '\0') {
@@ -431,8 +449,8 @@ void PDServer::makePath() {
 
   // Remove trailing whitespace
   for (int i = 13; i >= 0; i--) {
-    if (this->filename[i] == ' ') {
-      this->filename[i] = '\0';
+    if (this->filefullname[i] == ' ') {
+      this->filefullname[i] = '\0';
     } else {
       break;
     }
@@ -474,16 +492,18 @@ void PDServer::finishMap() {
     Serial.print("] ");
   }
   Serial.println();
-/*
-  this->lensfile = this->fatfs.open(this->filename, FILE_WRITE);
+
+  this->lensfile = SD.open(this->filefullname, FILE_WRITE);
   int written = this->lensfile.write((uint8_t*)lensmap, 20);
   this->lensfile.close();
 
   if (written == 20) {
     Serial.println("Wrote lens data to file.");
   } else {
-    Serial.println("Failed to write lens data to file");
-  }*/
+    Serial.print("Wrote an unexpected number of bytes to file (");
+    Serial.print(written);
+    Serial.println(")");
+  }
 
   if (onering) this->mdr->data(NORMALDATAMODE); // restore normal data operation
 }

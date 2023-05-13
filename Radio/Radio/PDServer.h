@@ -7,12 +7,7 @@
 #include <PrestonDuino.h>
 #include <RHReliableDatagram.h> // RH_ENABLE_EXPLICIT_RETRY_DEDUP must be redefined as 1 in this file
 #include <RH_RF95.h>
-#include <SdFatConfig.h>
-#include <sdios.h>
-#include <FreeStack.h>
-#include <MinimumSerial.h>
-#include <SdFat.h>
-#include <Adafruit_InternalFlash.h>
+#include <SD.h>
 
 
 #ifndef ERR_NOTX
@@ -24,8 +19,6 @@
 #define UPDATEDELAY 100 // how long to wait between updating subs
 #define REPEATSEND 5 // how many times to repeat a motor command to the mdr when the command hasn't changed
 
-#define INTERNAL_FLASH_FILESYSTEM_SIZE (64*1024)
-#define INTERNAL_FLASH_FILESYSTEM_START_ADDR (0x00040000 - 256 - 0 - INTERNAL_FLASH_FILESYSTEM_SIZE)
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -65,8 +58,6 @@ struct subscription {
 class PDServer {
   private:
     
-    Adafruit_InternalFlash *flash;
-    FatFileSystem fatfs;
     File lensfile;
 
     uint8_t channel; // A is default
@@ -90,8 +81,8 @@ class PDServer {
     
     char mdrlens[40]; // active lens name as reported by MDR
     char curlens[40]; // last-known active lens name
-    char lenspath[25]; // file path where the current lens map is stored
-    char filename[25]; // file name the current lens map is stored in
+    char filedirectory[25]; // file path where the current lens map is stored
+    char filefullname[25]; // file name the current lens map is stored in
     unsigned long long lastupdate = 0; // last time we sent updated data to subs
     unsigned long long lastmotorcommand = 0; // last time we sent a motor command
 
