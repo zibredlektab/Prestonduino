@@ -418,34 +418,38 @@ void PDServer::makePath() {
   // step through lens name, swapping pipes for directory levels
   // once we're two levels deep, store that as the directory name, and keep processing for the full path
 
-  int pipecount = 0;
-  int pathlen = 0;
 
-  this->filedirectory[0] = '?';
+  Serial.print("Making path...");
+
+  for (int i = 0; i < 25; i++) {
+    this->filedirectory[i] = 0;
+    this->filefullname[i] = 0;
+  }
+
+  int directoryendindex = 0;
 
   for (int i = 0; i < this->lensnamelen; i++) {
-    if (pipecount < 2) {
-      // we are still processing the path, not the filefullname itself
-      if (this->curlens[i] == '|') {
-        this->filefullname[i] = '/'; // replace all pipes with directory levels
-        pipecount++;
-      } else {
-        this->filefullname[i] = this->curlens[i];
-      }
-      pathlen++;
+    if (this->curlens[i] == '|') {
+      this->filefullname[i] = '/'; // replace all pipes with directory levels
+      directoryendindex = i;
     } else {
-      // we are now past the directory portion of the lens name
-      if (this->filedirectory[0] == '?') {
-        strncpy(this->filedirectory, this->filefullname, pathlen);
-      }
       this->filefullname[i] = this->curlens[i];
     }
+    Serial.print(this->filefullname[i]);
 
     if (this->curlens[i] == '\0') {
       // we have reached the end of the lens name
-      return;
+      break;
     }
+
   }
+  Serial.println();
+
+  strncpy(this->filedirectory, this->filefullname, directoryendindex);
+
+  Serial.print("Directory is ");
+  Serial.print(this->filedirectory);
+  Serial.println("/");
 
   // Remove trailing whitespace
   for (int i = 13; i >= 0; i--) {
