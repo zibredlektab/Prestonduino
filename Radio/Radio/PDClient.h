@@ -72,7 +72,7 @@ class PDClient {
     uint16_t focus = 0;
     uint16_t wfl = 0; // wide end of zoom range
     uint16_t tfl = 0; // tele end of zoom range
-    char fulllensname[50] = "0Panavision|Primo Zoom|24-240mm 630ABC";
+    char fulllensname[50] = "0*Panavision|Primo Zoom|24-240mm 630ABC";
     char* lensbrand;
     char* lensseries;
     char* lensname;
@@ -132,8 +132,8 @@ class PDClient {
     void mapLens(uint8_t curav);
     void finishMap();
 
-    bool isMapped();
-    bool isMapping();
+    bool isLensMapped();
+    bool isLensMapping();
 
     void setIris(uint16_t newiris);
 

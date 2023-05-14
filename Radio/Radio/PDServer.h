@@ -79,6 +79,7 @@ class PDServer {
     char* fulllensname;
     uint8_t lensnamelen = 0;
     
+    char statussymbol = '.'; // . (normal), * (new lens, first time sent), ! (lens needs mapping), & (currently mapping)
     char mdrlens[40]; // active lens name as reported by MDR
     char curlens[40]; // last-known active lens name
     char filedirectory[25]; // file path where the current lens map is stored
@@ -100,10 +101,12 @@ class PDServer {
     const uint16_t ringmap[10] = {0xFEFC, 0xE203, 0xCA70, 0xABC0, 0x8E40, 0x7370, 0x529C, 0x371C, 0x19C0, 0x0000};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, T1 to T22
     
     uint16_t lensmap[10]; // currently active lens mapping
+    bool newlens = true; // is this lens info new to the clients?
     bool mapped = false; // do we have a valid lens map?
     bool mapping = false; // are we currently building a lens map?
     int8_t curmappingav = -1;
 
+    void processLensName();
     void startMap();
     void mapLens(uint8_t curav);
     void finishMap();

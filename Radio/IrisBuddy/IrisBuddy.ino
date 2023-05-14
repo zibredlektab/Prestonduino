@@ -31,6 +31,8 @@ Adafruit_SH1107 oled(64, 128, &Wire);
 static InputDebounce btn_a;
 static InputDebounce btn_b;
 static InputDebounce btn_c;
+static InputDebounce up;
+static InputDebounce down;
 
 int channel = 0xA;
 bool changingchannel = false;
@@ -67,192 +69,199 @@ void callback_pressed(uint8_t pinIn) {
   //Serial.print(pinIn);
   //Serial.print(", dialog = ");
   //Serial.println(dialog);
+
+  if (pinIn == 18) {
+    pd->setIris(pd->getIris() + 1000);
+  } else if (pinIn == 17) {
+    pd->setIris(pd->getIris() - 1000);
+  } else {
   
-  switch(dialog) {
-    case 0: {
-      switch(pinIn) {
-        case BUTTON_A: {
-          pd->setIris(pd->getIris() + 1000);
-          break;
+    switch(dialog) {
+      case 0: {
+        switch(pinIn) {
+          case BUTTON_A: {
+            pd->setIris(pd->getIris() + 1000);
+            break;
+          }
+          case BUTTON_B: {
+            pd->setIris(pd->getIris() - 1000);
+            break;
+          }
         }
-        case BUTTON_B: {
-          pd->setIris(pd->getIris() - 1000);
-          break;
-        }
+        //dialog = 1; // open main menu
+        break;
       }
-      //dialog = 1; // open main menu
-      break;
-    }
 
-    case 1: { // Main menu
-      switch(pinIn) {
-        case BUTTON_A: { // down nav
-          doNav(-1);
-          break;
-        }
-        
-        case BUTTON_B: { // "ok"
-          switch (menuselected) {
-            case 0: {
-              if (submenu) {
-                //changeChannel(choffset);
-                choffset = 0;
+      case 1: { // Main menu
+        switch(pinIn) {
+          case BUTTON_A: { // down nav
+            doNav(-1);
+            break;
+          }
+          
+          case BUTTON_B: { // "ok"
+            switch (menuselected) {
+              case 0: {
+                if (submenu) {
+                  //changeChannel(choffset);
+                  choffset = 0;
+                }
+                submenu = !submenu;
+                break;
               }
-              submenu = !submenu;
-              break;
+              
+              case 1: {
+                submenu = !submenu;
+                break;
+              }
+              
+              case 2: {
+                dialog = 5;
+                menuselected = 0;
+                break;
+              }
+              
+              case 3: {
+                menuselected = 0;
+                Serial.println("closing menu");
+                dialog = 0;
+                break;
+              }
             }
-            
-            case 1: {
-              submenu = !submenu;
-              break;
-            }
-            
-            case 2: {
-              dialog = 5;
-              menuselected = 0;
-              break;
-            }
-            
-            case 3: {
-              menuselected = 0;
-              Serial.println("closing menu");
-              dialog = 0;
-              break;
-            }
+            break;
           }
-          break;
+          
+          case BUTTON_C: { // up nav
+            doNav(1);
+            break;
+          }
         }
-        
-        case BUTTON_C: { // up nav
-          doNav(1);
-          break;
-        }
+
+        break;
       }
 
-      break;
-    }
-
-    case 2: { // Map lens now?
-      switch(pinIn) {
-        case BUTTON_A: {
-          pd->mapLater();
-          dialog = 0;
-          break;
+      case 2: { // Map lens now?
+        switch(pinIn) {
+          case BUTTON_A: {
+            pd->mapLater();
+            dialog = 0;
+            break;
+          }
+          
+          case BUTTON_C: {
+            Serial.println("map now");
+            pd->startMap();
+            dialog = 3;
+            break;
+          }
         }
         
-        case BUTTON_C: {
-          Serial.println("map now");
-          pd->startMap();
-          dialog = 3;
-          break;
-        }
+        break;
       }
-      
-      break;
-    }
 
-    case 3: { // Select WFO
-      switch(pinIn) {
-        case BUTTON_A: {
-          curmappingav--;
-          if (curmappingav < 0) {
-            curmappingav = 0;
+      case 3: { // Select WFO
+        switch(pinIn) {
+          case BUTTON_A: {
+            curmappingav--;
+            if (curmappingav < 0) {
+              curmappingav = 0;
+            }
+            break;
           }
-          break;
-        }
 
-        case BUTTON_B: {
-          Serial.println("WFO selected");
-          dialog = 4;
-          break;
+          case BUTTON_B: {
+            Serial.println("WFO selected");
+            dialog = 4;
+            break;
+          }
+          
+          case BUTTON_C: {
+            curmappingav++;
+            if (curmappingav > 9) {
+              curmappingav = 9;
+            }
+            break;
+          }
         }
+        break;
+      }
         
-        case BUTTON_C: {
-          curmappingav++;
-          if (curmappingav > 9) {
-            curmappingav = 9;
-          }
-          break;
-        }
-      }
-      break;
-    }
-      
-    case 4: { // Set lens
-      switch(pinIn) {
-        case BUTTON_A: { // Finish
-          pd->finishMap();
-          curmappingav = 1;
-          dialog = 0;
-          break;
-        }
-
-        case BUTTON_B: { // ok
-          Serial.println("Saving AV position");
-          pd->mapLens(curmappingav++);
-          if (curmappingav == 10) {
+      case 4: { // Set lens
+        switch(pinIn) {
+          case BUTTON_A: { // Finish
             pd->finishMap();
             curmappingav = 1;
             dialog = 0;
+            break;
           }
-          break;
-        }
-        
-        case BUTTON_C: { // Back
-          curmappingav--;
-          break;
-        }
-      }
-      
-      break;
-    }
 
-    case 5: { // OneRing menu
-      switch(pinIn) {
-        case BUTTON_A: { // down nav
-          doNav(-1);
-          break;
-        }
-        
-        case BUTTON_B: { // "ok"
-          switch (menuselected) {
-            case 0: {
-              if (submenu) {
-                changeChannel(choffset);
-                choffset = 0;
-              }
-              submenu = !submenu;
-              break;
-            }
-            
-            case 1: {
-              submenu = !submenu;
-              break;
-            }
-            
-            case 2: {
-              dialog = 5;
-              menuselected = 0;
-              break;
-            }
-            
-            case 3: {
-              menuselected = 0;
-              Serial.println("closing menu");
+          case BUTTON_B: { // ok
+            Serial.println("Saving AV position");
+            pd->mapLens(curmappingav++);
+            if (curmappingav == 10) {
+              pd->finishMap();
+              curmappingav = 1;
               dialog = 0;
-              break;
             }
+            break;
           }
-          break;
+          
+          case BUTTON_C: { // Back
+            curmappingav--;
+            break;
+          }
         }
         
-        case BUTTON_C: { // up nav
-          doNav(1);
-          break;
-        }
+        break;
       }
 
-      break;
+      case 5: { // OneRing menu
+        switch(pinIn) {
+          case BUTTON_A: { // down nav
+            doNav(-1);
+            break;
+          }
+          
+          case BUTTON_B: { // "ok"
+            switch (menuselected) {
+              case 0: {
+                if (submenu) {
+                  changeChannel(choffset);
+                  choffset = 0;
+                }
+                submenu = !submenu;
+                break;
+              }
+              
+              case 1: {
+                submenu = !submenu;
+                break;
+              }
+              
+              case 2: {
+                dialog = 5;
+                menuselected = 0;
+                break;
+              }
+              
+              case 3: {
+                menuselected = 0;
+                Serial.println("closing menu");
+                dialog = 0;
+                break;
+              }
+            }
+            break;
+          }
+          
+          case BUTTON_C: { // up nav
+            doNav(1);
+            break;
+          }
+        }
+
+        break;
+      }
     }
   }
 }
@@ -289,10 +298,14 @@ void setup() {
   btn_a.registerCallbacks(NULL, callback_pressed);
   btn_b.registerCallbacks(NULL, callback_pressed);
   btn_c.registerCallbacks(NULL, callback_pressed);
+  up.registerCallbacks(NULL, callback_pressed);
+  down.registerCallbacks(NULL, callback_pressed);
   
   btn_a.setup(BUTTON_A, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
   btn_b.setup(BUTTON_B, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
   btn_c.setup(BUTTON_C, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
+  up.setup(18, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
+  down.setup(17, BUTTON_DEBOUNCE_DELAY, InputDebounce::PIM_INT_PULL_UP_RES);
 
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
@@ -331,7 +344,7 @@ void loop() {
   readButtons();
   pd->onLoop();
 
-  if (pd->isNewLens()) dialog = 2;
+  if (pd->isNewLens() && !pd->isLensMapped()) dialog = 2;
 
   drawScreen();
 
@@ -353,6 +366,8 @@ void readButtons() {
   btn_a.process(now);
   btn_b.process(now);
   btn_c.process(now);
+  up.process(now);
+  down.process(now);
 }
 
 void changeChannel(int addend) {

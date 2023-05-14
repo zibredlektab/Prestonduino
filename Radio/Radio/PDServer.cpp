@@ -75,6 +75,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
 void PDServer::onLoop() {
 
   mdr->onLoop();
+  this->processLensName();
 
   while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
@@ -243,22 +244,16 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
   if (datatype & DATA_NAME) {
     this->lensnamelen = this->mdr->getLensNameLen();
     
-    if (strcmp(this->fulllensname, curlens) != 0) {
-      Serial.println("Lens changed");
-      Serial.print("Old lens was ");
-      Serial.println(curlens);
-      Serial.print("New lens is ");
-      Serial.println(this->fulllensname);
-      
-      // current mdr lens is different from our lens
-      this->mapped = false; // (todo)
-      strncpy(&databuf[sendlen++], "*", 1); // send an asterisk before lens name
-      strcpy(curlens, this->fulllensname); // copy our new lens to current lens name, including the null
-    }
-
+    databuf[sendlen++] = this->lensnamelen; // add length of lens name to buffer
+    databuf[sendlen++] = this->statussymbol;
     strcpy(&databuf[sendlen], curlens);
     sendlen += this->lensnamelen;
+    if (this->newlens) {
+      Serial.println("this is no longer a new lens.");
+      this->newlens = false;
+    }
   }
+
   if (sendlen > 0) {
     //Serial.println();
     databuf[sendlen++] = '\0';
@@ -291,12 +286,12 @@ bool PDServer::updateSubs() {
     }
     
     uint8_t desc = this->subs[i].data_descriptor;
-    //Serial.print(F("Updating client 0x"));
-    //Serial.print((this->channel * 0x10) + i, HEX);
-    //Serial.println();
+    Serial.print(F("Updating client 0x"));
+    Serial.print((this->channel * 0x10) + i, HEX);
+    Serial.println();
     sendlen = this->getData(desc, tosend);
-    /*
-    Serial.print("Sending");
+    
+    Serial.print("Sending ");
     Serial.print(sendlen);
     Serial.println(F(" bytes:"));
     for (int i = 0; i < sendlen; i++) {
@@ -304,7 +299,7 @@ bool PDServer::updateSubs() {
       Serial.print(tosend[i], HEX);
     }
     Serial.println();
-    */
+    
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
       Serial.println(F("Failed to send message"));
@@ -376,50 +371,66 @@ void PDServer::startMap() {
   for (int i = 0; i < 10; i++) {
     this->lensmap[i] = 0;
   }
+}
 
-  this->makePath();
-  //this->fatfs.chdir(); // move to SD root
-  if (!SD.exists(this->filedirectory)) {
-    Serial.print("Directory ");
-    Serial.print(this->filedirectory);
-    Serial.println(" doesn't exist, making directory...");
-    SD.mkdir(this->filedirectory);
-  }
-  //this->fatfs.chdir(this->filedirectory);
+void PDServer::processLensName() {
 
-  if (SD.exists(this->filefullname)) {
-    Serial.println("lens has already been mapped");
-    this->lensfile = SD.open(this->filefullname, FILE_READ); // open existing file
+  if (strcmp(this->fulllensname, this->curlens) != 0) {
+    // current mdr lens is different from our lens
+    // this is a new lens
+    Serial.print("Lens changed, from ");
+    Serial.print(this->curlens);
+    Serial.print(" to ");
+    Serial.println(this->fulllensname);
+    
+    this->newlens = true;
+    this->statussymbol = '*';
 
-    if (this->lensfile) {
-      // lens file opened successfully
-      for (int i = 0; i < 10; i++) {
-        // read through file byte by byte to reconstruct lens table
-        this->lensmap[i] = this->lensfile.read();
-        this->lensmap[i] += this->lensfile.read() * 0x100;
-        Serial.print("[F/");
-        Serial.print(this->stops[i]);
-        Serial.print(": 0x");
-        Serial.print(this->lensmap[i], HEX);
-        Serial.print("] ");
+    strcpy(this->curlens, this->fulllensname); // copy our new lens to current lens name, including the null
+
+    this->makePath();
+
+    if (SD.exists(this->filefullname)) { // check if this new lens has been mapped
+      Serial.println("lens has already been mapped");
+      this->lensfile = SD.open(this->filefullname, FILE_READ); // open existing file
+
+      if (this->lensfile) {
+        // lens file opened successfully
+        for (int i = 0; i < 10; i++) {
+          // read through file byte by byte to reconstruct lens table
+          this->lensmap[i] = this->lensfile.read();
+          this->lensmap[i] += this->lensfile.read() * 0x100;
+          Serial.print("[F/");
+          Serial.print(this->stops[i]);
+          Serial.print(": 0x");
+          Serial.print(this->lensmap[i], HEX);
+          Serial.print("] ");
+        }
+        Serial.println();
+        Serial.println("Finished loading lens data");
+
+        this->lensfile.close();
+      } else {
+        Serial.println("There was an error opening lens data file");
       }
-      Serial.println();
-      Serial.println("Finished loading lens data");
-
-      this->lensfile.close();
     } else {
-      // lens needs to be mapped
-
+      Serial.println("This lens has not been mapped.");
     }
+
+    return;
   }
+
+  if (!this->newlens) { // don't change the status symbol until the clients have been notified of the new lens
+    this->statussymbol = '.';
+    if (!SD.exists(this->filefullname)) this->statussymbol = '!';
+    if (this->mapping) this->statussymbol = '&';
+  }
+
 }
 
 void PDServer::makePath() {
   // step through lens name, swapping pipes for directory levels
   // once we're two levels deep, store that as the directory name, and keep processing for the full path
-
-
-  Serial.print("Making path...");
 
   for (int i = 0; i < 25; i++) {
     this->filedirectory[i] = 0;
@@ -435,7 +446,6 @@ void PDServer::makePath() {
     } else {
       this->filefullname[i] = this->curlens[i];
     }
-    Serial.print(this->filefullname[i]);
 
     if (this->curlens[i] == '\0') {
       // we have reached the end of the lens name
@@ -443,13 +453,8 @@ void PDServer::makePath() {
     }
 
   }
-  Serial.println();
 
   strncpy(this->filedirectory, this->filefullname, directoryendindex);
-
-  Serial.print("Directory is ");
-  Serial.print(this->filedirectory);
-  Serial.println("/");
 
   // Remove trailing whitespace
   for (int i = 13; i >= 0; i--) {
@@ -481,7 +486,7 @@ void PDServer::mapLens(uint8_t curav) {
 
 void PDServer::finishMap() {
   Serial.println("Finishing map");
-  for (int i = 10; i > this->curmappingav; i--) {
+  for (int i = 10; i >= this->curmappingav; i--) { // the rest of the (unmapped) stops should be assumed to be at the far end of the lens
     this->lensmap[i] = 0xFFFF;
   }
   this->mapped = true;
@@ -496,6 +501,13 @@ void PDServer::finishMap() {
     Serial.print("] ");
   }
   Serial.println();
+
+  if (!SD.exists(this->filedirectory)) {
+    Serial.print("Directory ");
+    Serial.print(this->filedirectory);
+    Serial.println(" doesn't exist, making directory...");
+    SD.mkdir(this->filedirectory);
+  }
 
   this->lensfile = SD.open(this->filefullname, FILE_WRITE);
   int written = this->lensfile.write((uint8_t*)lensmap, 20);

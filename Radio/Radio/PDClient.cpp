@@ -42,7 +42,6 @@ PDClient::PDClient(int chan) {
 
   
   this->setChannel(chan);
-  this->processLensName();
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t data) {
@@ -153,7 +152,6 @@ void PDClient::onLoop() {
   }
 
   if (millis() > this->timesinceiriscommand + IRISCOMMANDDELAY && this->newiris != this->iris) {
-    Serial.println("Updating iris");
     uint8_t dataset[2] = {highByte(this->newiris), lowByte(this->newiris)};
     this->sendMessage(0x5, dataset, 2);
     this->timesinceiriscommand = millis();
@@ -210,8 +208,7 @@ void PDClient::parseMessage() {
       //Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
-        // Iris data is either raw position data if a lens is not mapped, or AV number if the lens is mapped
-        // For now we don't care which
+        // Iris data is AV number * 100 if the lens is mapped, or raw encoder data if not
 
         //Serial.print("Received data includes iris: ");
         char data[5];
@@ -266,11 +263,13 @@ void PDClient::parseMessage() {
         //Serial.print("Recieved data includes lens name: ");
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
 
-        strncpy(this->fulllensname, &this->buf[index], namelen);
-        
-        //Serial.println(this->fulllensname);
-        
-        this->processLensName();
+        if (this->buf[index + 1] != '.') {
+          // if this is a new lens, or if we have not yet processed any lens information, process now
+          Serial.println("this lens needs processing");
+          strncpy(this->fulllensname, &this->buf[index + 1], namelen); // skip the name length for processing
+          this->processLensName();
+        }
+      
       }
       break;
     }
@@ -281,20 +280,39 @@ void PDClient::parseMessage() {
 
 
 bool PDClient::processLensName() {
-  // Format of name is: [asterisk for new lens][length of name][brand]|[series]|[name] [note]
+  // Format of name is: [length of name][status symbol][brand]|[series]|[name] [note]
+  // length of name does not includes status symbol
+  // status symbols: '.' = not new lens, '*' = new lens, '!' = lens needs mapping, '&' = currently mapping
   Serial.print("full name is ");
   Serial.println(this->fulllensname);
 
-  int processfrom = 0; // index from which to start processing lens name
+  Serial.print("status symbol is ");
+  Serial.print(this->fulllensname[0]);
+  Serial.print(", which means ");
 
-  if (this->fulllensname[0] == '*') {
-    Serial.println("this is a new lens");
-    this->newlens = true;
-    this->mapped = false;
-    this->mapping = false;
-    processfrom = 1;
+  switch(this->fulllensname[0]) {
+    case '.': {
+      Serial.println("this lens info needs no further processing.");
+      break;
+    }
+    case '*': {
+      Serial.println("this is a new lens.");
+      this->newlens = true;
+      break;
+    }
+    case '!': {
+      Serial.println("this lens needs to be mapped.");
+      this->mapped = false;
+      break;
+    }
+    case '&': {
+      Serial.println("this lens is currently being mapped.");
+      break;
+    }
   }
-  
+
+  int processfrom = 1; // index from which to start processing lens name
+
   this->lensbrand = &this->fulllensname[processfrom]; // first element of name is length of full name
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
   this->lensseries[-1] = '\0'; // null terminator for brand
@@ -580,11 +598,11 @@ bool PDClient::isNewLens() {
   return this->newlens;
 }
 
-bool PDClient::isMapped() {
+bool PDClient::isLensMapped() {
   return this->mapped;
 }
 
-bool PDClient::isMapping() {
+bool PDClient::isLensMapping() {
   return this->mapping;
 }
 
