@@ -1,6 +1,11 @@
 #include "PDServer.h"
 
 PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
+
+  for (int i = 0; i < 40; i++) {
+    this->curlens[i] = 0;
+    this->mdrlens[i] = 0;
+  }
   //Serial.begin(115200);
   this->channel = chan;
   Serial.print("Starting server on channel ");
@@ -64,6 +69,10 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
     uint8_t dataset[3] = {0x1, 0x88, 0x88};
     this->mdr->data(dataset, 3);
   }
+
+  Serial.println("Getting initial data");
+  char tempdatabuf[100];
+  this->getData(0x3F, tempdatabuf);
 
   Serial.print(F("Done with setup, my address is 0x"));
   Serial.println(this->address, HEX);
@@ -374,7 +383,6 @@ void PDServer::startMap() {
 }
 
 void PDServer::processLensName() {
-
   if (strcmp(this->fulllensname, this->curlens) != 0) {
     // current mdr lens is different from our lens
     // this is a new lens
