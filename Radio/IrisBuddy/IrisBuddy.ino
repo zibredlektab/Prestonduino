@@ -46,7 +46,6 @@ int dialog = 0; // see below
  * 2 - map now?
  * 3 - WFO selection
  * 4 - Mapping
- * 5 - OneRing settings
  */
 
 int menuselected = 0;
@@ -71,24 +70,29 @@ void callback_pressed(uint8_t pinIn) {
   //Serial.println(dialog);
 
   if (pinIn == 18) {
-    pd->setIris(pd->getIris() + 1000);
+    Serial.println("Closing iris");
+    if (pd->getIris() < 64535) pd->setIris(pd->getIris() + 1000);
   } else if (pinIn == 17) {
-    pd->setIris(pd->getIris() - 1000);
+    Serial.println("Opening iris");
+    if (pd->getIris() > 1000) pd->setIris(pd->getIris() - 1000);
   } else {
   
     switch(dialog) {
-      case 0: {
+      case 0: { // "Normal" view
         switch(pinIn) {
           case BUTTON_A: {
             pd->setIris(pd->getIris() + 1000);
             break;
           }
-          case BUTTON_B: {
+          case BUTTON_C: {
             pd->setIris(pd->getIris() - 1000);
             break;
           }
+          case BUTTON_B: {
+            dialog = 1; // open main menu
+            break;
+          }
         }
-        //dialog = 1; // open main menu
         break;
       }
 
@@ -101,30 +105,35 @@ void callback_pressed(uint8_t pinIn) {
           
           case BUTTON_B: { // "ok"
             switch (menuselected) {
-              case 0: {
+              case 0: { // Change Channel
                 if (submenu) {
+                  // We are currently in the "change channel" submenu, so save the channel selection and exit
                   //changeChannel(choffset);
                   choffset = 0;
+                  submenu = false;
+                } else {
+                  // enter the channel select submenu
+                  submenu = true;
                 }
-                submenu = !submenu;
                 break;
               }
               
-              case 1: {
-                submenu = !submenu;
+              case 1: { // Map now
+                Serial.println("map lens now");
+                pd->startMap();
+                dialog = 3;
                 break;
               }
               
-              case 2: {
-                dialog = 5;
-                menuselected = 0;
+              case 2: { // Empty
+                // do nothing
                 break;
               }
               
-              case 3: {
-                menuselected = 0;
+              case 3: { // Back
+                menuselected = 0; // reset menu selection for next time
                 Serial.println("closing menu");
-                dialog = 0;
+                dialog = 0; // return to normal view
                 break;
               }
             }
@@ -186,7 +195,7 @@ void callback_pressed(uint8_t pinIn) {
         break;
       }
         
-      case 4: { // Set lens
+      case 4: { // Map lens
         switch(pinIn) {
           case BUTTON_A: { // Finish
             pd->finishMap();
@@ -214,54 +223,6 @@ void callback_pressed(uint8_t pinIn) {
         
         break;
       }
-
-      case 5: { // OneRing menu
-        switch(pinIn) {
-          case BUTTON_A: { // down nav
-            doNav(-1);
-            break;
-          }
-          
-          case BUTTON_B: { // "ok"
-            switch (menuselected) {
-              case 0: {
-                if (submenu) {
-                  changeChannel(choffset);
-                  choffset = 0;
-                }
-                submenu = !submenu;
-                break;
-              }
-              
-              case 1: {
-                submenu = !submenu;
-                break;
-              }
-              
-              case 2: {
-                dialog = 5;
-                menuselected = 0;
-                break;
-              }
-              
-              case 3: {
-                menuselected = 0;
-                Serial.println("closing menu");
-                dialog = 0;
-                break;
-              }
-            }
-            break;
-          }
-          
-          case BUTTON_C: { // up nav
-            doNav(1);
-            break;
-          }
-        }
-
-        break;
-      }
     }
   }
 }
@@ -269,9 +230,9 @@ void callback_pressed(uint8_t pinIn) {
 
 
 void doNav(int dir) {
-  if (submenu) {
+  if (submenu) { // Currently navigating a sub-menu
     switch (menuselected) {
-      case 0: {
+      case 0: { // Channel select submenu
         choffset += dir;
         if (channel + choffset < 0) {
           choffset = 0xF - channel;
@@ -280,13 +241,14 @@ void doNav(int dir) {
         }
         break;
       }
-      case 1: {
+      case 1: { // Next item down from channel select (currently empty)
+        // Do nothing
         break;
       }
     }
-  } else {
-    menuselected -= dir;
-    if (menuselected >= 4) {
+  } else { // Currently navigating top level menu items
+    menuselected -= dir; // select the adjacent menu item
+    if (menuselected >= 4) { // loop if at the end of the menu
       menuselected = 0;
     } else if (menuselected < 0) {
       menuselected = 3;
@@ -409,7 +371,7 @@ void drawScreen() {
 
 void drawDialog() {
   switch(dialog) {
-    case 1: { // Settings
+    case 1: { // Main menu
     drawRect(3, 3, 100, 61); // draw main dialog box
       oled.setCursor(30, 12);
       oled.setFont(SMALL_FONT);
@@ -433,6 +395,13 @@ void drawDialog() {
       oled.setCursor(7, 24);
       oled.print("Channel - ");
       oled.print(channel + choffset, HEX);
+
+      oled.setCursor(7, 36);
+      oled.print("Re-map lens >");
+
+      oled.setCursor(7, 48);
+      oled.print("Empty");
+
       oled.setCursor(7, 60);
       oled.print("Back");
       drawNav();

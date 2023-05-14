@@ -38,10 +38,10 @@ void drawIris(uint16_t ap) {
   
   oled.setCursor(irisx, y);
   oled.setFont(SMALL_FONT);
-  oled.print(F("T")); //5pix
+  oled.print("0x"); //5pix
   oled.setCursor(irisx + 8, y);
   oled.setFont(XLARGE_FONT);
-  oled.print(ap);//irislabel);
+  oled.print(ap, HEX);//irislabel);
   /*
   uint8_t fractionx = oled.getCursorX() + 1;
   

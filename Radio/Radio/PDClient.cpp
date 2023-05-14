@@ -63,28 +63,28 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
     tosend[i+1] = data[i];
   }
 
-  Serial.print(F("Sending message: "));
+  /*Serial.print(F("Sending message: "));
   for (int i = 0; i < messagelength; i++) {
     Serial.print("0x");
     Serial.print(tosend[i], HEX);
     Serial.print(F(" "));
   }
   Serial.print(F(" to server at 0x"));
-  Serial.println(this->server_address, HEX);
+  Serial.println(this->server_address, HEX);*/
   
   if (this->manager->sendtoWait(tosend, messagelength, this->server_address)) {
     // Got an acknowledgement of our message
-    Serial.println(F("Message was received"));
+    //Serial.println("Message was received");
     if (!this->waitforreply) {
       // Don't need a reply
-      Serial.println(F("No reply needed"));
+      //Serial.println(F("No reply needed"));
       return true;
       
     } else {
       // A reply is expected, let's wait for it
-      Serial.println(F("Awaiting reply"));
+      //Serial.println(F("Awaiting reply"));
       if (this->manager->waitAvailableTimeout(2000)) {
-        Serial.println(F("Reply is available"));
+        //Serial.println(F("Reply is available"));
         // got a message
         uint8_t len = sizeof(this->buf);
         uint8_t from;
@@ -105,7 +105,7 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
           Serial.println("failed to receive message, even though one is available");
         }
       } else {
-        Serial.println(F("No reply received (timeout)"));
+        Serial.println("No reply received (timeout)");
         // Reply was not received (timeout)
         this->error(ERR_NOTX);
         return false;
@@ -116,7 +116,7 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
     
   } else {
     this->error(ERR_NOTX); //server not responding
-    Serial.println(F("Message was not received"));
+    Serial.println("Message was not received");
     // Did not get an acknowledgement of message
     return false;
   }
@@ -127,15 +127,16 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 
 void PDClient::onLoop() {
   if (this->manager->available()) {
-    Serial.print("Message available, this long: ");
+    //Serial.print("Message available, this long: ");
     uint8_t from;
     this->buflen = sizeof(this->buf);
     if (manager->recvfrom((uint8_t*)this->buf, &this->buflen, &from)) {
-      Serial.println(this->buflen);
+      //Serial.println(this->buflen);
       this->timeoflastmessagefromserver = millis();
       this->clearError(); // Server is responding
       
       
+      /*
       for (int i = 0; i < this->buflen; i++) {
         if (i < 2) {
           Serial.print(F("0x"));
@@ -145,8 +146,7 @@ void PDClient::onLoop() {
           Serial.print((char)this->buf[i]);
         }
       }
-      
-      Serial.println();
+      Serial.println();*/
       
       this->parseMessage();
 
@@ -268,7 +268,6 @@ void PDClient::parseMessage() {
 
         if (this->buf[index + 1] != '.') {
           // if this is a new lens, or if we have not yet processed any lens information, process now
-          Serial.println("this lens needs processing");
           for (int i = 0; i < sizeof(this->fulllensname); i++) {
             // null out the name before recording the new one
             this->fulllensname[i] = 0;
@@ -290,30 +289,31 @@ bool PDClient::processLensName() {
   // Format of name is: [length of name][status symbol][brand]|[series]|[name] [note]
   // length of name does not includes status symbol
   // status symbols: '.' = not new lens, '*' = new lens, '!' = lens needs mapping, '&' = currently mapping
-  Serial.print("full name is ");
-  Serial.println(this->fulllensname);
+  //Serial.print("full name is ");
+  //Serial.println(this->fulllensname);
 
-  Serial.print("status symbol is ");
-  Serial.print(this->fulllensname[0]);
-  Serial.print(", which means ");
+  //Serial.print("status symbol is ");
+  //Serial.print(this->fulllensname[0]);
+  //Serial.print(", which means ");
 
   switch(this->fulllensname[0]) {
     case '.': {
-      Serial.println("this lens info needs no further processing.");
+      //Serial.println("this lens info needs no further processing.");
       break;
     }
     case '*': {
-      Serial.println("this is a new lens.");
+      Serial.print("This is a new lens: ");
+      Serial.println(this->fulllensname);
       this->newlens = true;
       break;
     }
     case '!': {
-      Serial.println("this lens needs to be mapped.");
+      //Serial.println("this lens needs to be mapped.");
       this->mapped = false;
       break;
     }
     case '&': {
-      Serial.println("this lens is currently being mapped.");
+      //Serial.println("this lens is currently being mapped.");
       break;
     }
   }
@@ -324,19 +324,19 @@ bool PDClient::processLensName() {
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
   this->lensseries[-1] = 0; // null terminator for brand
   
-  Serial.print("brand is ");
-  Serial.println(this->lensbrand);
+  //Serial.print("brand is ");
+  //Serial.println(this->lensbrand);
   
   this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
   this->lensname[-1] = 0; // null terminator for series
   
-  Serial.print("series is ");
-  Serial.println(this->lensseries);
+  //Serial.print("series is ");
+  //Serial.println(this->lensseries);
   
   this->lensnote = strchr(this->lensname, ' '); // find separator between name and note
   if (this->lensnote == NULL) {
     // Lens name does not always include further information (no serial number / note)
-    Serial.println("Lens name does not contain a serial number or note");
+    //Serial.println("Lens name does not contain a serial number or note");
     this->lensnote = strchr(this->lensname, 0);
   } else {
     this->lensnote = &this->lensnote[1];
@@ -344,10 +344,10 @@ bool PDClient::processLensName() {
   }
 
   
-  Serial.print("name is ");
-  Serial.println(this->lensname);
-  Serial.print("note is ");
-  Serial.println(this->lensnote);
+  //Serial.print("name is ");
+  //Serial.println(this->lensname);
+  //Serial.print("note is ");
+  //Serial.println(this->lensnote);
 
   this->abbreviateName();
   
@@ -361,7 +361,7 @@ bool PDClient::processLensName() {
     this->tfl = this->zoom;
   }
   
-  Serial.println("Done processing lens name");
+  //Serial.println("Done processing lens name");
   return true;
 }
 
@@ -644,8 +644,8 @@ void PDClient::finishMap() {
 
 /* IrisBuddy */
 void PDClient::setIris(uint16_t newiris) {
-  Serial.print("Setting newiris to ");
-  Serial.println(newiris);
+  Serial.print("Setting newiris to 0x");
+  Serial.println(newiris, HEX);
 
   this->newiris = newiris;
 }

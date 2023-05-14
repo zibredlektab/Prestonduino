@@ -88,10 +88,10 @@ void PDServer::onLoop() {
 
   while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
-    Serial.println(F("Message available"));
+    //Serial.println("Message available");
     this->buflen = sizeof(this->buf);
     if (this->manager->recvfromAck((uint8_t*)this->buf, &this->buflen, &this->lastfrom)) {
-      Serial.print(F("got message of "));
+      /*Serial.print(F("got message of "));
       Serial.print(this->buflen);
       Serial.print(F(" characters from 0x"));
       Serial.print(this->lastfrom, HEX);
@@ -100,11 +100,9 @@ void PDServer::onLoop() {
         Serial.print(" 0x");
         Serial.print(this->buf[i], HEX);
       }
-      Serial.println();
+      Serial.println();*/
       
       int type = this->buf[0];
-      Serial.print("type of message is 0x");
-      Serial.println(type, HEX);
       
       switch (type) {
         case 0: { // request for a new address
@@ -137,6 +135,8 @@ void PDServer::onLoop() {
         }
 
         case 3: { // "OK" message, or start mapping
+          Serial.print("Got an OK message from client 0x");
+          Serial.println(this->lastfrom, HEX);
           if (this->buf[1] == '*') { // starting aperture value will be an asterisk
             this->startMap();
           } else {
@@ -147,6 +147,8 @@ void PDServer::onLoop() {
         }
 
         case 4: { // "NO" message, or don't map
+          Serial.print("Got a NO message from client 0x");
+          Serial.println(this->lastfrom, HEX);
           this->finishMap();
           break;
         }
@@ -154,6 +156,8 @@ void PDServer::onLoop() {
         case 5: { // new data
           // TODO determine if we control desired axis & take control if needed
           // for now, assuming iris axis and assuming we have control
+          Serial.print("Got a data message from client 0x");
+          Serial.println(this->lastfrom, HEX);
           if (this->irisbuddy) {
             char newdata[5];
             uint16_t newiris = 0;
@@ -295,10 +299,11 @@ bool PDServer::updateSubs() {
     }
     
     uint8_t desc = this->subs[i].data_descriptor;
+    sendlen = this->getData(desc, tosend);
+    /*
     Serial.print(F("Updating client 0x"));
     Serial.print((this->channel * 0x10) + i, HEX);
     Serial.println();
-    sendlen = this->getData(desc, tosend);
     
     Serial.print("Sending ");
     Serial.print(sendlen);
@@ -307,7 +312,7 @@ bool PDServer::updateSubs() {
       Serial.print(" 0x");
       Serial.print(tosend[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
     
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
