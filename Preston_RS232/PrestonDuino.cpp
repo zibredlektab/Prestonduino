@@ -17,7 +17,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
 
-  Serial.println("Starting PrestonDuino");
+  //Serial.println("Starting PrestonDuino");
 
   this->rootmsg = new mdr_message;
 
@@ -25,7 +25,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   ser->setTimeout(this->timeout);
 
-  Serial.println("Getting lens name");
+  //Serial.println("Getting lens name");
 
   for (int i = 0; i < 50; i++) {
     this->lensname[i] = 0;
@@ -51,7 +51,7 @@ void PrestonDuino::shutUp() {
 }
 
 void PrestonDuino::setMDRMode(uint8_t newmodeh, uint8_t newmodel, uint8_t newdata) {
-  Serial.println("Setting MDR mode");
+  //Serial.println("Setting MDR mode");
 
   this->mode(newmodeh, newmodel); // start streaming mode, requesting actual positions, controlling the AUX channel
   this->sendBytesToMDR();
@@ -147,7 +147,7 @@ bool PrestonDuino::rcv() {
           if (this->rcvlen < 99) {
             this->rcvbuf[rcvlen++] = ETX;
           } else {
-            Serial.println("Read a suspiciously large amount of data...");
+            //Serial.println("Read a suspiciously large amount of data...");
           }
           
           return true;
@@ -209,19 +209,19 @@ int PrestonDuino::parseRcv() {
     // check validity of message todo
     
     if (!this->validatePacket()) {
-      /*Serial.print("Packet failed validity check: ");
+      /*//Serial.print("Packet failed validity check: ");
       for (int i = 0; i < this->rcvlen; i++) {
-        Serial.print(" 0x");
-        Serial.print(this->rcvbuf[i], HEX);
+        //Serial.print(" 0x");
+        //Serial.print(this->rcvbuf[i], HEX);
       }
-      Serial.println();*/
+      //Serial.println();*/
       return -2;
     }
     
     switch (this->rcvpacket->getMode()) {
       case 0x11: {
         // Reply is an error message
-        Serial.println("Rcv packet is an error");
+        //Serial.println("Rcv packet is an error");
         response = -3;
         // TODO actual error handling?
         break;
@@ -232,12 +232,12 @@ int PrestonDuino::parseRcv() {
         response = this->rcvpacket->getDataLen();
 
         /*
-        Serial.print("The data is: ");
+        //Serial.print("The data is: ");
         for (int i = 0; i < response; i++) {
-          Serial.print(" 0x");
-          Serial.print(this->rcvpacket->getData()[i], HEX);
+          //Serial.print(" 0x");
+          //Serial.print(this->rcvpacket->getData()[i], HEX);
         }
-        Serial.println();
+        //Serial.println();
         */
 
         int dataindex = 0;
@@ -310,7 +310,12 @@ int PrestonDuino::parseRcv() {
           // mdr firmware
           arraytofill = this->fwname;
         } else {
-          //Serial.println("unknown info type received, something has gone wrong.");
+          //Serial.println("unknown info type received:");
+          for (int i = 1; i < this->rcvlen; i++) {
+            //Serial.print(" 0x");
+            //Serial.print(this->rcvpacket->getData()[i], HEX);
+          }
+          //Serial.println();
           break;
         }
 
@@ -318,12 +323,15 @@ int PrestonDuino::parseRcv() {
 
         memcpy(arraytofill, &this->rcvpacket->getData()[2], this->lensnamelen - 1);
         arraytofill[this->lensnamelen] = 0; // null terminate the string
-        /*Serial.print("new info: ");
+        //Serial.print("new info: ");
         for (int i = 0; i < this->rcvpacket->getDataLen() - 1; i++) {
-          Serial.print(" 0x");
-          Serial.print(arraytofill[i], HEX);
+          //Serial.print(" 0x");
+          //Serial.print(arraytofill[i], HEX);
+          //Serial.print("(");
+          //Serial.print(arraytofill[i]);
+          //Serial.print(")");
         }
-        Serial.println();*/
+        //Serial.println();
         break;
       }
 
@@ -358,10 +366,10 @@ bool PrestonDuino::validatePacket() {
   int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
   if (0 && sum != this->rcvpacket->getSum()) {
-    Serial.print("checksum of incoming message is ");
-    Serial.print(this->rcvpacket->getSum());
-    Serial.print(", calculated checksum is ");
-    Serial.println(sum);
+    //Serial.print("checksum of incoming message is ");
+    //Serial.print(this->rcvpacket->getSum());
+    //Serial.print(", calculated checksum is ");
+    //Serial.println(sum);
   }
 
   return (sum == this->rcvpacket->getSum());
@@ -381,7 +389,7 @@ void PrestonDuino::sendNAK() {
   // Resend last packet
   //this->sendPacketToMDR(this->sendpacket);
   // Send NAK, don't wait for a reply (that will be handled elsewhere)
-  /*Serial.println("Sending NAK to MDR");
+  /*//Serial.println("Sending NAK to MDR");
   byte nak[1] = {NAK};
   this->queueForSend(nak, 1);*/
 }
@@ -394,19 +402,19 @@ bool PrestonDuino::queueForSend(byte* tosend, int len) {
   //Serial.println("Queuing a new message to be sent.");
 
   if (this->totalmessages > 10) {
-    Serial.println("PD has reached the limit on queued messages, can't store anymore.");
+    //Serial.println("PD has reached the limit on queued messages, can't store anymore.");
     return false;
   }
 
   mdr_message* newmsg = this->rootmsg;
 
   while (newmsg->nextmsg != NULL) {
-    /*Serial.print("There's already a message queued in this position:");
+    /*//Serial.print("There's already a message queued in this position:");
     for (int i = 0; i < newmsg->nextmsg->msglen; i++) {
-      Serial.print(" 0x");
-      Serial.print(newmsg->nextmsg->data[i], HEX);
+      //Serial.print(" 0x");
+      //Serial.print(newmsg->nextmsg->data[i], HEX);
     }
-    Serial.println();*/
+    //Serial.println();*/
 
     newmsg = newmsg->nextmsg;
   }
@@ -417,12 +425,12 @@ bool PrestonDuino::queueForSend(byte* tosend, int len) {
 
   this->totalmessages++;
 
-  /*Serial.print("Queued message:");
+  /*//Serial.print("Queued message:");
   for (int i = 0; i < len; i++) {
-    Serial.print(" 0x");
-    Serial.print(newmsg->data[i], HEX);
+    //Serial.print(" 0x");
+    //Serial.print(newmsg->data[i], HEX);
   }
-  Serial.println();*/
+  //Serial.println();*/
 
   return true;
 }
