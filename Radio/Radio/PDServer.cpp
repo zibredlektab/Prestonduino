@@ -255,7 +255,6 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     //Serial.print(F("distance (we don't do that yet) "));
   }
   if (datatype & DATA_NAME) {
-    this->lensnamelen = this->mdr->getLensNameLen();
     
     databuf[sendlen++] = this->lensnamelen; // add length of lens name to buffer
     databuf[sendlen++] = this->statussymbol;
@@ -400,6 +399,7 @@ void PDServer::processLensName() {
     this->statussymbol = '*';
 
     strcpy(this->curlens, this->fulllensname); // copy our new lens to current lens name, including the null
+    this->lensnamelen = this->mdr->getLensNameLen();
 
     this->makePath();
 
@@ -445,7 +445,7 @@ void PDServer::makePath() {
   // step through lens name, swapping pipes for directory levels
   // once we're two levels deep, store that as the directory name, and keep processing for the full path
 
-  for (int i = 0; i < 25; i++) {
+  for (int i = 0; i < sizeof(filedirectory); i++) {
     this->filedirectory[i] = 0;
     this->filefullname[i] = 0;
   }
@@ -470,9 +470,9 @@ void PDServer::makePath() {
   strncpy(this->filedirectory, this->filefullname, directoryendindex);
 
   // Remove trailing whitespace
-  for (int i = 13; i >= 0; i--) {
+  for (int i = 13; i >= 0; i--) { // lens names are at most 14 characters long
     if (this->filefullname[i] == ' ') {
-      this->filefullname[i] = '\0';
+      this->filefullname[i] = 0;
     } else {
       break;
     }
