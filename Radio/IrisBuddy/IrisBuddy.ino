@@ -396,12 +396,11 @@ void drawScreen() {
       const char* nt = pd->getLensNote();
       
       drawIris(ap);
-      
+
       drawName(br,sr,nm,nt);
       
     }
   
-    
     drawChannel(channel);
     //drawBatt();
   }

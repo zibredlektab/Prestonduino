@@ -16,12 +16,12 @@ PDClient::PDClient(int chan) {
   Serial.println(this->address, HEX);
   
   this->manager = new RHReliableDatagram(*this->driver, this->address);
-  Serial.println(F("Manager created, initializing"));
+  Serial.print("Manager created, initializing...");
   if (!this->manager->init()) {
-    Serial.println(F("RH manager init failed"));
+    Serial.println("RH manager init failed");
     this->error(ERR_RADIO);
   } else {
-    Serial.println(F("RH manager initialized"));
+    Serial.println("done");
     this->manager->setRetries(RETRIES);
     this->manager->setTimeout(TIMEOUT);
   }
@@ -37,11 +37,14 @@ PDClient::PDClient(int chan) {
     this->error(ERR_RADIO);
   }
 
-
   this->driver->setTxPower(23, false);
 
-  
   this->setChannel(chan);
+
+  Serial.print("Setting initial name...");
+  this->processLensName();
+  Serial.println("done");
+  Serial.println("Setup complete, waiting for data...");
 }
 
 bool PDClient::sendMessage(uint8_t type, uint8_t data) {
@@ -123,7 +126,6 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 }
 
 void PDClient::onLoop() {
-  
   if (this->manager->available()) {
     Serial.print("Message available, this long: ");
     uint8_t from;
@@ -172,6 +174,7 @@ void PDClient::onLoop() {
   if (this->errorstate > 0) {
     this->handleErrors();
   }*/
+
 }
 
 void PDClient::parseMessage() {
@@ -266,6 +269,10 @@ void PDClient::parseMessage() {
         if (this->buf[index + 1] != '.') {
           // if this is a new lens, or if we have not yet processed any lens information, process now
           Serial.println("this lens needs processing");
+          for (int i = 0; i < sizeof(this->fulllensname); i++) {
+            // null out the name before recording the new one
+            this->fulllensname[i] = 0;
+          }
           strncpy(this->fulllensname, &this->buf[index + 1], namelen); // skip the name length for processing
           this->processLensName();
         }
@@ -315,13 +322,13 @@ bool PDClient::processLensName() {
 
   this->lensbrand = &this->fulllensname[processfrom]; // first element of name is length of full name
   this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
-  this->lensseries[-1] = '\0'; // null terminator for brand
+  this->lensseries[-1] = 0; // null terminator for brand
   
   Serial.print("brand is ");
   Serial.println(this->lensbrand);
   
   this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
-  this->lensname[-1] = '\0'; // null terminator for series
+  this->lensname[-1] = 0; // null terminator for series
   
   Serial.print("series is ");
   Serial.println(this->lensseries);
@@ -333,7 +340,7 @@ bool PDClient::processLensName() {
     this->lensnote = strchr(this->lensname, 0);
   } else {
     this->lensnote = &this->lensnote[1];
-    this->lensnote[-1] = '\0'; // if there is further information, name needs a null terminator
+    this->lensnote[-1] = 0; // if there is further information, name needs a null terminator
   }
 
   
@@ -423,7 +430,6 @@ bool PDClient::setAddress(uint8_t newaddress) {
 uint8_t PDClient::getChannel() {
   return this->channel;
 }
-
 
 
 bool PDClient::setChannel(uint8_t newchannel) {

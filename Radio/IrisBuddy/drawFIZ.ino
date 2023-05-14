@@ -4,6 +4,7 @@ void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
     oled.setCursor(0, 8);
 
     if (strcmp(sr, "\0") == 0) {
+      // if there's no series name, then print the brand instead
       oled.print(br);
     }
     oled.print(sr);
@@ -15,7 +16,7 @@ void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
 
 void drawIris(uint16_t ap) {
   uint8_t x, y;
-    
+  /*
   double irisbaserounded, irisfraction;
   irisMath(ap, &irisbaserounded, &irisfraction);
 
@@ -30,15 +31,12 @@ void drawIris(uint16_t ap) {
   } else {
     sprintf(irislabel, "%d", (int)irisbaserounded);
   }
-
+*/
   x = X_OFFSET;
   y = Y_OFFSET;
   uint8_t irisx = x;
   
   oled.setCursor(irisx, y);
-
-  
-  
   oled.setFont(SMALL_FONT);
   oled.print(F("T")); //5pix
   oled.setCursor(irisx + 8, y);
