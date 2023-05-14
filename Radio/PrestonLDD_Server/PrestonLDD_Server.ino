@@ -4,7 +4,6 @@
 
 PDServer *pd;
 
-uint8_t pins[4] = {0, 1, 13, 14};
 
 unsigned long long lastchannelcheck;
 
@@ -12,9 +11,6 @@ void setup() {
 
   Serial.begin(115200);
   while(!Serial);
-  for (int i = 0; i < 4; i++) {
-    pinMode(pins[i], INPUT_PULLUP);
-  }
 
   
   uint8_t newchannel = readSwitch();
@@ -47,10 +43,10 @@ void loop() {
 uint8_t readSwitch() {
   return 0xA; // for now
   uint8_t value = 0;
-  for (int i = 0; i < 4; i++) {
+  /*for (int i = 0; i < 4; i++) {
     if (!digitalRead(pins[i])) {
       value += 1 << i;
     }
-  }
+  }*/
   return value;
 }
