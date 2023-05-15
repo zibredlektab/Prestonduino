@@ -66,8 +66,7 @@ PDServer::PDServer(uint8_t chan, HardwareSerial& mdrSerial) {
     this->mdr->shutUp();
     this->mdr->mode(0x01, 0x01);
     this->mdr->data(0x41); // irisbuddy only cares about iris data, and only encoder counts
-    uint8_t dataset[3] = {0x1, 0x88, 0x88};
-    this->mdr->data(dataset, 3);
+    this->mdr->setIris(0x8888);
   }
 
   Serial.println("Getting initial data");
@@ -149,6 +148,7 @@ void PDServer::onLoop() {
         case 4: { // "NO" message, or don't map
           Serial.print("Got a NO message from client 0x");
           Serial.println(this->lastfrom, HEX);
+          this->maplater = 
           this->finishMap();
           break;
         }
@@ -165,15 +165,17 @@ void PDServer::onLoop() {
             newiris += this->buf[2];
 
             uint16_t newpos = 0;
-            if (mapped) {
+            if (this->mapped) {
               newpos = AVToPosition(newiris); // get encoder position from parsed AV
+              Serial.print("Moving iris to AV ");
+              Serial.println(newpos);
             } else {
               // if mapping is not complete, this data is a raw encoder value so it can be passed straight along
               newpos = newiris;
+              Serial.print("Moving iris to position 0x");
+              Serial.println(newpos, HEX);
             }
 
-            Serial.print("Moving iris to 0x");
-            Serial.println(newpos, HEX);
             byte dataset[3] = {0x1, highByte(newpos), lowByte(newpos)};
             mdr->data(dataset, 3); // spin the iris motor to that position
           }
@@ -233,7 +235,18 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     //Serial.print(F("iris ("));
     //Serial.print(this->iris);
     //Serial.print(") ");
-    sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
+
+    // if lens has not been mapped, we send encoder values (this->iris)
+    // otherwise, we get the mapped iris value and send that instead
+    // uint16_t either way
+
+    if (this->mapped) {
+      uint16_t av = this->positionToAV(this->iris);
+      sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)av);
+    } else {
+      sendlen += snprintf(&databuf[sendlen], 20, "%04lX", (unsigned long)this->iris);
+    }
+
 
   }
   if (datatype & DATA_FOCUS) {
@@ -303,15 +316,15 @@ bool PDServer::updateSubs() {
     Serial.print(F("Updating client 0x"));
     Serial.print((this->channel * 0x10) + i, HEX);
     Serial.println();
-    
+    */
     Serial.print("Sending ");
     Serial.print(sendlen);
-    Serial.println(F(" bytes:"));
+    Serial.print(" bytes:");
     for (int i = 0; i < sendlen; i++) {
       Serial.print(" 0x");
       Serial.print(tosend[i], HEX);
     }
-    Serial.println();*/
+    Serial.println();
     
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
@@ -413,7 +426,7 @@ void PDServer::processLensName() {
           // read through file byte by byte to reconstruct lens table
           this->lensmap[i] = this->lensfile.read();
           this->lensmap[i] += this->lensfile.read() * 0x100;
-          Serial.print("[F/");
+          Serial.print("[T");
           Serial.print(this->stops[i]);
           Serial.print(": 0x");
           Serial.print(this->lensmap[i], HEX);
@@ -421,13 +434,18 @@ void PDServer::processLensName() {
         }
         Serial.println();
         Serial.println("Finished loading lens data");
-
         this->lensfile.close();
+
+        this->mapping = false;
+        this->mapped = true;
+
       } else {
         Serial.println("There was an error opening lens data file");
       }
     } else {
       Serial.println("This lens has not been mapped.");
+      this->mapped = false;
+      this->mapping = false;
     }
 
     return;
@@ -435,7 +453,7 @@ void PDServer::processLensName() {
 
   if (!this->newlens) { // don't change the status symbol until the clients have been notified of the new lens
     this->statussymbol = '.';
-    if (!SD.exists(this->filefullname)) this->statussymbol = '!';
+    if (!this->mapped) this->statussymbol = '!';
     if (this->mapping) this->statussymbol = '&';
   }
 
@@ -625,7 +643,11 @@ void PDServer::irisToAux() {
 }
 
 uint16_t PDServer::AVToPosition(uint16_t avnumber) {
+  Serial.print("Finding position from AV ");
+  Serial.print(avnumber);
+  Serial.print("...");
   if (!this->mapped) {
+    Serial.println("Lens is not mapped, cannot find position");
     return 0;
   }
   if (avnumber >= 9) { // we don't support above t22
@@ -640,10 +662,15 @@ uint16_t PDServer::AVToPosition(uint16_t avnumber) {
   avnceil = avnfloor + 100;
   uint16_t newposition = map(avnumber, avnfloor, avnceil, this->lensmap[avnfloor], this->lensmap[avnceil]);
 
+  Serial.print("0x");
+  Serial.println(newposition, HEX);
   return newposition;
 }
 
 uint16_t PDServer::positionToAV(uint16_t position) {
+  Serial.print("Finding AV from position 0x");
+  Serial.print(position, HEX);
+  Serial.print("...");
   if (!this->mapped) {
     Serial.println("Lens is not mapped, cannot find AV");
     return 0;
@@ -667,6 +694,8 @@ uint16_t PDServer::positionToAV(uint16_t position) {
   avnfrac = map(position, this->lensmap[avnfloor], this->lensmap[avnceil], 0, 100);
   
   avnumber = (avnfloor * 100) + avnfrac; // complete AV number, with whole and fraction
+
+  Serial.println(avnumber);
 
   return avnumber;
 }
