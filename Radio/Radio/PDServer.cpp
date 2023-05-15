@@ -84,6 +84,7 @@ void PDServer::onLoop() {
 
   mdr->onLoop();
   this->processLensName();
+  this->makeStatusSymbol();
 
   while(!this->manager->waitPacketSent(100));
   if (this->manager->available()) {
@@ -148,8 +149,11 @@ void PDServer::onLoop() {
         case 4: { // "NO" message, or don't map
           Serial.print("Got a NO message from client 0x");
           Serial.println(this->lastfrom, HEX);
-          this->maplater = 
-          this->finishMap();
+          if (this->mapping) {
+            this->finishMap();
+          } else {
+            this->mapLater();
+          }
           break;
         }
 
@@ -273,10 +277,6 @@ uint8_t PDServer::getData(uint8_t datatype, char* databuf) {
     databuf[sendlen++] = this->statussymbol;
     strcpy(&databuf[sendlen], curlens);
     sendlen += this->lensnamelen;
-    if (this->newlens) {
-      Serial.println("this is no longer a new lens.");
-      this->newlens = false;
-    }
   }
 
   if (sendlen > 0) {
@@ -391,12 +391,19 @@ void PDServer::startMap() {
   Serial.println("Starting map");
 
   this->mapping = true;
+  this->maplater = false;
 
   if (onering) mdr->data(0x49); // Switch MDR over to reading iris and aux encoder positions (irisbuddy mode is already reading the correct info)
 
   for (int i = 0; i < 10; i++) {
     this->lensmap[i] = 0;
   }
+}
+
+void PDServer::mapLater() {
+  Serial.println("Delaying mapping");
+  this->maplater = true;
+  this->mapping = false;
 }
 
 void PDServer::processLensName() {
@@ -407,9 +414,6 @@ void PDServer::processLensName() {
     Serial.print(this->curlens);
     Serial.print(" to ");
     Serial.println(this->fulllensname);
-    
-    this->newlens = true;
-    this->statussymbol = '*';
 
     strcpy(this->curlens, this->fulllensname); // copy our new lens to current lens name, including the null
     this->lensnamelen = this->mdr->getLensNameLen();
@@ -417,7 +421,7 @@ void PDServer::processLensName() {
     this->makePath();
 
     if (SD.exists(this->filefullname)) { // check if this new lens has been mapped
-      Serial.println("lens has already been mapped");
+      Serial.print("lens has already been mapped, opening file...");
       this->lensfile = SD.open(this->filefullname, FILE_READ); // open existing file
 
       if (this->lensfile) {
@@ -432,31 +436,41 @@ void PDServer::processLensName() {
           Serial.print(this->lensmap[i], HEX);
           Serial.print("] ");
         }
-        Serial.println();
-        Serial.println("Finished loading lens data");
+        Serial.println("...done");
         this->lensfile.close();
 
         this->mapping = false;
         this->mapped = true;
+        this->maplater = false;
+
+        return;
 
       } else {
-        Serial.println("There was an error opening lens data file");
+        Serial.print("there was an error opening lens data file at ");
+        Serial.println(this->fulllensname);
       }
-    } else {
-      Serial.println("This lens has not been mapped.");
-      this->mapped = false;
-      this->mapping = false;
     }
 
+    Serial.println("This lens has not been mapped.");
+    this->mapped = false;
+    this->mapping = false;
+    this->maplater = false;
     return;
   }
+}
 
-  if (!this->newlens) { // don't change the status symbol until the clients have been notified of the new lens
+void PDServer::makeStatusSymbol() {
+  if (!this->mapped) {
+    if (this->mapping) {
+      this->statussymbol = '&';
+    } else if (this->maplater) {
+      this->statussymbol = '%';
+    } else {
+      this->statussymbol = '!';
+    }
+  } else {
     this->statussymbol = '.';
-    if (!this->mapped) this->statussymbol = '!';
-    if (this->mapping) this->statussymbol = '&';
   }
-
 }
 
 void PDServer::makePath() {
@@ -522,6 +536,7 @@ void PDServer::finishMap() {
   }
   this->mapped = true;
   this->mapping = false;
+  this->maplater = false; // this should already be false, but just in case
   this->curmappingav = -1;
 
   for (int i = 0; i < 10; i++) { 

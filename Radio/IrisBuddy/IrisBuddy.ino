@@ -19,7 +19,7 @@
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
 
-#define NEWLENSDELAY 3000
+#define LENSCHANGEDELAY 7000
 
 #define BUTTON_A  9
 #define BUTTON_B  6
@@ -39,24 +39,23 @@ static InputDebounce down;
 int channel = 0xA;
 bool changingchannel = false;
 unsigned long long int timechannelchanged = 0;
-unsigned long long int newlensnotice = 0;
+unsigned long long int lenschangenotice = 0;
 
-int dialog = 0; // see below
+int prevdialog = 0; // for returning to previous states
+int dialog = 0; // User-navigable interfaces
 /*
  * Dialogs:
  * 0 - none
  * 1 - menu
- * 2 - map now?
+ * 2 - new lens
  * 3 - WFO selection
  * 4 - Mapping
- * 5 - new lens
+ * 5 - lens change
  */
 
 int menuselected = 0;
 bool submenu = false;
 int choffset = 0;
-
-bool maplater = false;
 
 static char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
 uint8_t curmappingav = 1;
@@ -68,11 +67,55 @@ void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int 
   }
 }
 
+void changeDialog(int newdialog, bool savestate = true) {
+  switch(newdialog) {
+    case 0: {
+      Serial.println("Changing dialog to normal view");
+      break;
+    }
+    case 1: {
+      Serial.println("Changing dialog to main menu");
+      break;
+    }
+    case 2: {
+      Serial.println("Changing dialog to new lens");
+      break;
+    }
+    case 3: {
+      Serial.println("Changing dialog to WFO");
+      break;
+    }
+    case 4: {
+      Serial.println("Changing dialog to mapping");
+      break;
+    }
+    case 5: {
+      Serial.println("Changing dialog to lens change");
+      break;
+    }
+  }
+  if (savestate) prevdialog = dialog;
+  dialog = newdialog;
+}
+
 void callback_pressed(uint8_t pinIn) {
-  //Serial.print("Button pressed: ");
-  //Serial.print(pinIn);
-  //Serial.print(", dialog = ");
-  //Serial.println(dialog);
+  Serial.print("----Button ");
+  switch (pinIn) {
+    case BUTTON_A: {
+      Serial.print("A ");
+      break;
+    } case BUTTON_B: {
+      Serial.print("B ");
+      break;
+    } case BUTTON_C: {
+      Serial.print("C ");
+      break;
+    } default: {
+      Serial.print(pinIn);
+      break;
+    }
+  }
+  Serial.println("pressed----");
 
   if (pinIn == 18) {
     Serial.println("Closing iris");
@@ -102,7 +145,7 @@ void callback_pressed(uint8_t pinIn) {
             break;
           }
           case BUTTON_B: {
-            dialog = 1; // open main menu
+            changeDialog(1); // open main menu
             break;
           }
         }
@@ -134,7 +177,7 @@ void callback_pressed(uint8_t pinIn) {
               case 1: { // Map now
                 Serial.println("map lens now");
                 pd->startMap();
-                dialog = 3;
+                changeDialog(3);
                 break;
               }
               
@@ -146,7 +189,7 @@ void callback_pressed(uint8_t pinIn) {
               case 3: { // Back
                 menuselected = 0; // reset menu selection for next time
                 Serial.println("closing menu");
-                dialog = 0; // return to normal view
+                changeDialog(0, false); // return to normal view
                 break;
               }
             }
@@ -165,17 +208,15 @@ void callback_pressed(uint8_t pinIn) {
       case 2: { // Map lens now?
         switch(pinIn) {
           case BUTTON_A: {
-            maplater = true;
             pd->mapLater();
-            dialog = 0;
+            changeDialog(prevdialog, false);
             break;
           }
           
           case BUTTON_C: {
             Serial.println("map now");
-            maplater = false;
             pd->startMap();
-            dialog = 3;
+            changeDialog(3, false);
             break;
           }
         }
@@ -195,7 +236,7 @@ void callback_pressed(uint8_t pinIn) {
 
           case BUTTON_B: {
             Serial.println("WFO selected");
-            dialog = 4;
+            changeDialog(4, false);
             break;
           }
           
@@ -215,7 +256,7 @@ void callback_pressed(uint8_t pinIn) {
           case BUTTON_A: { // Finish
             pd->finishMap();
             curmappingav = 1;
-            dialog = 0;
+            changeDialog(0, false);
             break;
           }
 
@@ -225,7 +266,7 @@ void callback_pressed(uint8_t pinIn) {
             if (curmappingav == 10) {
               pd->finishMap();
               curmappingav = 1;
-              dialog = 0;
+              changeDialog(0, false);
             }
             break;
           }
@@ -242,7 +283,7 @@ void callback_pressed(uint8_t pinIn) {
       case 5: { // Lens changed
         switch(pinIn) {
           case BUTTON_B: {
-            newlensnotice = 0;
+            lenschangenotice = 0;
             break;
           }
         }
@@ -331,14 +372,18 @@ void loop() {
   readButtons();
   pd->onLoop();
 
-  if (!pd->isLensMapped() && ! pd->isLensMapping() && !pd->isMapLater()) {
-    dialog = 2;
-  } else if (pd->isNewLens()) {
-    newlensnotice = millis();
-  } else if (millis() > newlensnotice + NEWLENSDELAY) {
-    dialog = 5;
-  } else {
-    dialog = 0;
+  if (!pd->isLensMapped() && !pd->isMapLater()) {
+    // Lens isn't mapped, and we have not decided to delay mapping
+    changeDialog(2);
+  } else if (pd->didLensChange()) {
+    // Lens changed, and is mapped already
+    lenschangenotice = millis();
+    changeDialog(5);
+  }
+  if (millis() > lenschangenotice + LENSCHANGEDELAY && dialog == 5) {
+    // if the timer is up, and we're still displaying dialog 5, go back to normal view
+    Serial.println("Time's up, removing lens change alert");
+    changeDialog(0, false);
   }
 
   drawScreen();
@@ -380,8 +425,8 @@ void drawScreen() {
   if (dialog > 0) {
     drawDialog();
   } else {
-    if (er > 0) {
-      //drawError(er);
+    if (0 && er > 0) { //TODO
+      drawError(er);
     } else {
     
       uint16_t ap = pd->getIris();
@@ -517,13 +562,14 @@ void drawDialog() {
       oled.setCursor(10, 48);
       oled.print(pd->getLensNote());
 
-      int newlenscutoffsec = (newlensnotice + NEWLENSDELAY + 1) / 1000;
+      int newlenscutoffsec = (lenschangenotice + LENSCHANGEDELAY + 1) / 1000;
       int millissec = (millis() + 1) / 1000;
   
       oled.setCursor(110, 60);
       oled.print(newlenscutoffsec - millissec);
     
       drawButton(1, "ok");
+      break;
     }
   }
 }

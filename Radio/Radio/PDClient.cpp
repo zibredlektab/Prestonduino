@@ -127,26 +127,26 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 
 void PDClient::onLoop() {
   if (this->manager->available()) {
-    //Serial.print("Message available, this long: ");
+    Serial.print("\nMessage available, ");
     uint8_t from;
     this->buflen = sizeof(this->buf);
     if (manager->recvfrom((uint8_t*)this->buf, &this->buflen, &from)) {
-      //Serial.println(this->buflen);
+      Serial.print(this->buflen);
+      Serial.print(" bytes:");
       this->timeoflastmessagefromserver = millis();
       this->clearError(); // Server is responding
       
       
-      /*
+      
       for (int i = 0; i < this->buflen; i++) {
         if (i < 2) {
-          Serial.print(F("0x"));
+          Serial.print(" 0x");
           Serial.print(this->buf[i], HEX);
-          Serial.print(F(" "));
         } else {
           Serial.print((char)this->buf[i]);
         }
       }
-      Serial.println();*/
+      Serial.println();
       
       this->parseMessage();
 
@@ -184,8 +184,8 @@ void PDClient::parseMessage() {
   //Serial.println(messagetype, HEX);
   switch (messagetype) {
     case 0xF:
-      Serial.print(F("Message is an error, of type "));
-      Serial.println(this->buf[1]);
+      Serial.print("Message is an error, of type 0x");
+      Serial.println(this->buf[1], HEX);
       this->error(this->buf[1]);
       break;
       
@@ -207,27 +207,21 @@ void PDClient::parseMessage() {
       uint8_t index = 1;
       
       uint8_t datatype = this->buf[index++];
-      //Serial.print("data type of data is 0x");
-      //Serial.println(datatype, HEX);
+      Serial.print("data type of data is 0x");
+      Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
         // Iris data is AV number * 100 if the lens is mapped, or raw encoder data if not
 
-        //Serial.print("Received data includes iris: ");
+        Serial.print("Received data includes iris: ");
         char data[5];
         strncpy(data, &this->buf[index], 4);
         data[4] = 0;
         index += 4;
-        //Serial.println(data);
-
-        //static uint16_t tempiris = 0;
 
         sscanf(data, "%4hx", &this->iris);
 
-        //this->iris = tempiris;
-
-        //Serial.print("Iris is ");
-        //Serial.println(this->iris);
+        Serial.println(this->iris);
       }
 
       if (datatype & DATA_FOCUS) {
@@ -263,18 +257,15 @@ void PDClient::parseMessage() {
       }
 
       if (datatype & DATA_NAME) {
-        //Serial.print("Recieved data includes lens name: ");
+        Serial.print("Recieved data includes lens name: ");
         uint8_t namelen = this->buf[index]; // first byte of name is length of name
-
-        if (this->buf[index + 1] != '.') {
-          // if this is a new lens, or if we have not yet processed any lens information, process now
-          for (int i = 0; i < sizeof(this->fulllensname); i++) {
-            // null out the name before recording the new one
-            this->fulllensname[i] = 0;
-          }
-          strncpy(this->fulllensname, &this->buf[index + 1], namelen); // skip the name length for processing
-          this->processLensName();
+        for (int i = 0; i < sizeof(this->fulllensname); i++) {
+          // null out the name before recording the new one
+          this->fulllensname[i] = 0;
         }
+        strncpy(this->fulllensname, &this->buf[index + 1], namelen); // skip the name length for processing
+        Serial.println(this->fulllensname);
+        this->processLensName();
       
       }
       break;
@@ -286,100 +277,110 @@ void PDClient::parseMessage() {
 
 
 bool PDClient::processLensName() {
-  // Format of name is: [length of name][status symbol][brand]|[series]|[name] [note]
-  // length of name does not includes status symbol
-  // status symbols: '.' = not new lens, '*' = new lens, '!' = lens needs mapping, '&' = currently mapping, '%' = mapping delayed
-  //Serial.print("full name is ");
-  //Serial.println(this->fulllensname);
+  // Format of name is: [status symbol][brand]|[series]|[name] [note]
+  // status symbols: '.' = standard mapped lens, '!' = lens needs mapping, '&' = currently mapping, '%' = mapping delayed
 
-  //Serial.print("status symbol is ");
-  //Serial.print(this->fulllensname[0]);
-  //Serial.print(", which means ");
+  Serial.print("full name is ");
+  Serial.println(this->fulllensname);
+
+  Serial.print("status symbol is ");
+  Serial.print(this->fulllensname[0]);
+  Serial.print(", which means ");
 
   switch(this->fulllensname[0]) {
     case '.': {
-      //Serial.println("this lens info needs no further processing.");
+      Serial.println("this lens info needs no further processing.");
       this->mapping = false;
       this->mapped = true;
-      this->newlens = false;
-      this->maplater = false;
-      break;
-    }
-    case '*': {
-      Serial.print("This is a new lens: ");
-      Serial.println(this->fulllensname);
-      this->newlens = true;
-      this->mapped = false;
-      this->mapping = false;
       this->maplater = false;
       break;
     }
     case '!': {
-      //Serial.println("this lens needs to be mapped.");
-      this->newlens = false;
+      Serial.println("this lens needs to be mapped.");
       this->mapped = false;
       this->mapping = false;
       this->maplater = false;
       break;
     }
     case '&': {
-      //Serial.println("this lens is currently being mapped.");
-      this->newlens = false;
+      Serial.println("this lens is currently being mapped.");
       this->mapped = false;
       this->mapping = true;
       this->maplater = false;
       break;
     }
     case '%': {
-      this->newlens = false;
+      Serial.println("this lens needs to be mapped, but we're not mapping it yet.");
       this->mapping = false;
       this->mapped = false;
       this->maplater = true;
+      break;
     }
   }
 
   int processfrom = 1; // index from which to start processing lens name
 
-  this->lensbrand = &this->fulllensname[processfrom]; // first element of name is length of full name
-  this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
-  this->lensseries[-1] = 0; // null terminator for brand
-  
-  //Serial.print("brand is ");
-  //Serial.println(this->lensbrand);
-  
-  this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
-  this->lensname[-1] = 0; // null terminator for series
-  
-  //Serial.print("series is ");
-  //Serial.println(this->lensseries);
-  
-  this->lensnote = strchr(this->lensname, ' '); // find separator between name and note
-  if (this->lensnote == NULL) {
-    // Lens name does not always include further information (no serial number / note)
-    //Serial.println("Lens name does not contain a serial number or note");
-    this->lensnote = strchr(this->lensname, 0);
+  if (strcmp(&this->fulllensname[processfrom], this->curlens) != 0) {
+    // This is a new lens
+    this->lenschanged = true;
+    Serial.println("Lens has changed");
+
+    strcpy(this->curlens, &this->fulllensname[processfrom]);
+
+    strcpy(this->lensbrand, this->curlens);
+    this->lensseries = strchr(this->lensbrand, '|') + 1; // find separator between brand and series
+    this->lensseries[-1] = 0; // null terminator for brand
+    
+    Serial.print("brand is ");
+    Serial.println(this->lensbrand);
+    
+    this->lensname = strchr(this->lensseries, '|') + 1; // find separator between series and name
+    this->lensname[-1] = 0; // null terminator for series
+    
+    Serial.print("series is ");
+    Serial.println(this->lensseries);
+    
+    this->lensnote = strchr(this->lensname, ' '); // find separator between name and note
+    if (this->lensnote == NULL) {
+      // Lens name does not always include further information (no serial number / note)
+      Serial.println("Lens name does not contain a serial number or note");
+      this->lensnote = strchr(this->lensname, 0);
+    } else {
+      this->lensnote = &this->lensnote[1];
+      this->lensnote[-1] = 0; // if there is further information, name needs a null terminator
+    }
+
+    
+    Serial.print("name is ");
+    Serial.println(this->lensname);
+    Serial.print("note is ");
+    Serial.println(this->lensnote);
+
+    this->abbreviateName();
+    
+    if (this->isZoom()) {
+      sscanf (this->lensname, "%hu-%hu", &this->wfl, &this->tfl);
+    } else {
+      uint8_t i;
+      sscanf(this->lensname, "%hu", &this->zoom); // prime focal length is not reported with standard lens data
+      this->zoom *= 100; // need to convert to "high res" focal length format
+      this->wfl = this->zoom;
+      this->tfl = this->zoom;
+    }
   } else {
-    this->lensnote = &this->lensnote[1];
-    this->lensnote[-1] = 0; // if there is further information, name needs a null terminator
+    this->lenschanged = false;
+    Serial.println("Lens has not changed");
   }
 
-  
-  //Serial.print("name is ");
-  //Serial.println(this->lensname);
-  //Serial.print("note is ");
-  //Serial.println(this->lensnote);
-
-  this->abbreviateName();
-  
-  if (this->isZoom()) {
-    sscanf (this->lensname, "%hu-%hu", &this->wfl, &this->tfl);
-  } else {
-    uint8_t i;
-    sscanf(this->lensname, "%hu", &this->zoom); // prime focal length is not reported with standard lens data
-    this->zoom *= 100; // need to convert to "high res" focal length format
-    this->wfl = this->zoom;
-    this->tfl = this->zoom;
-  }
+  Serial.print("[");
+  Serial.print(this->lensbrand);
+  Serial.print("][");
+  Serial.print(this->lensseries);
+  Serial.print("][");
+  Serial.print(this->lensname);
+  Serial.print("][");
+  Serial.print(this->lensnote);
+  Serial.println("]");
   
   //Serial.println("Done processing lens name");
   return true;
@@ -620,8 +621,8 @@ bool PDClient::isZoom() {
   return false;
 }
 
-bool PDClient::isNewLens() {
-  return this->newlens;
+bool PDClient::didLensChange() {
+  return this->lenschanged;
 }
 
 bool PDClient::isLensMapped() {
@@ -639,31 +640,25 @@ bool PDClient::isMapLater() {
 /* OneRing */
 
 void PDClient::mapLater() {
-  Serial.println("mapping later");
-  this->mapped = false;
-  this->mapping = false;
-  this->maplater = true;
+  Serial.println("Telling server to map later");
   this->sendMessage(4, 0);
+  this->maplater = true; // this feels kludgy but it will help
 }
 
 void PDClient::startMap() {
-  this->mapped = false;
-  this->mapping = true;
-  this->maplater = false;
+  Serial.println("Telling server to start map");
   this->sendMessage(3, '*');
 }
 
 void PDClient::mapLens(uint8_t curav) {
-  Serial.print("mapping now, starting av is ");
-  Serial.println(curav);
+  Serial.print("Telling server to save AV ");
+  Serial.print(curav);
   this->sendMessage(3, curav);
 }
 
 void PDClient::finishMap() {
-  Serial.println("Finishing map");
+  Serial.println("Telling server to finish mapping");
   this->sendMessage(4, 0);
-  this->mapped = true;
-  this->mapping = false;
 }
 
 /* IrisBuddy */

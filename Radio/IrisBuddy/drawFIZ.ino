@@ -1,17 +1,27 @@
 
 void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
-    oled.setFont(SMALL_FONT);
-    oled.setCursor(0, 8);
+  Serial.print("Full name to display is [");
+  Serial.print(br);
+  Serial.print("][");
+  Serial.print(sr);
+  Serial.print("][");
+  Serial.print(nm);
+  Serial.print("][");
+  Serial.print(nt);
+  Serial.println("]");
+  
+  oled.setFont(SMALL_FONT);
+  oled.setCursor(0, 8);
 
-    if (strcmp(sr, "\0") == 0) {
-      // if there's no series name, then print the brand instead
-      oled.print(br);
-    }
-    oled.print(sr);
-    oled.print(" ");
-    oled.print(nm);
-    oled.print("\n");
-    oled.print(nt);
+  if (strcmp(sr, "\0") == 0) {
+    // if there's no series name, then print the brand instead
+    oled.print(br);
+  }
+  oled.print(sr);
+  oled.print(" ");
+  oled.print(nm);
+  oled.print("\n");
+  oled.print(nt);
 }
 
 void drawIris(uint16_t ap) {
@@ -55,7 +65,7 @@ void drawIris(uint16_t ap) {
 
 
 void drawError(uint8_t errorstate) {
-  return;
+
   oled.setFont(SMALL_FONT);
   oled.setTextWrap(true);
   oled.setCursor(15,15);
