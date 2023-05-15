@@ -79,8 +79,9 @@ class PDClient {
     char* lensnote;
 
     bool newlens = false;
-    bool mapped = false;
+    bool mapped = true;
     bool mapping = false;
+    bool maplater = false;
     uint16_t newiris = 0x0;
     unsigned long long timesinceiriscommand = 0;
     
@@ -134,6 +135,7 @@ class PDClient {
 
     bool isLensMapped();
     bool isLensMapping();
+    bool isMapLater();
 
     void setIris(uint16_t newiris);
 

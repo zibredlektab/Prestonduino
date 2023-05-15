@@ -19,6 +19,8 @@
 #define Y_OFFSET_BTM 15
 #define Y_OFFSET_TOP 30
 
+#define NEWLENSDELAY 3000
+
 #define BUTTON_A  9
 #define BUTTON_B  6
 #define BUTTON_C  5
@@ -36,7 +38,8 @@ static InputDebounce down;
 
 int channel = 0xA;
 bool changingchannel = false;
-unsigned long long int timechannelchanged;
+unsigned long long int timechannelchanged = 0;
+unsigned long long int newlensnotice = 0;
 
 int dialog = 0; // see below
 /*
@@ -46,12 +49,14 @@ int dialog = 0; // see below
  * 2 - map now?
  * 3 - WFO selection
  * 4 - Mapping
+ * 5 - new lens
  */
 
 int menuselected = 0;
 bool submenu = false;
 int choffset = 0;
 
+bool maplater = false;
 
 static char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
 uint8_t curmappingav = 1;
@@ -71,10 +76,18 @@ void callback_pressed(uint8_t pinIn) {
 
   if (pinIn == 18) {
     Serial.println("Closing iris");
-    if (pd->getIris() < 64535) pd->setIris(pd->getIris() + 1000);
+    if (!pd->isLensMapped()) {
+      if (pd->getIris() < 64535) pd->setIris(pd->getIris() + 1000);
+    } else {
+      if (pd->getIris() < 891) pd->setIris(pd->getIris() + 10);
+    }
   } else if (pinIn == 17) {
     Serial.println("Opening iris");
-    if (pd->getIris() > 1000) pd->setIris(pd->getIris() - 1000);
+    if (!pd->isLensMapped()) {
+      if (pd->getIris() > 1000) pd->setIris(pd->getIris() - 1000);
+    } else {
+      if (pd->getIris() > 9) pd->setIris(pd->getIris() - 10);
+    }
   } else {
   
     switch(dialog) {
@@ -152,6 +165,7 @@ void callback_pressed(uint8_t pinIn) {
       case 2: { // Map lens now?
         switch(pinIn) {
           case BUTTON_A: {
+            maplater = true;
             pd->mapLater();
             dialog = 0;
             break;
@@ -159,6 +173,7 @@ void callback_pressed(uint8_t pinIn) {
           
           case BUTTON_C: {
             Serial.println("map now");
+            maplater = false;
             pd->startMap();
             dialog = 3;
             break;
@@ -221,6 +236,16 @@ void callback_pressed(uint8_t pinIn) {
           }
         }
         
+        break;
+      }
+
+      case 5: { // Lens changed
+        switch(pinIn) {
+          case BUTTON_B: {
+            newlensnotice = 0;
+            break;
+          }
+        }
         break;
       }
     }
@@ -306,7 +331,15 @@ void loop() {
   readButtons();
   pd->onLoop();
 
-  if (pd->isNewLens() && !pd->isLensMapped()) dialog = 2;
+  if (!pd->isLensMapped() && ! pd->isLensMapping() && !pd->isMapLater()) {
+    dialog = 2;
+  } else if (pd->isNewLens()) {
+    newlensnotice = millis();
+  } else if (millis() > newlensnotice + NEWLENSDELAY) {
+    dialog = 5;
+  } else {
+    dialog = 0;
+  }
 
   drawScreen();
 
@@ -468,6 +501,29 @@ void drawDialog() {
       drawButton(1, "ok");
       drawButton(2, "finish");
       break;
+    }
+
+    case 5: { // New Lens
+      drawRect(3, 3, 105, 61); // draw main dialog box
+      oled.setCursor(20, 12);
+      oled.setFont(SMALL_FONT);
+      oled.print("Lens changed:");
+      oled.setCursor(10, 24);
+      oled.print(pd->getLensBrand());
+      oled.print(" ");
+      oled.print(pd->getLensSeries());
+      oled.setCursor(10, 36);
+      oled.print(pd->getLensName());
+      oled.setCursor(10, 48);
+      oled.print(pd->getLensNote());
+
+      int newlenscutoffsec = (newlensnotice + NEWLENSDELAY + 1) / 1000;
+      int millissec = (millis() + 1) / 1000;
+  
+      oled.setCursor(110, 60);
+      oled.print(newlenscutoffsec - millissec);
+    
+      drawButton(1, "ok");
     }
   }
 }

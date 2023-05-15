@@ -288,7 +288,7 @@ void PDClient::parseMessage() {
 bool PDClient::processLensName() {
   // Format of name is: [length of name][status symbol][brand]|[series]|[name] [note]
   // length of name does not includes status symbol
-  // status symbols: '.' = not new lens, '*' = new lens, '!' = lens needs mapping, '&' = currently mapping
+  // status symbols: '.' = not new lens, '*' = new lens, '!' = lens needs mapping, '&' = currently mapping, '%' = mapping delayed
   //Serial.print("full name is ");
   //Serial.println(this->fulllensname);
 
@@ -299,22 +299,42 @@ bool PDClient::processLensName() {
   switch(this->fulllensname[0]) {
     case '.': {
       //Serial.println("this lens info needs no further processing.");
+      this->mapping = false;
+      this->mapped = true;
+      this->newlens = false;
+      this->maplater = false;
       break;
     }
     case '*': {
       Serial.print("This is a new lens: ");
       Serial.println(this->fulllensname);
       this->newlens = true;
+      this->mapped = false;
+      this->mapping = false;
+      this->maplater = false;
       break;
     }
     case '!': {
       //Serial.println("this lens needs to be mapped.");
+      this->newlens = false;
       this->mapped = false;
+      this->mapping = false;
+      this->maplater = false;
       break;
     }
     case '&': {
       //Serial.println("this lens is currently being mapped.");
+      this->newlens = false;
+      this->mapped = false;
+      this->mapping = true;
+      this->maplater = false;
       break;
+    }
+    case '%': {
+      this->newlens = false;
+      this->mapping = false;
+      this->mapped = false;
+      this->maplater = true;
     }
   }
 
@@ -612,20 +632,24 @@ bool PDClient::isLensMapping() {
   return this->mapping;
 }
 
+bool PDClient::isMapLater() {
+  return this->maplater;
+}
+
 /* OneRing */
 
 void PDClient::mapLater() {
   Serial.println("mapping later");
-  this->newlens = false;
   this->mapped = false;
   this->mapping = false;
+  this->maplater = true;
   this->sendMessage(4, 0);
 }
 
 void PDClient::startMap() {
-  this->newlens = false;
   this->mapped = false;
   this->mapping = true;
+  this->maplater = false;
   this->sendMessage(3, '*');
 }
 
@@ -644,8 +668,12 @@ void PDClient::finishMap() {
 
 /* IrisBuddy */
 void PDClient::setIris(uint16_t newiris) {
-  Serial.print("Setting newiris to 0x");
-  Serial.println(newiris, HEX);
-
+  if (!this->mapped) {
+    Serial.print("Setting newiris position to 0x");
+    Serial.println(newiris, HEX);
+  } else {
+    Serial.print("Setting newiris AV to ");
+    Serial.println(newiris);
+  }
   this->newiris = newiris;
 }
