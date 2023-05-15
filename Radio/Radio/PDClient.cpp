@@ -127,17 +127,17 @@ bool PDClient::sendMessage(uint8_t msgtype, uint8_t* data, uint8_t datalen) {
 
 void PDClient::onLoop() {
   if (this->manager->available()) {
-    Serial.print("\nMessage available, ");
+    //Serial.print("\nMessage available, ");
     uint8_t from;
     this->buflen = sizeof(this->buf);
     if (manager->recvfrom((uint8_t*)this->buf, &this->buflen, &from)) {
-      Serial.print(this->buflen);
-      Serial.print(" bytes:");
+      //Serial.print(this->buflen);
+      //Serial.print(" bytes:");
       this->timeoflastmessagefromserver = millis();
       this->clearError(); // Server is responding
       
       
-      
+      /*
       for (int i = 0; i < this->buflen; i++) {
         if (i < 2) {
           Serial.print(" 0x");
@@ -147,7 +147,7 @@ void PDClient::onLoop() {
         }
       }
       Serial.println();
-      
+      */
       this->parseMessage();
 
     }
@@ -207,8 +207,8 @@ void PDClient::parseMessage() {
       uint8_t index = 1;
       
       uint8_t datatype = this->buf[index++];
-      Serial.print("data type of data is 0x");
-      Serial.println(datatype, HEX);
+      //Serial.print("data type of data is 0x");
+      //Serial.println(datatype, HEX);
       
       if (datatype & DATA_IRIS) {
         // Iris data is AV number * 100 if the lens is mapped, or raw encoder data if not
@@ -280,37 +280,37 @@ bool PDClient::processLensName() {
   // Format of name is: [status symbol][brand]|[series]|[name] [note]
   // status symbols: '.' = standard mapped lens, '!' = lens needs mapping, '&' = currently mapping, '%' = mapping delayed
 
-  Serial.print("full name is ");
+  /*Serial.print("full name is ");
   Serial.println(this->fulllensname);
 
   Serial.print("status symbol is ");
   Serial.print(this->fulllensname[0]);
-  Serial.print(", which means ");
+  Serial.print(", which means ");*/
 
   switch(this->fulllensname[0]) {
     case '.': {
-      Serial.println("this lens info needs no further processing.");
+      //Serial.println("this lens info needs no further processing.");
       this->mapping = false;
       this->mapped = true;
       this->maplater = false;
       break;
     }
     case '!': {
-      Serial.println("this lens needs to be mapped.");
+      //Serial.println("this lens needs to be mapped.");
       this->mapped = false;
       this->mapping = false;
       this->maplater = false;
       break;
     }
     case '&': {
-      Serial.println("this lens is currently being mapped.");
+      //Serial.println("this lens is currently being mapped.");
       this->mapped = false;
       this->mapping = true;
       this->maplater = false;
       break;
     }
     case '%': {
-      Serial.println("this lens needs to be mapped, but we're not mapping it yet.");
+      //Serial.println("this lens needs to be mapped, but we're not mapping it yet.");
       this->mapping = false;
       this->mapped = false;
       this->maplater = true;
@@ -323,6 +323,8 @@ bool PDClient::processLensName() {
   if (strcmp(&this->fulllensname[processfrom], this->curlens) != 0) {
     // This is a new lens
     this->lenschanged = true;
+    this->setIris(0x1F4); // reset newiris (to AV 5) now that we're dealing with a mapped lens
+
     Serial.println("Lens has changed");
 
     strcpy(this->curlens, &this->fulllensname[processfrom]);
@@ -369,20 +371,8 @@ bool PDClient::processLensName() {
     }
   } else {
     this->lenschanged = false;
-    Serial.println("Lens has not changed");
   }
 
-  Serial.print("[");
-  Serial.print(this->lensbrand);
-  Serial.print("][");
-  Serial.print(this->lensseries);
-  Serial.print("][");
-  Serial.print(this->lensname);
-  Serial.print("][");
-  Serial.print(this->lensnote);
-  Serial.println("]");
-  
-  //Serial.println("Done processing lens name");
   return true;
 }
 

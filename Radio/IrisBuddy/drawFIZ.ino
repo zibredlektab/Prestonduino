@@ -1,15 +1,5 @@
 
 void drawName(const char* br, const char* sr, const char* nm, const char* nt) {
-  Serial.print("Full name to display is [");
-  Serial.print(br);
-  Serial.print("][");
-  Serial.print(sr);
-  Serial.print("][");
-  Serial.print(nm);
-  Serial.print("][");
-  Serial.print(nt);
-  Serial.println("]");
-  
   oled.setFont(SMALL_FONT);
   oled.setCursor(0, 8);
 
@@ -48,19 +38,30 @@ void drawIris(uint16_t ap) {
   
   oled.setCursor(irisx, y);
   oled.setFont(SMALL_FONT);
-  oled.print("0x"); //5pix
-  oled.setCursor(irisx + 8, y);
-  oled.setFont(XLARGE_FONT);
-  oled.print(ap, HEX);//irislabel);
-  /*
-  uint8_t fractionx = oled.getCursorX() + 1;
-  
-  oled.setCursor(fractionx + 5, y - 10);
-  oled.setFont(SMALL_FONT);
-  oled.print((int)(irisfraction*10));
-  oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
-  oled.setCursor(fractionx + 3, y);
-  oled.print(F("10"));*/
+  if (pd->isLensMapped()) {
+    oled.print("AV");
+    
+    oled.setCursor(irisx + 12, y);
+    oled.setFont(XLARGE_FONT);
+    oled.print(ap);
+    /*
+    oled.print("T");
+    oled.setCursor(irisx + 8, y);
+    oled.setFont(XLARGE_FONT);
+    oled.print(irislabel);
+    uint8_t fractionx = oled.getCursorX() + 1;
+    oled.setCursor(fractionx + 5, y - 10);
+    oled.setFont(SMALL_FONT);
+    oled.print((int)(irisfraction*10));
+    oled.drawFastHLine(fractionx, y - 8, 16, SH110X_WHITE); 
+    oled.setCursor(fractionx + 3, y);
+    oled.print(F("10"));*/
+  } else {
+    oled.print("0x"); //5pix
+    oled.setCursor(irisx + 12, y);
+    oled.setFont(XLARGE_FONT);
+    oled.print(ap, HEX);//irislabel);
+  }
 }
 
 

@@ -68,6 +68,7 @@ void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int 
 }
 
 void changeDialog(int newdialog, bool savestate = true) {
+  /*
   switch(newdialog) {
     case 0: {
       Serial.println("Changing dialog to normal view");
@@ -93,7 +94,7 @@ void changeDialog(int newdialog, bool savestate = true) {
       Serial.println("Changing dialog to lens change");
       break;
     }
-  }
+  }*/
   if (savestate) prevdialog = dialog;
   dialog = newdialog;
 }
@@ -122,14 +123,14 @@ void callback_pressed(uint8_t pinIn) {
     if (!pd->isLensMapped()) {
       if (pd->getIris() < 64535) pd->setIris(pd->getIris() + 1000);
     } else {
-      if (pd->getIris() < 891) pd->setIris(pd->getIris() + 10);
+      if (pd->getIris() <= 890) pd->setIris(pd->getIris() + 10);
     }
   } else if (pinIn == 17) {
     Serial.println("Opening iris");
     if (!pd->isLensMapped()) {
       if (pd->getIris() > 1000) pd->setIris(pd->getIris() - 1000);
     } else {
-      if (pd->getIris() > 9) pd->setIris(pd->getIris() - 10);
+      if (pd->getIris() >= 10) pd->setIris(pd->getIris() - 10);
     }
   } else {
   
@@ -372,7 +373,7 @@ void loop() {
   readButtons();
   pd->onLoop();
 
-  if (!pd->isLensMapped() && !pd->isMapLater()) {
+  if (!pd->isLensMapped() && !pd->isMapLater() && !pd->isLensMapping()) {
     // Lens isn't mapped, and we have not decided to delay mapping
     changeDialog(2);
   } else if (pd->didLensChange()) {

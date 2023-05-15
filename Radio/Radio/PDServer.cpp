@@ -171,15 +171,12 @@ void PDServer::onLoop() {
             uint16_t newpos = 0;
             if (this->mapped) {
               newpos = AVToPosition(newiris); // get encoder position from parsed AV
-              Serial.print("Moving iris to AV ");
-              Serial.println(newpos);
             } else {
               // if mapping is not complete, this data is a raw encoder value so it can be passed straight along
               newpos = newiris;
-              Serial.print("Moving iris to position 0x");
-              Serial.println(newpos, HEX);
             }
-
+            Serial.print("Moving iris to position 0x");
+            Serial.println(newpos, HEX);
             byte dataset[3] = {0x1, highByte(newpos), lowByte(newpos)};
             mdr->data(dataset, 3); // spin the iris motor to that position
           }
@@ -316,7 +313,7 @@ bool PDServer::updateSubs() {
     Serial.print(F("Updating client 0x"));
     Serial.print((this->channel * 0x10) + i, HEX);
     Serial.println();
-    */
+    
     Serial.print("Sending ");
     Serial.print(sendlen);
     Serial.print(" bytes:");
@@ -324,7 +321,7 @@ bool PDServer::updateSubs() {
       Serial.print(" 0x");
       Serial.print(tosend[i], HEX);
     }
-    Serial.println();
+    Serial.println();*/
     
     
     if (!this->manager->sendto((uint8_t*)tosend, sendlen, (this->channel * 0x10) + i)) {
@@ -660,24 +657,42 @@ void PDServer::irisToAux() {
 uint16_t PDServer::AVToPosition(uint16_t avnumber) {
   Serial.print("Finding position from AV ");
   Serial.print(avnumber);
-  Serial.print("...");
+  Serial.println("...");
   if (!this->mapped) {
     Serial.println("Lens is not mapped, cannot find position");
     return 0;
   }
-  if (avnumber >= 9) { // we don't support above t22
+  if (avnumber >= 900) { // we don't support above t22
     return this->lensmap[9];
   } else if (avnumber <= 0) { // nor do we support below t1.0
     return this->lensmap[0];
   }
 
-  // find whole AV
+  for (int i = 0; i <= 9; i++) {
+    Serial.print("[T");
+    Serial.print(this->stops[i]);
+    Serial.print(": 0x");
+    Serial.print(this->lensmap[i], HEX);
+    Serial.print("] ");
+  }
+  Serial.println();
+
+  // find whole AV (remember we store AV*100 as an integer)
   uint16_t avnfloor, avnceil;
   avnfloor = ((avnumber + 1) / 100) * 100;
+  Serial.print("avnfloor/100 is ");
+  Serial.println(avnfloor/100);
   avnceil = avnfloor + 100;
-  uint16_t newposition = map(avnumber, avnfloor, avnceil, this->lensmap[avnfloor], this->lensmap[avnceil]);
+  Serial.print("avnceil/100 is ");
+  Serial.println(avnceil/100);
 
-  Serial.print("0x");
+  Serial.print("range is from 0x");
+  Serial.print(this->lensmap[avnfloor/100], HEX);
+  Serial.print(" to 0x");
+  Serial.println(this->lensmap[avnceil/100], HEX);
+  uint16_t newposition = map(avnumber, avnfloor, avnceil, this->lensmap[avnfloor/100], this->lensmap[avnceil/100]);
+
+  Serial.print("Position is 0x");
   Serial.println(newposition, HEX);
   return newposition;
 }
