@@ -97,7 +97,7 @@ class PDServer {
     /* OneRing */
     bool onering = false;
     bool irisbuddy = true;
-    const uint16_t stops[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200}; // standard T stops
+    const uint16_t stops[10] = {100, 140, 200, 280, 400, 560, 800, 1100, 1600, 2200}; // standard T stops, index of this array is the corresponding AV number
     const uint16_t ringmap[10] = {0xFEFC, 0xE203, 0xCA70, 0xABC0, 0x8E40, 0x7370, 0x529C, 0x371C, 0x19C0, 0x0000};//{0x0000, 0x19C0, 0x371C, 0x529C, 0x7370, 0x8E40, 0xABC0, 0xCA70, 0xE203, 0xFEFC}; // map of actual encoder positions for linear iris, T1 to T22
     
     uint16_t lensmap[10]; // currently active lens mapping

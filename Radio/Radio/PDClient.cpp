@@ -662,3 +662,29 @@ void PDClient::setIris(uint16_t newiris) {
   }
   this->newiris = newiris;
 }
+
+void PDClient::changeIris(int16_t delta) {
+  int32_t signediris = this->iris;
+  int limit;
+  if (this->mapped) {
+    limit = 900;
+  } else {
+    limit = 0xFFFF;
+  }
+  Serial.print("Iris is currently ");
+  Serial.print(signediris);
+  Serial.print(", requested new iris is ");
+  Serial.print(signediris + delta);
+  Serial.print(", limit is between 0 and ");
+  Serial.print(limit);
+  if (signediris + delta > limit) {
+    Serial.println(", requested iris is too high");
+    this->setIris(limit);
+  } else if (signediris + delta < 0) {
+    Serial.println(", requested iris is too low");
+    this->setIris(0);
+  } else {
+    Serial.println(", requested iris is okay");
+    this->setIris(this->iris + delta);
+  }
+}

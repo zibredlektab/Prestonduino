@@ -15,7 +15,7 @@
 #define RETRIES 20 // for radiohead sending attempts
 #define TIMEOUT 30 // for radiohead sending attempts
 #define PING 3000 // period between resubscriptions, and period of assumed server timeout
-#define IRISCOMMANDDELAY 100 // period between sending new iris commands to not overload the mdr
+#define IRISCOMMANDDELAY 20 // period between sending new iris commands to not overload the mdr
 
 #ifdef MOTEINO_M0
   #define SSPIN A2
@@ -139,7 +139,7 @@ class PDClient {
     bool isMapLater();
 
     void setIris(uint16_t newiris);
-
+    void changeIris(int16_t delta);
 
   
 };

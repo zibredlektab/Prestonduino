@@ -4,6 +4,7 @@
 #include <PDClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
+#include "Adafruit_seesaw.h"
 
 #include "Fonts/pixelmix4pt7b.h"
 #include "Fonts/Roboto_Medium_26.h"
@@ -25,6 +26,11 @@
 #define BUTTON_B  6
 #define BUTTON_C  5
 #define BUTTON_DEBOUNCE_DELAY   20   // [ms]
+
+#define SEESAW_ADDR          0x36
+
+Adafruit_seesaw ss;
+int32_t encoder_position;
 
 PDClient *pd;
 
@@ -48,9 +54,10 @@ int dialog = 0; // User-navigable interfaces
  * 0 - none
  * 1 - menu
  * 2 - new lens
- * 3 - WFO selection
- * 4 - Mapping
- * 5 - lens change
+ * 3 - Fully closed selection
+ * 4 - WFO selection
+ * 5 - Mapping
+ * 6 - lens change
  */
 
 int menuselected = 0;
@@ -58,7 +65,8 @@ bool submenu = false;
 int choffset = 0;
 
 static char wholestops[10][4] = {"1.0", "1.4", "2.0", "2.8", "4.0", "5.6", "8.0", "11\0", "16\0", "22\0"};
-uint8_t curmappingav = 1;
+uint8_t curmappingav = 9; // which point we are currently mapping, starts at fully closed
+uint8_t maxstop = 0; // which stop is the maximum for this lens, defaults to 0 until the user actually sets it
 
 void drawRect(int x, int y, int w, int h, int color = 0, bool trace = true, int tracecolor = 1) {
   oled.fillRect(x, y, w, h, color) ;
@@ -225,7 +233,34 @@ void callback_pressed(uint8_t pinIn) {
         break;
       }
 
-      case 3: { // Select WFO
+      case 3: { // Select fully closed
+        switch(pinIn) {
+          case BUTTON_A: {
+            curmappingav--;
+            if (curmappingav < 0) {
+              curmappingav = 0;
+            }
+            break;
+          }
+
+          case BUTTON_B: {
+            Serial.println("Fully closed selected");
+            changeDialog(5, false);
+            break;
+          }
+          
+          case BUTTON_C: {
+            curmappingav++;
+            if (curmappingav > 9) {
+              curmappingav = 9;
+            }
+            break;
+          }
+        }
+        break;
+      }
+
+      case 4: { // Select WFO
         switch(pinIn) {
           case BUTTON_A: {
             curmappingav--;
@@ -252,11 +287,12 @@ void callback_pressed(uint8_t pinIn) {
         break;
       }
         
-      case 4: { // Map lens
+      case 5: { // Map lens
         switch(pinIn) {
           case BUTTON_A: { // Finish
             pd->finishMap();
-            curmappingav = 1;
+            curmappingav = 9;
+            maxstop = 0;
             changeDialog(0, false);
             break;
           }
@@ -264,9 +300,15 @@ void callback_pressed(uint8_t pinIn) {
           case BUTTON_B: { // ok
             Serial.println("Saving AV position");
             pd->mapLens(curmappingav++);
-            if (curmappingav == 10) {
+            if (maxstop == 0) { 
+              // loop back to the start
+              maxstop = curmappingav;
+              curmappingav = 0;
+              changeDialog(4, false);
+            } else if (curmappingav == maxstop) {
               pd->finishMap();
-              curmappingav = 1;
+              curmappingav = 9;
+              maxstop = 0;
               changeDialog(0, false);
             }
             break;
@@ -281,7 +323,7 @@ void callback_pressed(uint8_t pinIn) {
         break;
       }
 
-      case 5: { // Lens changed
+      case 6: { // Lens changed
         switch(pinIn) {
           case BUTTON_B: {
             lenschangenotice = 0;
@@ -352,6 +394,19 @@ void setup() {
   oled.print("Serial started, or timed out.\n");
   oled.display();
 
+  Serial.print("Looking for seesaw...");
+  
+  if (! ss.begin(SEESAW_ADDR)) {
+    Serial.println("Couldn't find seesaw on default address");
+    while(1) delay(10);
+  }
+  Serial.println("seesaw started");
+
+  encoder_position = ss.getEncoderPosition();
+  Serial.println("Turning on interrupts");
+  delay(10);
+  ss.enableEncoderInterrupt();
+
   pd = new PDClient(channel);
   
   oled.print("PDClient initialized.\n");
@@ -368,6 +423,16 @@ void loop() {
     ledon ? digitalWrite(13, LOW) : digitalWrite(13, HIGH);
     ledon = !ledon;
     ledtime = millis();
+  }
+
+  int encoder_delta = ss.getEncoderDelta();
+  Serial.print("encoder delta is ");
+  Serial.println(encoder_delta);
+
+  if (pd->isLensMapped()) {
+    pd->changeIris(10 * encoder_delta);
+  } else {
+    pd->changeIris(1000 * encoder_delta);
   }
 
   readButtons();
@@ -509,7 +574,27 @@ void drawDialog() {
       break;
     }
 
-    case 3: { // WFO
+
+    case 3: { // Full close
+      oled.fillRect(0, 10, 128, 54, 0); // black out background
+      drawRect(3, 12, 82, 48); // draw main dialog box
+      oled.setCursor(12, 22);
+      oled.setFont(SMALL_FONT);
+      oled.print("Select Closed:");
+      oled.setCursor(22, 46);
+      oled.print("T");
+      oled.setCursor(28, 46);
+      oled.setFont(LARGE_FONT);
+      oled.print(wholestops[curmappingav]);
+      oled.setCursor(10, 55);
+      oled.setFont(SMALL_FONT);
+      oled.print("and press ok");
+    
+      drawNav();
+      break;
+    }
+
+    case 4: { // WFO
       oled.fillRect(0, 10, 128, 54, 0); // black out background
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);
@@ -528,7 +613,7 @@ void drawDialog() {
       break;
     }
 
-    case 4: { // Mapping
+    case 5: { // Mapping
       oled.fillRect(0, 10, 128, 54, 0); // black out background
       drawRect(3, 12, 82, 48); // draw main dialog box
       oled.setCursor(12, 22);
@@ -549,7 +634,7 @@ void drawDialog() {
       break;
     }
 
-    case 5: { // New Lens
+    case 6: { // New Lens
       drawRect(3, 3, 105, 61); // draw main dialog box
       oled.setCursor(20, 12);
       oled.setFont(SMALL_FONT);

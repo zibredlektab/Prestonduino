@@ -658,6 +658,12 @@ uint16_t PDServer::AVToPosition(uint16_t avnumber) {
   Serial.print("Finding position from AV ");
   Serial.print(avnumber);
   Serial.println("...");
+
+  if (avnumber > 900) {
+    Serial.println("But this is probably already an AV, returning.");
+    return avnumber;
+  }
+
   if (!this->mapped) {
     Serial.println("Lens is not mapped, cannot find position");
     return 0;
@@ -701,6 +707,11 @@ uint16_t PDServer::positionToAV(uint16_t position) {
   Serial.print("Finding AV from position 0x");
   Serial.print(position, HEX);
   Serial.print("...");
+
+  if (position < 10) {
+    Serial.println("But this is probably already an AV, returning.");
+    return position;
+  }
   if (!this->mapped) {
     Serial.println("Lens is not mapped, cannot find AV");
     return 0;
@@ -711,7 +722,7 @@ uint16_t PDServer::positionToAV(uint16_t position) {
   // determine AV number
   int lensmapindex = 0;
   for (lensmapindex; lensmapindex < 9; lensmapindex++) { // Find our current position within the ringmap to find our whole AV number
-    if (position >= this->lensmap[lensmapindex] && position < this->lensmap[lensmapindex+1]) {
+    if (position >= this->lensmap[lensmapindex] && position <= this->lensmap[lensmapindex+1]) {
       // iris position is greater than ringmapindex and less than the next index...so we have found our place
       break;
     }
