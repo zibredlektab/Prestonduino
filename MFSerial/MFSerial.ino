@@ -4,7 +4,7 @@
 #define SETBUTTONPIN 5
 #define MFPIN A0
 #define LEDPIN 13
-#define MESSAGE_DELAY 12
+#define MESSAGE_DELAY 6
 
 bool firstrun = true;
 PrestonDuino *mdr;
@@ -66,7 +66,7 @@ void loop() {
     Serial.print("Current zoom position is 0x");
     Serial.print(curzoom, HEX);
 
-    int stepsize = mfoutput; // eventually this will be scaled for soft stops
+    int stepsize = mfoutput * 2; // eventually this will be scaled for soft stops
     
     Serial.print(", step size is ");
     Serial.print(stepsize);
