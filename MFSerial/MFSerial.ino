@@ -98,7 +98,7 @@ void loop() {
     timelastsent = millis();
     mfoutput = 0;
   }
-/*
+
   // check if set button is pressed
   if (!digitalRead(SETBUTTONPIN)) { // set button is pressed
     if (!setpressed) {
@@ -133,7 +133,7 @@ void loop() {
     digitalWrite(LEDPIN, HIGH);
   } else {
     digitalWrite(LEDPIN, LOW);
-  }*/
+  }
 }
 
 int getMFOutput() {
