@@ -8,6 +8,7 @@
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 512 // value of "zero" point on zoom
+#define DEFAULTSOFT 0x5000
 
 bool firstrun = true;
 PrestonDuino *mdr;
@@ -24,6 +25,7 @@ uint16_t secondlimit; // ending position when set button is released
 uint16_t widelimit = 0; // encoder position of wide zoom limit
 uint16_t tightlimit = 0xFFFF; // encoder position of tight zoom limit
 int zeropoint = DEFAULTZERO; // point on the microforce at which the lens should not move at all
+int softlevel = DEFAULTSOFT; // amount of feathering to apply at limits, 0-2000
 
 
 void setup() {
@@ -71,9 +73,20 @@ void loop() {
     Serial.print("Current zoom position is 0x");
     Serial.print(curzoom, HEX);
 
-    int stepsize = mfoutput * 2; // eventually this will be scaled for soft stops
+    int stepsize = mfoutput * 2; // eventually this will be scaled dynamically for soft stops
 
     if (abs(stepsize) < DEADZONE) stepsize = 0;
+
+    if (stepsize < 0) {
+      int distance = curzoom - widelimit;
+      if (distance > softlevel) distance = softlevel;
+      stepsize = map(distance, 0, softlevel, 0, abs(stepsize));
+      stepsize *= -1;
+    } else if (stepsize > 0) {
+      int distance = tightlimit - curzoom;
+      if (distance > softlevel) distance = softlevel;
+      stepsize = map(distance, 0, softlevel, 0, stepsize);
+    }
     
     Serial.print(", step size is ");
     Serial.print(stepsize);
