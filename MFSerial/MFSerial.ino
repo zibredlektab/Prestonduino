@@ -24,7 +24,9 @@ void setup() {
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
 
-  mdr->mode(0x19, 0x4);
+  mdr->shutUp();
+  mdr->mode(0x9, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
+  mdr->data(0x44); // request only zoom position
 }
 
 void loop() {
