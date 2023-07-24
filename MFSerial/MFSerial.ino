@@ -1,10 +1,13 @@
 #include "PrestonDuino.h"
 
-#define REPEAT_DELAY 10
+#define REPEAT_DELAY 10 // debounce for buttons
 #define SETBUTTONPIN 5
-#define MFPIN A0
+#define ZEROBUTTONPIN 6
+#define MFPIN A0 // output from microforce
 #define LEDPIN 13
-#define MESSAGE_DELAY 6
+#define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
+#define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
+#define DEFAULTZERO 512 // value of "zero" point on zoom
 
 bool firstrun = true;
 PrestonDuino *mdr;
@@ -20,6 +23,7 @@ uint16_t firstlimit; // initial position when set button is first pressed
 uint16_t secondlimit; // ending position when set button is released
 uint16_t widelimit = 0; // encoder position of wide zoom limit
 uint16_t tightlimit = 0xFFFF; // encoder position of tight zoom limit
+int zeropoint = DEFAULTZERO; // point on the microforce at which the lens should not move at all
 
 
 void setup() {
@@ -33,6 +37,7 @@ void setup() {
   pinMode(SETBUTTONPIN, INPUT_PULLUP);
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
+  pinMode(ZEROBUTTONPIN, INPUT_PULLUP);
 
   mdr->shutUp();
   mdr->mode(0x9, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
@@ -67,6 +72,8 @@ void loop() {
     Serial.print(curzoom, HEX);
 
     int stepsize = mfoutput * 2; // eventually this will be scaled for soft stops
+
+    if (abs(stepsize) < DEADZONE) stepsize = 0;
     
     Serial.print(", step size is ");
     Serial.print(stepsize);
@@ -134,6 +141,10 @@ void loop() {
   } else {
     digitalWrite(LEDPIN, LOW);
   }
+
+  if (!digitalRead(ZEROBUTTONPIN)) {
+    zeropoint = analogRead(MFPIN);
+  }
 }
 
 int getMFOutput() {
@@ -144,7 +155,7 @@ int getMFOutput() {
   int signal = analogRead(MFPIN); // 10-bit, so 0-1024
   //signal *= 2464; // scale up to mv...but do we actually care about the voltage?
 
-  signal -= 512; // need to find the actual zero point in the scale, as it isn't actually evenly split
+  signal -= zeropoint; // need to find the actual zero point in the scale, as it isn't actually evenly split
   return signal;
 
 }
