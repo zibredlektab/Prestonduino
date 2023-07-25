@@ -2,14 +2,14 @@
 
 #define REPEAT_DELAY 10 // debounce for buttons
 #define SETBUTTONPIN 5
-#define ZEROBUTTONPIN 7
-#define SOFTBUTTONPIN 6
+#define ZEROBUTTONPIN 6//7
+#define SOFTBUTTONPIN 7
 #define MFPIN A0 // output from microforce
 #define LEDPIN 13
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
-#define DEFAULTZERO 512 // value of "zero" point on zoom
-#define DEFAULTSOFT 1//x5000
+#define DEFAULTZERO 260 // value of "zero" point on zoom
+#define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
 bool firstrun = true;
@@ -50,9 +50,7 @@ void setup() {
   mdr->shutUp();
   mdr->mode(0x9, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
   mdr->data(0x44); // request only zoom position
-  byte zoomdata[3] = {0x3, 0x7F, 0xFF}; // establish a known starting position, halfway through range
-  curzoom = 0x7FFF;
-  mdr->data(zoomdata, 3);
+  zeroOut();
 
   timelastsent = millis();
 }
@@ -209,6 +207,6 @@ int getMFOutput() {
   //signal *= 2464; // scale up to mv...but do we actually care about the voltage?
 
   signal -= zeropoint; // need to find the actual zero point in the scale, as it isn't actually evenly split
-  return signal;
+  return signal * -1;
 
 }
