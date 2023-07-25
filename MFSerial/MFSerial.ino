@@ -2,20 +2,25 @@
 
 #define REPEAT_DELAY 10 // debounce for buttons
 #define SETBUTTONPIN 5
-#define ZEROBUTTONPIN 6
+#define ZEROBUTTONPIN 7
+#define SOFTBUTTONPIN 6
 #define MFPIN A0 // output from microforce
 #define LEDPIN 13
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 512 // value of "zero" point on zoom
-#define DEFAULTSOFT 0x5000
+#define DEFAULTSOFT 1//x5000
+#define MAXSOFT 0x7FFF
 
 bool firstrun = true;
 PrestonDuino *mdr;
 int mfoutput = 0; // current velocity specified by MicroForce
 uint16_t curzoom; // current zoom position
 bool setpressed = false; // is the "Set" button depressed?
+bool softpressed = false;
 uint32_t timesetpressed; // when was the "Set" button depressed?
+uint32_t timesoftpressed; // when was the "Soft" button depressed?
+uint32_t timezeropressed; // when was the "Zero" button depressed?
 uint32_t timelastsent = 0; // when was the last mdr message sent?
 int count; // number of microforce samples taken in this averaging
 
@@ -40,6 +45,7 @@ void setup() {
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
   pinMode(ZEROBUTTONPIN, INPUT_PULLUP);
+  pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
 
   mdr->shutUp();
   mdr->mode(0x9, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
@@ -51,6 +57,13 @@ void setup() {
   timelastsent = millis();
 }
 
+void zeroOut() {
+  byte zoomdata[3] = {0x3, 0x7F, 0xFF}; // establish a known starting position, halfway through range
+  curzoom = 0x7FFF;
+  mdr->data(zoomdata, 3);
+  zeropoint = analogRead(MFPIN);
+}
+
 void loop() {
   mdr->onLoop();
 
@@ -60,63 +73,71 @@ void loop() {
 
   firstrun = false;
 
-  if (count == 0 || timelastsent + MESSAGE_DELAY > millis()) { // average input from microforce until message delay period is reached
-    mfoutput += getMFOutput();
-    count++;
+  if (softpressed) { // adjusting soft stop value rather than actually zooming
+    softlevel += getMFOutput() * .1;
+    Serial.print("soft now ");
+    Serial.println(softlevel);
   } else {
-    mfoutput /= count;
-    count = 0;
 
-    uint16_t newzoom = curzoom;
-    //curzoom = mdr->getZoom();
-    
-    Serial.print("Current zoom position is 0x");
-    Serial.print(curzoom, HEX);
+    if (count == 0 || timelastsent + MESSAGE_DELAY > millis()) { // average input from microforce until message delay period is reached
+      mfoutput += getMFOutput();
+      count++;
+    } else {
+      mfoutput /= count;
+      count = 0;
 
-    int stepsize = mfoutput * 2; // eventually this will be scaled dynamically for soft stops
+      uint16_t newzoom = curzoom;
+      //curzoom = mdr->getZoom();
+      
+      Serial.print("Current zoom position is 0x");
+      Serial.print(curzoom, HEX);
 
-    if (abs(stepsize) < DEADZONE) stepsize = 0;
+      int stepsize = mfoutput * 2; // -1024 - 1024, eventually this will be scaled dynamically for soft stops
 
-    if (stepsize < 0) {
-      int distance = curzoom - widelimit;
-      if (distance > softlevel) distance = softlevel;
-      stepsize = map(distance, 0, softlevel, 0, abs(stepsize));
-      stepsize *= -1;
-    } else if (stepsize > 0) {
-      int distance = tightlimit - curzoom;
-      if (distance > softlevel) distance = softlevel;
-      stepsize = map(distance, 0, softlevel, 0, stepsize);
-    }
-    
-    Serial.print(", step size is ");
-    Serial.print(stepsize);
+      if (abs(stepsize) < DEADZONE) stepsize = 0;
 
-    if (mfoutput < 0) { // zooming out
-      if (curzoom + stepsize >= widelimit) {
-        newzoom = curzoom + stepsize;
-      } else {
-        newzoom = widelimit;
+      if (stepsize < 0) { // zooming out
+        int distance = curzoom - widelimit; // find remaining distance in the move
+        if (distance <= softlevel) { // distance is within the slowdown zone
+          stepsize = map(distance, 0, softlevel, 0, stepsize); // scale the stepsize accordingly
+        }
+      } else if (stepsize > 0) { // zooming in
+        int distance = tightlimit - curzoom;
+        if (distance <= softlevel) {
+          stepsize = map(distance, 0, softlevel, 0, stepsize);
+        }
       }
-    } else if (mfoutput > 0) { // zooming in
-      if (curzoom + stepsize <= tightlimit) {
-        newzoom = curzoom + stepsize;
-      } else {
-        newzoom = tightlimit;
+      
+      Serial.print(", step size is ");
+      Serial.print(stepsize);
+
+      if (mfoutput < 0) { // zooming out
+        if (curzoom + stepsize >= widelimit) {
+          newzoom = curzoom + stepsize;
+        } else {
+          newzoom = widelimit;
+        }
+      } else if (mfoutput > 0) { // zooming in
+        if (curzoom + stepsize <= tightlimit) {
+          newzoom = curzoom + stepsize;
+        } else {
+          newzoom = tightlimit;
+        }
       }
+
+      Serial.print(", new zoom should be 0x");
+      Serial.println(newzoom, HEX);
+
+      byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)};
+
+      if (newzoom != curzoom) {
+        mdr->data(zoomdata, 3); // send to mdr
+        curzoom = newzoom;
+      }
+
+      timelastsent = millis();
+      mfoutput = 0;
     }
-
-    Serial.print(", new zoom should be 0x");
-    Serial.println(newzoom, HEX);
-
-    byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)};
-
-    if (newzoom != curzoom) {
-      mdr->data(zoomdata, 3); // send to mdr
-      curzoom = newzoom;
-    }
-
-    timelastsent = millis();
-    mfoutput = 0;
   }
 
   // check if set button is pressed
@@ -149,14 +170,33 @@ void loop() {
     }
   }
 
+
+  // check if soft button is pressed
+  if (!digitalRead(SOFTBUTTONPIN)) { // soft button is pressed
+    if (!softpressed) {
+      timesoftpressed = millis();
+      softpressed = true;
+    }
+  } else if (timesetpressed + REPEAT_DELAY < millis()) { // soft button is not pressed, and it's been long enough to debounce input!
+    if (softpressed) { // soft button *was* pressed on the last loop, so it was just released
+      softpressed = false;
+      if (softlevel > MAXSOFT) softlevel = MAXSOFT;
+      if (softlevel < 1) softlevel = 1;
+      Serial.print("new soft level is ");
+      Serial.print(softlevel);
+    }
+  }
+  
+
   if (limits) {
     digitalWrite(LEDPIN, HIGH);
   } else {
     digitalWrite(LEDPIN, LOW);
   }
 
-  if (!digitalRead(ZEROBUTTONPIN)) {
-    zeropoint = analogRead(MFPIN);
+  if (!digitalRead(ZEROBUTTONPIN) && timezeropressed + REPEAT_DELAY < millis()) {
+    timezeropressed = millis();
+    zeroOut();
   }
 }
 
