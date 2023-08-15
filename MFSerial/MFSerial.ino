@@ -1,11 +1,11 @@
 #include "PrestonDuino.h"
 
 #define REPEAT_DELAY 10 // debounce for buttons
-#define SETBUTTONPIN 5
-#define ZEROBUTTONPIN 6//7
-#define SOFTBUTTONPIN 7
+#define SETBUTTONPIN 9
+#define ZEROBUTTONPIN 5
+#define SOFTBUTTONPIN 6
 #define MFPIN A0 // output from microforce
-#define LEDPIN 13
+#define LEDPIN 10
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 260 // value of "zero" point on zoom
