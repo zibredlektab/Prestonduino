@@ -13,8 +13,8 @@
 #define MFPIN A0 // output from microforce
 #define LEDPIN 10
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
-#define DEADZONE 10 // any step size +- this value is ignored, to avoid drift
-#define DEFAULTZERO 260 // value of "zero" point on zoom
+#define DEADZONE 2 // any step size +- this value is ignored, to avoid drift
+#define DEFAULTZERO 11530 // value of "zero" point on zoom
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
@@ -87,10 +87,11 @@ void setup() {
   mdr->shutUp();
   mdr->mode(0x19, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
   mdr->data(0x14); // request only zoom position
-  zeroOut();
 
   adc.begin();
   adc.startADCReading(ADS1X15_REG_CONFIG_MUX_SINGLE_1, true);
+
+  zeroOut();
 
   timelastsent = millis();
   Scheduler.startLoop(metaLoop);
@@ -100,7 +101,7 @@ void zeroOut() {
   byte zoomdata[3] = {0x3, 0x7F, 0xFF}; // establish a known starting position, halfway through range
   curzoom = 0x7FFF;
   mdr->data(zoomdata, 3);
-  zeropoint = analogRead(MFPIN);
+  zeropoint = adc.getLastConversionResults();
 }
 
 void metaLoop() {
@@ -178,7 +179,7 @@ void loop() {
   firstrun = false;
 
   if (softpressed) { // adjusting soft stop value rather than actually zooming
-    softlevel += getMFOutput() * .1;
+    softlevel += getMFOutput() * 0.1;
     if (softlevel > MAXSOFT) softlevel = MAXSOFT;
     if (softlevel < 0) softlevel = 0;
     Serial.print("soft now ");
@@ -194,10 +195,10 @@ void loop() {
 
       uint16_t newzoom = curzoom;
       
-      //Serial.print("Current zoom position is 0x");
-      //Serial.print(curzoom, HEX);
+      Serial.print("Current zoom position is 0x");
+      Serial.print(curzoom, HEX);
 
-      int stepsize = mfoutput * 2; // -1024 - 1024, eventually this will be scaled dynamically for soft stops
+      int stepsize = mfoutput;
 
       if (abs(stepsize) < DEADZONE) stepsize = 0;
 
@@ -213,8 +214,8 @@ void loop() {
         }
       }
       
-      //Serial.print(", step size is ");
-      //Serial.print(stepsize);
+      Serial.print(", step size is ");
+      Serial.print(stepsize);
 
       if (mfoutput < 0) { // zooming out
         if (curzoom + stepsize >= widelimit) {
@@ -230,8 +231,8 @@ void loop() {
         }
       }
 
-      //Serial.print(", new zoom should be 0x");
-      //Serial.println(newzoom, HEX);
+      Serial.print(", new zoom should be 0x");
+      Serial.println(newzoom, HEX);
 
       byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)};
 
@@ -327,15 +328,15 @@ int getMFOutput() {
   // full speed in ~ 7.7v
   // full speed out ~ 2.0v
   // scale factor = 2.464
-  int signal = analogRead(MFPIN); // 10-bit, so 0-1024
-  //signal *= 2464; // scale up to mv...but do we actually care about the voltage?
+  //int signal = analogRead(MFPIN); // 10-bit, so 0-1024
 
+  adcval = adc.getLastConversionResults(); // adc.readADC_Differential_0_1();
+  int signal = adcval;
   signal -= zeropoint; // need to find the actual zero point in the scale, as it isn't actually evenly split
 
 
   //Serial.print("Reading ADC...");
 
-  adcval = adc.getLastConversionResults(); // adc.readADC_Differential_0_1();
 
   //Serial.print("ADC value is ");
   //Serial.println(adcval);
