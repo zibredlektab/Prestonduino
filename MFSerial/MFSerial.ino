@@ -1,3 +1,5 @@
+#include <FlashAsEEPROM.h>
+#include <FlashStorage.h>
 #include <Adafruit_ADS1X15.h>
 #include <Scheduler.h>
 #include "PrestonDuino.h"
@@ -35,8 +37,8 @@ uint16_t firstlimit; // initial position when set button is first pressed
 uint16_t secondlimit; // ending position when set button is released
 uint16_t widelimit = 0; // encoder position of wide zoom limit
 uint16_t tightlimit = 0xFFFF; // encoder position of tight zoom limit
-int zeropoint = DEFAULTZERO; // point on the microforce at which the lens should not move at all
-int softlevel = DEFAULTSOFT; // amount of feathering to apply at limits, 0-2000
+int zeropoint = 0; // point on the microforce at which the lens should not move at all
+int softlevel = 0; // amount of feathering to apply at limits, 0-2000
 
 // Metadata follows
 
@@ -56,6 +58,8 @@ int16_t adcval = 0;
 Adafruit_SH1107 oled(64, 128, &Wire);
 Adafruit_ADS1115 adc;
 
+FlashStorage(zeropoint_flash, int); // Reserve a portion of flash memory to store current zero point
+FlashStorage(softlevel_flash, int); // and same for soft setting
 
 void setup() {
   oled.begin(0x3C, true);
@@ -89,19 +93,28 @@ void setup() {
   mdr->data(0x14); // request only zoom position
 
   adc.begin();
-  adc.startADCReading(ADS1X15_REG_CONFIG_MUX_SINGLE_1, true);
+  adc.startADCReading(ADS1X15_REG_CONFIG_MUX_SINGLE_0, true);
 
-  zeroOut();
+  zeropoint = zeropoint_flash.read();
+  if (!zeropoint) zeropoint = DEFAULTZERO;
+
+  softlevel = softlevel_flash.read();
+  if (!softlevel) softlevel = DEFAULTSOFT;
+
+  zeroOut(!digitalRead(SETBUTTONPIN)); // zero everything out, and save the current stick value as a new zero point if the set button is pressed
 
   timelastsent = millis();
   Scheduler.startLoop(metaLoop);
 }
 
-void zeroOut() {
+void zeroOut(bool newzero) {
   byte zoomdata[3] = {0x3, 0x7F, 0xFF}; // establish a known starting position, halfway through range
   curzoom = 0x7FFF;
   mdr->data(zoomdata, 3);
-  zeropoint = adc.getLastConversionResults();
+  if (newzero) {
+    zeropoint = adc.getLastConversionResults(); // current stick position is the new zero point
+    zeropoint_flash.write(zeropoint); // save this zero point for future use
+  }
 }
 
 void metaLoop() {
@@ -296,6 +309,7 @@ void loop() {
       if (softlevel < 1) softlevel = 1;
       Serial.print("new soft level is ");
       Serial.print(softlevel);
+      softlevel_flash.write(softlevel);
     }
   }
   
@@ -308,7 +322,7 @@ void loop() {
 
   if (!digitalRead(ZEROBUTTONPIN) && timezeropressed + REPEAT_DELAY < millis()) {
     timezeropressed = millis();
-    zeroOut();
+    zeroOut(true);
   }
   //yield();
 }
