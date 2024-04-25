@@ -16,7 +16,7 @@
 #define LEDPIN 10
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
-#define DEFAULTZERO 11530 // value of "zero" point on zoom
+#define DEFAULTZERO 679  // value of "zero" point on zoom
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
@@ -39,6 +39,7 @@ uint16_t widelimit = 0; // encoder position of wide zoom limit
 uint16_t tightlimit = 0xFFFF; // encoder position of tight zoom limit
 int zeropoint = 0; // point on the microforce at which the lens should not move at all
 int softlevel = 0; // amount of feathering to apply at limits, 0-2000
+bool soft = true; // softening/dampening/feathering is enabled
 
 // Metadata follows
 
@@ -169,8 +170,12 @@ void metaLoop() {
 
   oled.setCursor(60, 10);
   oled.print("Soft: ");
-  oled.print(map(softlevel, 0, 0x7FFF, 0, 100));
-  oled.print("%");
+  if (soft) {
+    oled.print(map(softlevel, 0, 0x7FFF, 0, 100));
+    oled.print("%");
+  } else {
+    oled.print("off");
+  }
 
 
   oled.setCursor(10, 30);
@@ -245,21 +250,23 @@ void loop() {
         Serial.print(", scaled step size is ");
         Serial.print(stepsize);
 
-        // Dampen extremes of zoom range by scaling stepsize down as it approaches the end
-        if (stepsize < 0) { // zooming out
-          int distance = curzoom - widelimit; // find remaining distance in the move
-          if (distance <= softlevel) { // distance is within the slowdown zone
-            stepsize = map(distance, 0, softlevel, 0, stepsize); // scale the stepsize accordingly
+        if (soft) {
+          // Dampen extremes of zoom range by scaling stepsize down as it approaches the end
+          if (stepsize < 0) { // zooming out
+            int distance = curzoom - widelimit; // find remaining distance in the move
+            if (distance <= softlevel) { // distance is within the slowdown zone
+              stepsize = map(distance, 0, softlevel, 0, stepsize); // scale the stepsize accordingly
+            }
+          } else if (stepsize > 0) { // zooming in
+            int distance = tightlimit - curzoom;
+            if (distance <= softlevel) {
+              stepsize = map(distance, 0, softlevel, 0, stepsize);
+            }
           }
-        } else if (stepsize > 0) { // zooming in
-          int distance = tightlimit - curzoom;
-          if (distance <= softlevel) {
-            stepsize = map(distance, 0, softlevel, 0, stepsize);
-          }
+          
+          Serial.print(", softened step size is ");
+          Serial.print(stepsize);
         }
-        
-        Serial.print(", softened step size is ");
-        Serial.print(stepsize);
       }
 
       // Determine new zoom position using stepsize
@@ -335,14 +342,20 @@ void loop() {
       timesoftpressed = millis();
       softpressed = true;
     }
-  } else if (timesetpressed + REPEAT_DELAY < millis()) { // soft button is not pressed, and it's been long enough to debounce input!
+  } else if (timesoftpressed + REPEAT_DELAY < millis()) { // soft button is not pressed, and it's been long enough to debounce input!
     if (softpressed) { // soft button *was* pressed on the last loop, so it was just released
       softpressed = false;
-      if (softlevel > MAXSOFT) softlevel = MAXSOFT;
-      if (softlevel < 1) softlevel = 1;
-      Serial.print("new soft level is ");
-      Serial.print(softlevel);
-      softlevel_flash.write(softlevel);
+      if (millis() - timesoftpressed < 1000) { // soft button was pressed & released, not held
+        soft = !soft;
+        Serial.print("softening is ");
+        Serial.println(soft);
+      } else {
+        if (softlevel > MAXSOFT) softlevel = MAXSOFT;
+        if (softlevel < 1) softlevel = 1;
+        Serial.print("new soft level is ");
+        Serial.println(softlevel);
+        softlevel_flash.write(softlevel);
+      }
     }
   }
   
