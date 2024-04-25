@@ -15,7 +15,7 @@
 #define MFPIN A0 // output from microforce
 #define LEDPIN 10
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
-#define DEADZONE 2 // any step size +- this value is ignored, to avoid drift
+#define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 11530 // value of "zero" point on zoom
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
@@ -56,7 +56,7 @@ char* lensname;
 int16_t adcval = 0;
 
 Adafruit_SH1107 oled(64, 128, &Wire);
-Adafruit_ADS1115 adc;
+//Adafruit_ADS1115 adc;
 
 FlashStorage(zeropoint_flash, int); // Reserve a portion of flash memory to store current zero point
 FlashStorage(softlevel_flash, int); // and same for soft setting
@@ -92,8 +92,8 @@ void setup() {
   mdr->mode(0x19, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
   mdr->data(0x14); // request only zoom position
 
-  adc.begin();
-  adc.startADCReading(ADS1X15_REG_CONFIG_MUX_SINGLE_0, true);
+  //adc.begin();
+  //adc.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, true);
 
   zeropoint = zeropoint_flash.read();
   if (!zeropoint) zeropoint = DEFAULTZERO;
@@ -112,7 +112,7 @@ void zeroOut(bool newzero) {
   curzoom = 0x7FFF;
   mdr->data(zoomdata, 3);
   if (newzero) {
-    zeropoint = adc.getLastConversionResults(); // current stick position is the new zero point
+    zeropoint = analogRead(MFPIN);//adc.getLastConversionResults(); // current stick position is the new zero point
     zeropoint_flash.write(zeropoint); // save this zero point for future use
   }
 }
@@ -161,6 +161,7 @@ void metaLoop() {
 
   if (lenswide != lenstight) { // range is only displayed for zooms, not primes
     oled.setCursor(10, 20);
+    oled.print("Range: ");
     oled.print(widelimitmeta/100);
     oled.print(" - ");
     oled.print(tightlimitmeta/100);
@@ -173,9 +174,14 @@ void metaLoop() {
 
 
   oled.setCursor(10, 30);
+  oled.print("MF Value: ");
   oled.print(adcval);
+  oled.setCursor(10, 40);
+  oled.print("Velocity: ");
+  oled.print(zeropoint - adcval);
 
-  oled.setCursor(60,40);
+  oled.setCursor(60,50);
+  oled.print("Time: ");
   oled.print(millis());
   oled.display();
   
@@ -200,7 +206,17 @@ void loop() {
   } else {
 
     if (count == 0 || timelastsent + MESSAGE_DELAY > millis()) { // average input from microforce until message delay period is reached
-      mfoutput += getMFOutput();
+      int toadd = getMFOutput();
+      mfoutput += toadd;
+      Serial.print("count #");
+      Serial.print(count);
+      Serial.print(" at time ");
+      Serial.print(millis());
+      Serial.print(": ");
+      Serial.print(toadd);
+      Serial.print(" (Sending at ");
+      Serial.print(timelastsent + MESSAGE_DELAY);
+      Serial.println(")");
       count++;
     } else {
       mfoutput /= count;
@@ -208,28 +224,45 @@ void loop() {
 
       uint16_t newzoom = curzoom;
       
-      Serial.print("Current zoom position is 0x");
+      Serial.print("\nCurrent zoom position is 0x");
       Serial.print(curzoom, HEX);
 
-      int stepsize = mfoutput;
 
-      if (abs(stepsize) < DEADZONE) stepsize = 0;
+      int stepsize = mfoutput; // get current output from microforce, this is the step size
 
-      if (stepsize < 0) { // zooming out
-        int distance = curzoom - widelimit; // find remaining distance in the move
-        if (distance <= softlevel) { // distance is within the slowdown zone
-          stepsize = map(distance, 0, softlevel, 0, stepsize); // scale the stepsize accordingly
-        }
-      } else if (stepsize > 0) { // zooming in
-        int distance = tightlimit - curzoom;
-        if (distance <= softlevel) {
-          stepsize = map(distance, 0, softlevel, 0, stepsize);
-        }
-      }
-      
       Serial.print(", step size is ");
       Serial.print(stepsize);
 
+      if (abs(stepsize) < DEADZONE) {
+        stepsize = 0; // extremely small steps are below the noise floor, so zero them out
+      } else {
+        bool zoomingout = stepsize < 0;
+
+        // Scale stepsize exponentially (high step values should move motor further than low step values)
+        stepsize = (1000 + (abs(stepsize) * abs(stepsize) * 9)) / 500;
+        if (zoomingout) stepsize *= -1;
+
+        Serial.print(", scaled step size is ");
+        Serial.print(stepsize);
+
+        // Dampen extremes of zoom range by scaling stepsize down as it approaches the end
+        if (stepsize < 0) { // zooming out
+          int distance = curzoom - widelimit; // find remaining distance in the move
+          if (distance <= softlevel) { // distance is within the slowdown zone
+            stepsize = map(distance, 0, softlevel, 0, stepsize); // scale the stepsize accordingly
+          }
+        } else if (stepsize > 0) { // zooming in
+          int distance = tightlimit - curzoom;
+          if (distance <= softlevel) {
+            stepsize = map(distance, 0, softlevel, 0, stepsize);
+          }
+        }
+        
+        Serial.print(", softened step size is ");
+        Serial.print(stepsize);
+      }
+
+      // Determine new zoom position using stepsize
       if (mfoutput < 0) { // zooming out
         if (curzoom + stepsize >= widelimit) {
           newzoom = curzoom + stepsize;
@@ -247,7 +280,7 @@ void loop() {
       Serial.print(", new zoom should be 0x");
       Serial.println(newzoom, HEX);
 
-      byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)};
+      byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)}; // build the mdr command
 
       if (newzoom != curzoom) {
         mdr->data(zoomdata, 3); // send to mdr
@@ -342,19 +375,25 @@ int getMFOutput() {
   // full speed in ~ 7.7v
   // full speed out ~ 2.0v
   // scale factor = 2.464
-  //int signal = analogRead(MFPIN); // 10-bit, so 0-1024
 
-  adcval = adc.getLastConversionResults(); // adc.readADC_Differential_0_1();
-  int signal = adcval;
-  signal -= zeropoint; // need to find the actual zero point in the scale, as it isn't actually evenly split
+  Serial.print("Reading ADC...");
 
-
-  //Serial.print("Reading ADC...");
+  int signal = analogRead(MFPIN); // 10-bit, so 0-1024
+  adcval = signal;
 
 
-  //Serial.print("ADC value is ");
-  //Serial.println(adcval);
+  Serial.print("ADC value is ");
+  Serial.print(adcval);
 
-  return signal * -1;
+  //adcval = adc.getLastConversionResults();
+  //int signal = adcval;
+  signal -= zeropoint; // Get a velocity from the raw sensor value
+
+  Serial.print(" minus zero point of ");
+  Serial.print(zeropoint);
+  Serial.print(" = signal of ");
+  Serial.println(signal * -1);
+
+  return signal * -1; // Value is reversed from what we would expect, for some reason
 
 }
