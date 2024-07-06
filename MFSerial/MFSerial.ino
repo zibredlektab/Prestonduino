@@ -2,7 +2,7 @@
 #include <FlashStorage.h>
 #include <Adafruit_ADS1X15.h>
 #include <Scheduler.h>
-#include "PrestonDuino.h"
+#include <PrestonDuino.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -10,10 +10,15 @@
 
 #define REPEAT_DELAY 10 // debounce for buttons
 #define SETBUTTONPIN 9
-#define ZEROBUTTONPIN 5
+#define ZEROBUTTONPIN 5 // deprecated
 #define SOFTBUTTONPIN 6
-#define MFPIN A0 // output from microforce
-#define LEDPIN 10
+#define MFPIN A0 // output from microforce through voltage divider
+#define LEDPIN A5 // "set" LED
+
+#define OLED_DC 2
+#define OLED_CS 5
+#define OLED_RST 4
+
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 679  // value of "zero" point on zoom
@@ -56,8 +61,9 @@ char* lensname;
 
 int16_t adcval = 0;
 
-Adafruit_SH1107 oled(64, 128, &Wire);
+//Adafruit_SH1107 oled(64, 128, &Wire);
 //Adafruit_ADS1115 adc;
+Adafruit_SH1106G oled = Adafruit_SH1106G(128, 64, &SPI, OLED_DC, OLED_RST, OLED_CS);
 
 FlashStorage(zeropoint_flash, int); // Reserve a portion of flash memory to store current zero point
 FlashStorage(softlevel_flash, int); // and same for soft setting
@@ -65,7 +71,7 @@ FlashStorage(softlevel_flash, int); // and same for soft setting
 void setup() {
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(1);
+  oled.setRotation(0);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setCursor(0, 30);
@@ -86,7 +92,7 @@ void setup() {
   pinMode(SETBUTTONPIN, INPUT_PULLUP);
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
-  pinMode(ZEROBUTTONPIN, INPUT_PULLUP);
+  //pinMode(ZEROBUTTONPIN, INPUT_PULLUP);
   pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
 
   mdr->shutUp();
@@ -106,6 +112,8 @@ void setup() {
 
   timelastsent = millis();
   Scheduler.startLoop(metaLoop);
+  oled.clearDisplay();
+  oled.display();
 }
 
 void zeroOut(bool newzero) {
@@ -156,12 +164,12 @@ void metaLoop() {
   }
 
   oled.clearDisplay();
-  oled.setCursor(10,10);
+  oled.setCursor(0,10);
   oled.print(mdr->getZoom()/100);
   oled.print(" mm");
 
   if (lenswide != lenstight) { // range is only displayed for zooms, not primes
-    oled.setCursor(10, 20);
+    oled.setCursor(0, 20);
     oled.print("Range: ");
     oled.print(widelimitmeta/100);
     oled.print(" - ");
@@ -185,7 +193,7 @@ void metaLoop() {
   oled.print("Velocity: ");
   oled.print(zeropoint - adcval);
 
-  oled.setCursor(60,50);
+  oled.setCursor(10,50);
   oled.print("Time: ");
   oled.print(millis());
   oled.display();
@@ -366,10 +374,10 @@ void loop() {
     digitalWrite(LEDPIN, LOW);
   }
 
-  if (!digitalRead(ZEROBUTTONPIN) && timezeropressed + REPEAT_DELAY < millis()) {
+/*  if (!digitalRead(ZEROBUTTONPIN) && timezeropressed + REPEAT_DELAY < millis()) {
     timezeropressed = millis();
     zeroOut(true);
-  }
+  }*/
   //yield();
 }
 
