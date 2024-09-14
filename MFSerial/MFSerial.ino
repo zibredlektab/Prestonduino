@@ -9,15 +9,17 @@
 #include <Adafruit_SH110X.h>
 
 #define REPEAT_DELAY 10 // debounce for buttons
-#define SETBUTTONPIN 9
+#define SETBUTTONPIN SETBTN
 #define ZEROBUTTONPIN 5 // deprecated
-#define SOFTBUTTONPIN 6
-#define MFPIN A0 // output from microforce through voltage divider
-#define LEDPIN A5 // "set" LED
+#define SOFTBUTTONPIN SOFTBTN
+#define MFPIN ZSIG // output from microforce through voltage divider
+#define LEDPIN LED_BUILTIN // "set" LED
 
+#ifndef OLED_DC
 #define OLED_DC 2
 #define OLED_CS 5
 #define OLED_RST 4
+#endif
 
 #define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
@@ -69,9 +71,10 @@ FlashStorage(zeropoint_flash, int); // Reserve a portion of flash memory to stor
 FlashStorage(softlevel_flash, int); // and same for soft setting
 
 void setup() {
+  delay(500);
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(0);
+  oled.setRotation(2);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setCursor(0, 30);
