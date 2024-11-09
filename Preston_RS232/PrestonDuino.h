@@ -8,23 +8,14 @@
 #ifndef PrestonDuino_h
 #define PrestonDuino_h
 
-#define DEFAULTTIMEOUT 20
-#define PERIOD 6
-#define NAMECHECK 1000
-#define MSGQUEUELIMIT 10
-#define NORMALDATAMODE 0x17 // high resolution focus, iris, and zoom position data
+#define PDDEFAULTTIMEOUT 20
+#define PDPERIOD 6
+#define PDNORMALDATAMODE 0x17 // high resolution focus, iris, and zoom position data
 
 struct command_reply {
   int8_t replystatus;
   byte* data;
 };
-
-struct mdr_message {
-  mdr_message* nextmsg = NULL;
-  uint8_t msglen;
-  byte data[100];
-};
-
 
 
 class PrestonDuino {
@@ -36,14 +27,11 @@ class PrestonDuino {
     HardwareSerial *ser; // serial port connected to MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
     int rcvlen = 0; // length of incoming packet info
-    mdr_message* rootmsg = NULL;
-    uint8_t totalmessages = 0; // number of queued messages
     PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
     PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
     command_reply reply; // most recent received reply from MDR (not currently used)
-    int timeout = DEFAULTTIMEOUT; // milliseconds to wait for a response
+    int timeout = PDDEFAULTTIMEOUT; // milliseconds to wait for a response
     uint32_t lastsend = 0; // last time a message was sent to MDR
-    uint32_t lastnamecheck = 0; // last time we asked MDR for a lens name
 
     // MDR Data
     // Basic lens data - can be assumed to be up to date
@@ -55,21 +43,24 @@ class PrestonDuino {
     
     // Advanced data, not updated automatically
     char lensname[50];
-    char fwname[50];
+    char mdrtype[5];
 
     uint8_t lensnamelen = 0;
 
     // methods
     void sendACK();
     void sendNAK();
+
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not 
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
-    void sendCommand(PrestonPacket* pak); // Generic command. See description below for the list of commands and returned array format.
     bool validatePacket(); // true if packet validates with checksum
-    bool queueForSend(byte* tosend, int len); // adds raw bytes to the current send buffer
-    void sendBytesToMDR(); // sends the current send buffer to MDR.
+
+    void sendCommand(byte cmd); // create a preston packet for the selected command and send it
+    void sendCommandWithData(byte cmd, byte* data, int len); // same as above, but with a data payload
+    void sendBytesToMDR(byte* bytestosend, int sendlen); // sends raw bytes to MDR
     void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
+
     void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name
 
   public:
@@ -77,10 +68,9 @@ class PrestonDuino {
     void onLoop();
 
     PrestonDuino(HardwareSerial& serial);
+    bool isMDRReady(); // returns false until we get our first response from MDR
     void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
-    void shutUp();
-    void setMDRMode(uint8_t newmodeh, uint8_t newmodel, uint8_t newdata);
-
+    void shutUp(); // hard-coded packet to get the MDR to stop streaming data
 
     /* All of the following are according to the Preston protocol.
      * reply_status is a signed int identifying the type of the response:
@@ -106,8 +96,10 @@ class PrestonDuino {
     void dist(byte type, uint32_t dist);
     void err(); // Here for completeness but unused as a client command
 
+
     // The following are helper methods, simplifying common tasks
     // Lens data requires lens to be calibrated (mapped) from the hand unit
+    // Based on latest info received from MDR using data() or ld(), or streamed if that is enabled
 
     // Getters
     uint16_t getFocus(); // Focus distance, in mm (1mm precision)
@@ -116,9 +108,11 @@ class PrestonDuino {
     uint16_t getAux();
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
     uint8_t getLensNameLen(); // Length of lens name
+    char* getMDRType(); // MDR name and version number. First four chars will be "MDRx" (x = 2 - 5) for easy model recognition
+
 
     // Setters
-    void setIris(uint16_t newiris);
+    void setIris(uint16_t newiris);  // experimental, Iris must be configured for control with mode() first
 };
 
 #endif

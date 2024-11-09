@@ -1,3 +1,4 @@
+#include <Time.h>
 #include <FlashAsEEPROM.h>
 #include <FlashStorage.h>
 #include <Adafruit_ADS1X15.h>
@@ -9,10 +10,9 @@
 #include <Adafruit_SH110X.h>
 
 #define REPEAT_DELAY 10 // debounce for buttons
-#define SETBUTTONPIN SETBTN
-#define ZEROBUTTONPIN 5 // deprecated
-#define SOFTBUTTONPIN SOFTBTN
-#define MFPIN ZSIG // output from microforce through voltage divider
+#define SETBUTTONPIN 9//SETBTN
+#define SOFTBUTTONPIN 6//SOFTBTN
+#define MFPIN A0//ZSIG // output from microforce through voltage divider
 #define LEDPIN LED_BUILTIN // "set" LED
 
 #ifndef OLED_DC
@@ -27,28 +27,34 @@
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
-bool firstrun = true;
-PrestonDuino *mdr;
+bool firstrun = true; // this is set to false after the first time the program is run
+PrestonDuino *mdr; // object for communicating with the MDR
 int mfoutput = 0; // current velocity specified by MicroForce
-uint16_t curzoom; // current zoom position
+uint16_t curzoom; // current zoom position, as reported by MDR
 bool setpressed = false; // is the "Set" button depressed?
 bool softpressed = false;
 uint32_t timesetpressed; // when was the "Set" button depressed?
 uint32_t timesoftpressed; // when was the "Soft" button depressed?
-uint32_t timezeropressed; // when was the "Zero" button depressed?
 uint32_t timelastsent = 0; // when was the last mdr message sent?
-int count; // number of microforce samples taken in this averaging
+int samplecount; // number of microforce samples taken in this averaging
+int16_t adcval = 0; // current value of ADC
 
-bool limits = false; // is the zoom currently limited
+
+
+// Zoom limits
+
+bool limits = false; // is the zoom currently limited?
 uint16_t firstlimit; // initial position when set button is first pressed
 uint16_t secondlimit; // ending position when set button is released
 uint16_t widelimit = 0; // encoder position of wide zoom limit
 uint16_t tightlimit = 0xFFFF; // encoder position of tight zoom limit
-int zeropoint = 0; // point on the microforce at which the lens should not move at all
-int softlevel = 0; // amount of feathering to apply at limits, 0-2000
+int zeropoint = 0; // point on the microforce at which the lens should not move at all (read from flash during setup)
+int softlevel = 0; // amount of feathering to apply at limits, 0-2000 (read from flash during setup)
 bool soft = true; // softening/dampening/feathering is enabled
 
-// Metadata follows
+
+
+// Metadata
 
 uint16_t widelimitmeta = 0; // metadata position (focal length in 0.01mm)
 uint16_t tightlimitmeta = 0;
@@ -61,60 +67,69 @@ char lensbrand[50];
 char* lensseries;
 char* lensname;
 
-int16_t adcval = 0;
-
-//Adafruit_SH1107 oled(64, 128, &Wire);
+Adafruit_SH1107 oled(64, 128, &Wire);
 //Adafruit_ADS1115 adc;
-Adafruit_SH1106G oled = Adafruit_SH1106G(128, 64, &SPI, OLED_DC, OLED_RST, OLED_CS);
+//Adafruit_SH1106G oled = Adafruit_SH1106G(128, 64, &SPI, OLED_DC, OLED_RST, OLED_CS); // object for communicating with oled screen
 
 FlashStorage(zeropoint_flash, int); // Reserve a portion of flash memory to store current zero point
 FlashStorage(softlevel_flash, int); // and same for soft setting
 
 void setup() {
   delay(500);
+
+  // OLED setup
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(2);
+  oled.setRotation(1);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
-  oled.setCursor(0, 30);
+  oled.setCursor(0, 10);
   
+  // Beginning message
   Serial.begin(9600);
-  oled.print("Starting Serial...\n");
+  oled.print("MFSerial Starting...\n\n");
+  oled.print("Version: ");
+  oled.print(__DATE__);
+  oled.print(" ");
+  oled.println(__TIME__);
+  oled.println("Connecting to MDR...");
   oled.display();
-  while(!Serial && millis() < 3000);
-  Serial.println();
-  oled.print("Serial started, or timed out.\n");
-  oled.display();
+  while(!Serial && millis() < 3000); // give Serial time to start up
 
   Serial.println("---Start---");
 
   mdr = new PrestonDuino(Serial1);
+  while(!mdr->isMDRReady()) {
+    delay(10);
+    mdr->onLoop(); // gotta loop if you want to receive a message
+  }
+  Serial.print("Connected to ");
+  Serial.println(mdr->getMDRType());
+
+  oled.print("Connected to ");
+  oled.print(mdr->getMDRType());
+  
   delay(100);
 
   pinMode(SETBUTTONPIN, INPUT_PULLUP);
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
-  //pinMode(ZEROBUTTONPIN, INPUT_PULLUP);
   pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
 
-  mdr->shutUp();
-  mdr->mode(0x19, 0x4); // commanded motor positions, zoom position, streaming, controlling zoom
-  mdr->data(0x14); // request only zoom position
+  mdr->mode(0x19, 0x4); // Request "commanded" motor positions (not actual position), zoom position (not velocity), streaming data, and controlling zoom axis
+  delay(MESSAGE_DELAY);
+  mdr->data(0x14); // request only zoom position data (we don't care about focus or iris)
 
-  //adc.begin();
-  //adc.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, true);
-
-  zeropoint = zeropoint_flash.read();
+  zeropoint = zeropoint_flash.read(); // attempt to read zero point from flash
   if (!zeropoint) zeropoint = DEFAULTZERO;
 
-  softlevel = softlevel_flash.read();
+  softlevel = softlevel_flash.read(); // attempt to read soft level from flash
   if (!softlevel) softlevel = DEFAULTSOFT;
 
   zeroOut(!digitalRead(SETBUTTONPIN)); // zero everything out, and save the current stick value as a new zero point if the set button is pressed
 
   timelastsent = millis();
-  Scheduler.startLoop(metaLoop);
+  Scheduler.startLoop(metaLoop); // multi threading begin!
   oled.clearDisplay();
   oled.display();
 }
@@ -124,15 +139,24 @@ void zeroOut(bool newzero) {
   curzoom = 0x7FFF;
   mdr->data(zoomdata, 3);
   if (newzero) {
-    zeropoint = analogRead(MFPIN);//adc.getLastConversionResults(); // current stick position is the new zero point
+    zeropoint = analogRead(MFPIN); // current stick position is the new zero point
     zeropoint_flash.write(zeropoint); // save this zero point for future use
+    digitalWrite(LEDPIN, HIGH);
+    delay(250);
+    digitalWrite(LEDPIN, LOW);
+    delay(250);
+    digitalWrite(LEDPIN, HIGH);
+    delay(250);
+    digitalWrite(LEDPIN, LOW);
   }
 }
 
 void metaLoop() {
+  // metaLoop handles all metadata interactions, including getting the lens name & running the OLED screen
+
   if (strcmp(mdr->getLensName(), fulllensname) != 0) { // lens has changed
     Serial.println("Lens name has changed");
-    strncpy(fulllensname, mdr->getLensName(), mdr->getLensNameLen());
+    strncpy(fulllensname, mdr->getLensName(), mdr->getLensNameLen()); // store the new lens name
     Serial.print("New lens name is ");
     Serial.println(fulllensname);
     Serial.print("Lens name is ");
@@ -166,11 +190,13 @@ void metaLoop() {
     resetLimits();
   }
 
+  // display current focal length
   oled.clearDisplay();
   oled.setCursor(0,10);
   oled.print(mdr->getZoom()/100);
   oled.print(" mm");
 
+  // display total zoom range available
   if (lenswide != lenstight) { // range is only displayed for zooms, not primes
     oled.setCursor(0, 20);
     oled.print("Range: ");
@@ -179,6 +205,7 @@ void metaLoop() {
     oled.print(tightlimitmeta/100);
   }
 
+  // display softening
   oled.setCursor(60, 10);
   oled.print("Soft: ");
   if (soft) {
@@ -188,7 +215,7 @@ void metaLoop() {
     oled.print("off");
   }
 
-
+  // debug info
   oled.setCursor(10, 30);
   oled.print("MF Value: ");
   oled.print(adcval);
@@ -201,11 +228,10 @@ void metaLoop() {
   oled.print(millis());
   oled.display();
   
-  //yield();
 }
 
 void loop() {
-  mdr->onLoop();
+  mdr->onLoop(); // receive any incoming messages from mdr
 
   if (firstrun && timelastsent + 1000 > millis()) { // give the mdr a little time to get caught up at the beginning
     return;
@@ -217,15 +243,16 @@ void loop() {
     softlevel += getMFOutput() * 0.1;
     if (softlevel > MAXSOFT) softlevel = MAXSOFT;
     if (softlevel < 0) softlevel = 0;
-    Serial.print("soft now ");
+    Serial.print("soft level is now ");
     Serial.println(softlevel);
-  } else {
 
-    if (count == 0 || timelastsent + MESSAGE_DELAY > millis()) { // average input from microforce until message delay period is reached
+  } else { // controlling zoom (not changing soft level)
+
+    if (samplecount == 0 || timelastsent + MESSAGE_DELAY > millis()) { // average input from microforce until message delay period is reached
       int toadd = getMFOutput();
       mfoutput += toadd;
-      Serial.print("count #");
-      Serial.print(count);
+      Serial.print("samplecount #");
+      Serial.print(samplecount);
       Serial.print(" at time ");
       Serial.print(millis());
       Serial.print(": ");
@@ -233,18 +260,17 @@ void loop() {
       Serial.print(" (Sending at ");
       Serial.print(timelastsent + MESSAGE_DELAY);
       Serial.println(")");
-      count++;
+      samplecount++;
     } else {
-      mfoutput /= count;
-      count = 0;
+      mfoutput /= samplecount;
+      samplecount = 0;
 
       uint16_t newzoom = curzoom;
       
       Serial.print("\nCurrent zoom position is 0x");
       Serial.print(curzoom, HEX);
 
-
-      int stepsize = mfoutput; // get current output from microforce, this is the step size
+      int stepsize = mfoutput; // get current output from microforce, this is the step size (amount to increment zoom position)
 
       Serial.print(", step size is ");
       Serial.print(stepsize);
@@ -252,10 +278,10 @@ void loop() {
       if (abs(stepsize) < DEADZONE) {
         stepsize = 0; // extremely small steps are below the noise floor, so zero them out
       } else {
-        bool zoomingout = stepsize < 0;
+        bool zoomingout = stepsize < 0; // negative step size means zooming out
 
         // Scale stepsize exponentially (high step values should move motor further than low step values)
-        stepsize = (1000 + (abs(stepsize) * abs(stepsize) * 9)) / 500;
+        stepsize = (1000 + (abs(stepsize) * abs(stepsize) * 9)) / 500; // hard coded values based on my experimentation
         if (zoomingout) stepsize *= -1;
 
         Serial.print(", scaled step size is ");
@@ -282,7 +308,7 @@ void loop() {
 
       // Determine new zoom position using stepsize
       if (mfoutput < 0) { // zooming out
-        if (curzoom + stepsize >= widelimit) {
+        if (curzoom + stepsize >= widelimit) { // Only continue to change zoom if the new value will be within limits
           newzoom = curzoom + stepsize;
         } else {
           newzoom = widelimit;
@@ -300,27 +326,34 @@ void loop() {
 
       byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)}; // build the mdr command
 
-      if (newzoom != curzoom) {
+      if (newzoom != curzoom) { // only send new data if the data is new!
         mdr->data(zoomdata, 3); // send to mdr
+        timelastsent = millis();
         curzoom = newzoom;
+      } else {
+        if (millis() > timelastsent + 1000) {
+          // if it has been over one second since the last zoom command was sent, use the downtime to update lens name
+          mdr->info(0x1);
+          timelastsent = millis();
+        }
+
       }
 
-      timelastsent = millis();
       mfoutput = 0;
     }
   }
 
   // check if set button is pressed
   if (!digitalRead(SETBUTTONPIN)) { // set button is pressed
-    if (!setpressed) {
+    if (!setpressed) { // ...and it was not pressed on the last loop, so it was just pressed
       timesetpressed = millis();
       setpressed = true;
-      if (!limits) {
+      if (!limits) { // ...and limits have not been set yet, so we are beginning the limit-setting process
         firstlimit = curzoom;
-        firstlimitmeta = mdr->getZoom();
+        firstlimitmeta = mdr->getZoom(); // get the metadata value of the focal length as well
       }
     }
-  } else if (timesetpressed + REPEAT_DELAY < millis()) { // set button is not pressed, and it's been long enough to debounce input!
+  } else if (timesetpressed + REPEAT_DELAY < millis()) { // set button is not pressed, and it's been long enough to debounce input
     if (setpressed) { // set button *was* pressed on the last loop, so it was just released
       setpressed = false;
       if (!limits) { // zoom is not currently limited, so set new limits based on the current position
@@ -328,7 +361,7 @@ void loop() {
         secondlimitmeta = mdr->getZoom();
         limits = true;
 
-        // assign our temp limits as the zoom limits
+        // assign our zoom limits from the temp limits
         if (firstlimit < secondlimit) {
           widelimit = firstlimit;
           tightlimit = secondlimit;
@@ -349,11 +382,11 @@ void loop() {
 
   // check if soft button is pressed
   if (!digitalRead(SOFTBUTTONPIN)) { // soft button is pressed
-    if (!softpressed) {
+    if (!softpressed) { // ...and it was not pressed on the last loop
       timesoftpressed = millis();
       softpressed = true;
     }
-  } else if (timesoftpressed + REPEAT_DELAY < millis()) { // soft button is not pressed, and it's been long enough to debounce input!
+  } else if (timesoftpressed + REPEAT_DELAY < millis()) { // soft button is not pressed, and it's been long enough to debounce input
     if (softpressed) { // soft button *was* pressed on the last loop, so it was just released
       softpressed = false;
       if (millis() - timesoftpressed < 1000) { // soft button was pressed & released, not held
@@ -365,23 +398,19 @@ void loop() {
         if (softlevel < 1) softlevel = 1;
         Serial.print("new soft level is ");
         Serial.println(softlevel);
-        softlevel_flash.write(softlevel);
+        softlevel_flash.write(softlevel); // store soft level in flash
       }
     }
   }
   
 
+  // LED control
   if (limits) {
     digitalWrite(LEDPIN, HIGH);
   } else {
     digitalWrite(LEDPIN, LOW);
   }
 
-/*  if (!digitalRead(ZEROBUTTONPIN) && timezeropressed + REPEAT_DELAY < millis()) {
-    timezeropressed = millis();
-    zeroOut(true);
-  }*/
-  //yield();
 }
 
 void resetLimits() {
@@ -405,12 +434,9 @@ int getMFOutput() {
   int signal = analogRead(MFPIN); // 10-bit, so 0-1024
   adcval = signal;
 
-
   Serial.print("ADC value is ");
   Serial.print(adcval);
 
-  //adcval = adc.getLastConversionResults();
-  //int signal = adcval;
   signal -= zeropoint; // Get a velocity from the raw sensor value
 
   Serial.print(" minus zero point of ");

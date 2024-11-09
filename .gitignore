@@ -1,2 +1,6 @@
 
 .DS_Store
+*.hex
+*.bin
+*.elf
+/MFSerial/build
