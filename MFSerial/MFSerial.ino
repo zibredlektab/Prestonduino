@@ -9,6 +9,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
+#include "Fonts/pixelmix4pt7b.h"
+#include "Fonts/Roboto_Medium_26.h"
+#include "Fonts/Roboto_34.h"
+#define XLARGE_FONT &Roboto_34
+#define LARGE_FONT &Roboto_Medium_26
+#define SMALL_FONT &pixelmix4pt7b
+
 #define REPEAT_DELAY 10 // debounce for buttons
 #define SETBUTTONPIN 9//SETBTN
 #define SOFTBUTTONPIN 6//SOFTBTN
@@ -27,6 +34,8 @@
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
+#define DATA_SETTING 0x14 //zoom position data (we don't care about focus or iris)
+
 bool firstrun = true; // this is set to false after the first time the program is run
 PrestonDuino *mdr; // object for communicating with the MDR
 int mfoutput = 0; // current velocity specified by MicroForce
@@ -36,6 +45,7 @@ bool softpressed = false;
 uint32_t timesetpressed; // when was the "Set" button depressed?
 uint32_t timesoftpressed; // when was the "Soft" button depressed?
 uint32_t timelastsent = 0; // when was the last mdr message sent?
+uint32_t timelastupdatedname = 0; // when was the lens name last updated?
 int samplecount; // number of microforce samples taken in this averaging
 int16_t adcval = 0; // current value of ADC
 
@@ -109,16 +119,19 @@ void setup() {
   oled.print("Connected to ");
   oled.print(mdr->getMDRType());
   
-  delay(100);
+  delay(1000);
 
   pinMode(SETBUTTONPIN, INPUT_PULLUP);
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
   pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
 
-  mdr->mode(0x19, 0x4); // Request "commanded" motor positions (not actual position), zoom position (not velocity), streaming data, and controlling zoom axis
+  mdr->mode(0x18, 0x4); // Request "commanded" motor positions (not actual position), zoom position (not velocity), and controlling zoom axis
   delay(MESSAGE_DELAY);
-  mdr->data(0x14); // request only zoom position data (we don't care about focus or iris)
+  mdr->info(0x1); // Get starting lens name
+  delay(MESSAGE_DELAY);
+  mdr->data(DATA_SETTING); // request only zoom position data (we don't care about focus or iris)
+  delay(MESSAGE_DELAY);
 
   zeropoint = zeropoint_flash.read(); // attempt to read zero point from flash
   if (!zeropoint) zeropoint = DEFAULTZERO;
@@ -126,7 +139,7 @@ void setup() {
   softlevel = softlevel_flash.read(); // attempt to read soft level from flash
   if (!softlevel) softlevel = DEFAULTSOFT;
 
-  zeroOut(!digitalRead(SETBUTTONPIN)); // zero everything out, and save the current stick value as a new zero point if the set button is pressed
+  zeroOut(true);//!digitalRead(SETBUTTONPIN)); // zero everything out, and save the current stick value as a new zero point if the set button is pressed
 
   timelastsent = millis();
   Scheduler.startLoop(metaLoop); // multi threading begin!
@@ -138,6 +151,7 @@ void zeroOut(bool newzero) {
   byte zoomdata[3] = {0x3, 0x7F, 0xFF}; // establish a known starting position, halfway through range
   curzoom = 0x7FFF;
   mdr->data(zoomdata, 3);
+  delay(MESSAGE_DELAY);
   if (newzero) {
     zeropoint = analogRead(MFPIN); // current stick position is the new zero point
     zeropoint_flash.write(zeropoint); // save this zero point for future use
@@ -157,6 +171,7 @@ void metaLoop() {
   if (strcmp(mdr->getLensName(), fulllensname) != 0) { // lens has changed
     Serial.println("Lens name has changed");
     strncpy(fulllensname, mdr->getLensName(), mdr->getLensNameLen()); // store the new lens name
+    fulllensname[mdr->getLensNameLen()-1] = 0; // null terminate
     Serial.print("New lens name is ");
     Serial.println(fulllensname);
     Serial.print("Lens name is ");
@@ -192,13 +207,17 @@ void metaLoop() {
 
   // display current focal length
   oled.clearDisplay();
-  oled.setCursor(0,10);
+  oled.setCursor(10,30);
+  oled.setFont(XLARGE_FONT);
   oled.print(mdr->getZoom()/100);
+  oled.setFont(LARGE_FONT);
   oled.print(" mm");
+
+  oled.setFont(SMALL_FONT);
 
   // display total zoom range available
   if (lenswide != lenstight) { // range is only displayed for zooms, not primes
-    oled.setCursor(0, 20);
+    oled.setCursor(10, 45);
     oled.print("Range: ");
     oled.print(widelimitmeta/100);
     oled.print(" - ");
@@ -206,8 +225,7 @@ void metaLoop() {
   }
 
   // display softening
-  oled.setCursor(60, 10);
-  oled.print("Soft: ");
+  oled.setCursor(10, 60);
   if (soft) {
     oled.print(map(softlevel, 0, 0x7FFF, 0, 100));
     oled.print("%");
@@ -215,6 +233,7 @@ void metaLoop() {
     oled.print("off");
   }
 
+  /*
   // debug info
   oled.setCursor(10, 30);
   oled.print("MF Value: ");
@@ -226,6 +245,8 @@ void metaLoop() {
   oled.setCursor(10,50);
   oled.print("Time: ");
   oled.print(millis());
+  */
+
   oled.display();
   
 }
@@ -328,12 +349,19 @@ void loop() {
 
       if (newzoom != curzoom) { // only send new data if the data is new!
         mdr->data(zoomdata, 3); // send to mdr
+        delay(MESSAGE_DELAY);
+        mdr->data(DATA_SETTING);
         timelastsent = millis();
         curzoom = newzoom;
       } else {
-        if (millis() > timelastsent + 1000) {
-          // if it has been over one second since the last zoom command was sent, use the downtime to update lens name
+        if (millis() > timelastupdatedname + 100) {
+          Serial.println("Requesting lens name during zoom downtime"); 
+          // if it has been a while since the last zoom command was sent, use the downtime to update lens name
           mdr->info(0x1);
+          timelastsent = millis();
+          timelastupdatedname = millis();
+        } else if (millis() > timelastsent + MESSAGE_DELAY) {
+          mdr->data(DATA_SETTING);
           timelastsent = millis();
         }
 
