@@ -16,6 +16,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+// This file applies to Production v1.1
+
 #ifndef _VARIANT_ARDUINO_ZERO_
 #define _VARIANT_ARDUINO_ZERO_
 
@@ -77,7 +79,7 @@ extern "C"
 // #define digitalPinToTimer(P)
 
 // LEDs
-#define PIN_LED_13           (13ul)
+#define PIN_LED_13           (25ul)
 #define PIN_LED_RXL          PIN_LED_13
 #define PIN_LED_TXL          PIN_LED_13
 #define PIN_LED              PIN_LED_13
@@ -87,12 +89,12 @@ extern "C"
 
 
 // MFSerial Stuff
-#define SOFTBTN              (14ul)
-#define OLED_DC              (17ul)
+#define SOFTBTN              (3ul)
+#define OLED_DC              (15ul)
 #define SETLED               LED_BUILTIN
-#define SETBTN               (3ul)
+#define SETBTN               (14ul)
 #define OLED_RST             (16ul)
-#define OLED_CS              (15ul)
+#define OLED_CS              (17ul)
 #define ZSIG                 (19ul)
 #define RUN	                 (12ul)
 
@@ -135,17 +137,18 @@ static const uint8_t ATN = PIN_ATN;
 #define PAD_SERIAL_RX       (SERCOM_RX_PAD_3)
 
 // Serial1
-#define PIN_SERIAL1_RX       (0ul)
-#define PIN_SERIAL1_TX       (1ul)
+#define PIN_SERIAL1_RX       (1ul)
+#define PIN_SERIAL1_TX       (0ul)
 #define PAD_SERIAL1_TX       (UART_TX_PAD_2)
 #define PAD_SERIAL1_RX       (SERCOM_RX_PAD_3)
+
 
 /*
  * SPI Interfaces
  */
 #define SPI_INTERFACES_COUNT 1
 
-#define PIN_SPI_MISO         (22u) // we don't care about MISO
+#define PIN_SPI_MISO         (18u) // we don't care about MISO
 #define PIN_SPI_MOSI         (24u)
 #define PIN_SPI_SCK          (23u)
 #define PERIPH_SPI           sercom0
@@ -164,8 +167,8 @@ static const uint8_t SCK  = PIN_SPI_SCK ;
 
 #define PIN_WIRE_SDA         (20u)
 #define PIN_WIRE_SCL         (21u)
-#define PERIPH_WIRE          sercom3
-#define WIRE_IT_HANDLER      SERCOM3_Handler
+#define PERIPH_WIRE          sercom5
+#define WIRE_IT_HANDLER      SERCOM5_Handler
 
 static const uint8_t SDA = PIN_WIRE_SDA;
 static const uint8_t SCL = PIN_WIRE_SCL;
