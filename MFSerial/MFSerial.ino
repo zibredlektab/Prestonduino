@@ -129,12 +129,6 @@ void setup() {
   pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
   pinMode(RUN, INPUT_PULLUP);
 
-  Serial.print("Run pin is currently ");
-  if (digitalRead(RUN)) {
-    Serial.println("up");
-  } else {
-    Serial.println("down");
-  }
 
   mdr->shutUp();
   delay(MESSAGE_DELAY);
@@ -259,6 +253,10 @@ void metaLoop() {
   oled.setCursor(80,60);
   oled.print(millis());
   
+  if(!digitalRead(RUN)) {
+    oled.setCursor(110,10);
+    oled.print("run");
+  }
 
   oled.display();
 
@@ -266,7 +264,7 @@ void metaLoop() {
 }
 
 void loop() {
-  Serial.println("----- Loop Start -----");
+  //Serial.println("----- Loop Start -----");
   mdr->onLoop(); // receive any incoming messages from mdr
 
   if (firstrun && timelastsent + 1000 > millis()) { // give the mdr a little time to get caught up at the beginning

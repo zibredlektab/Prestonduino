@@ -16,7 +16,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
 
-  //Serial.println("PD: Starting PrestonDuino");
+  Serial.println("PD: Starting PrestonDuino");
 
   // Zero out lens name and fw name
   for (int i = 0; i < 50; i++) {
@@ -30,19 +30,19 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
 
   delay(PDPERIOD);
 
-  //Serial.print("PD: rcvbuf is from 0x");
-  //Serial.println((int)this->rcvbuf, HEX);
+  Serial.print("PD: rcvbuf is from 0x");
+  Serial.println((int)this->rcvbuf, HEX);
 }
 
 bool PrestonDuino::isMDRReady() {
   // Check for stored MDR firmware number
   if (this->mdrtype[0] != 0) {
     // If we have that, return true
-    //Serial.println("PD: MDR is ready");
+    Serial.println("PD: MDR is ready");
     return true;
   } else {
     // If not, send an "info" command to the MDR, requesting firmware number
-    //Serial.println("PD: MDR is not ready...");
+    Serial.println("PD: MDR is not ready...");
     this->info(0x0);
     delay(PDPERIOD);
     return false;
@@ -51,7 +51,7 @@ bool PrestonDuino::isMDRReady() {
 
 void PrestonDuino::shutUp() {
   // tell the mdr to shut up for a second
-  //Serial.println("PD: Asking MDR to stop streaming data (sending as hard coded bytes)");
+  Serial.println("PD: Asking MDR to stop streaming data (sending as hard coded bytes)");
   uint8_t shutup[12] = {0x02, 0x30, 0x31, 0x30, 0x32, 0x30, 0x30, 0x30, 0x30, 0x38, 0x35, 0x03};
   ser->write(shutup, 12);
   delay(100);
@@ -77,20 +77,20 @@ void PrestonDuino::onLoop () {
 // Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
   unsigned long long int time_now = millis();
-  //Serial.println("PD: Waiting for response.");
+  Serial.println("PD: Waiting for response.");
   
   while(millis() <= time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
-      //Serial.println("PD: Got a response");
+      Serial.println("PD: Got a response");
       return true;
     } else if (millis() % 1000 == 0){
-      //Serial.print(".");
+      Serial.print(".");
     }
   }
 
   // If it gets this far, there was a timeout
 
-  //Serial.println("PD: Timeout");
+  Serial.println("PD: Timeout");
   return false;
 }
 
@@ -109,14 +109,14 @@ bool PrestonDuino::rcv() {
     if (currentchar != -1) {
       switch (currentchar) {
         case ACK: {
-          //Serial.println("PD: ACK received");
+          Serial.println("PD: ACK received");
           this->rcvbuf[0] = ser->read();
           this->rcvlen = 1;
           return true;
           break;
         }
         case NAK: {
-          //Serial.println("PD: NAK received");
+          Serial.println("PD: NAK received");
           this->rcvbuf[0] = ser->read();
           this->rcvlen = 1;
           return true;
@@ -125,70 +125,70 @@ bool PrestonDuino::rcv() {
         case STX: {
           // Start copying data to rcvbuf, until an etx
           this->rcvlen = ser->readBytesUntil(ETX, this->rcvbuf, 100);
-          //Serial.print("PD: Got a packet of ");
-          //Serial.print(this->rcvlen);
-          //Serial.println(" characters:");
+          Serial.print("PD: Got a packet of ");
+          Serial.print(this->rcvlen);
+          Serial.println(" characters:");
 
           this->rcvbuf[this->rcvlen] = 0x0; // null terminate that thang
 
           for (int i = 0; i < this->rcvlen; i++) {
-            //Serial.print(" 0x");
-            //Serial.print(this->rcvbuf[i], HEX);
+            Serial.print(" 0x");
+            Serial.print(this->rcvbuf[i], HEX);
           }
-          //Serial.println();
+          Serial.println();
 
           // -- Packet collision checking --
-          //Serial.print("PD: Checking for packet collision...");
+          Serial.print("PD: Checking for packet collision...");
           for (int i = this->rcvlen - 1; i > 0; i--) {
             // iterate from the end of the buffer, because we only care about the latest packet (the older packet is garbage anyway)
             if (this->rcvbuf[i] == 0x6) {
               char* errantack = (char*)&this->rcvbuf[i];
-              //Serial.print("found ACK, at position ");
-              //Serial.print(errantack - (char*)this->rcvbuf);
-              //Serial.println(". Shuffling packet up by one to get rid of it.");
+              Serial.print("found ACK, at position ");
+              Serial.print(errantack - (char*)this->rcvbuf);
+              Serial.println(". Shuffling packet up by one to get rid of it.");
               memmove(errantack, errantack + 1, this->rcvlen - (errantack - (char*)this->rcvbuf)); // move the rest packet up by one, starting from the errant ack position 
               this->rcvlen--;
               
-              //Serial.print("PD: buffer is now ");
-              //Serial.print(this->rcvlen);
-              //Serial.println(" characters long");
+              Serial.print("PD: buffer is now ");
+              Serial.print(this->rcvlen);
+              Serial.println(" characters long");
 
-              //Serial.print("New packet:");
+              Serial.print("New packet:");
               for (int j = 0; j < this->rcvlen; j++) {
-                //Serial.print(" 0x");
-                //Serial.print(this->rcvbuf[j], HEX);
+                Serial.print(" 0x");
+                Serial.print(this->rcvbuf[j], HEX);
               }
-              //Serial.println();
+              Serial.println();
               i = this->rcvlen - 1; // restart loop
             } else if (this->rcvbuf[i] == 0x2) {
               char* errantstx = (char*)&this->rcvbuf[i];
-              //Serial.print("found STX, at position ");
-              //Serial.print(errantstx - (char*)this->rcvbuf);
-              //Serial.println(". Moving packet up from that index.");
+              Serial.print("found STX, at position ");
+              Serial.print(errantstx - (char*)this->rcvbuf);
+              Serial.println(". Moving packet up from that index.");
               this->rcvlen -= errantstx - (char*)this->rcvbuf; // new packet length is reduced by length of string leading up to the errant stx
 
-              //Serial.print("PD: buffer is now ");
-              //Serial.print(this->rcvlen);
-              //Serial.println(" characters long");
+              Serial.print("PD: buffer is now ");
+              Serial.print(this->rcvlen);
+              Serial.println(" characters long");
 
               memmove((char*)this->rcvbuf, errantstx, this->rcvlen);
 
-              //Serial.print("New packet:");
+              Serial.print("New packet:");
               for (int j = 0; j < this->rcvlen; j++) {
-                //Serial.print(" 0x");
-                //Serial.print(this->rcvbuf[j], HEX);
+                Serial.print(" 0x");
+                Serial.print(this->rcvbuf[j], HEX);
               }
-              //Serial.println();
+              Serial.println();
               i = this->rcvlen - 1; // restart loop
             }
           }
-          //Serial.println("PD: packet collision detection complete");
+          Serial.println("PD: packet collision detection complete");
           
 
           if (this->rcvlen < 99) {
             this->rcvbuf[rcvlen++] = ETX;
           } else {
-            //Serial.println("PD: Read a suspiciously large amount of data...");
+            Serial.println("PD: Read a suspiciously large amount of data...");
           }
           
           return true;
@@ -197,16 +197,16 @@ bool PrestonDuino::rcv() {
         default: {
           // data we do not understand, let's go around again
           char unknownchar = ser->read();
-          //Serial.print("PD: current character in serial is 0x");
-          //Serial.print(unknownchar, HEX);
-          //Serial.println(", which I don't understand");
+          Serial.print("PD: current character in serial is 0x");
+          Serial.print(unknownchar, HEX);
+          Serial.println(", which I don't understand");
           break;
         }
       }
     }
 
   }
-  //Serial.println("PD: Timed out waiting for a packet");
+  Serial.println("PD: Timed out waiting for a packet");
   return false;
 }
 
@@ -220,66 +220,66 @@ int PrestonDuino::parseRcv() {
    */
   int response = 0;
   
-  //Serial.println("PD: Starting to process rcvbuf");
+  Serial.println("PD: Starting to process rcvbuf");
 
-  //Serial.print("PD: rcvbuf is");
+  Serial.print("PD: rcvbuf is");
   for (int i = 0; i < this->rcvlen; i++) {
-    //Serial.print(" 0x");
-    //Serial.print(this->rcvbuf[i], HEX);
+    Serial.print(" 0x");
+    Serial.print(this->rcvbuf[i], HEX);
   }
-  //Serial.println();
+  Serial.println();
 
   if (this->rcvbuf[0] == ACK) {
     // Reply is ACK
-    //Serial.println("PD: Rcvbuf is ACK");
+    Serial.println("PD: Rcvbuf is ACK");
     response = -1;
     
   } else if (this->rcvbuf[0] == NAK) {
     // Reply is NAK
-    //Serial.println("PD: Rcvbuf is NAK");
+    Serial.println("PD: Rcvbuf is NAK");
     response = -3;
     
   } else if (this->rcvbuf[0] == STX) {
-    //Serial.println("PD: Rcvbuf is a packet");
+    Serial.println("PD: Rcvbuf is a packet");
     // Reply is a packet
     
     if (!this->rcvpacket->packetFromBuffer(this->rcvbuf, this->rcvlen)) {
-      //Serial.println("PD: PP failed to make a new packet from this buffer");  
+      Serial.println("PD: PP failed to make a new packet from this buffer");  
       return -2;
     }
 
-    //Serial.println("PD: Set up new rcvpacket.");
+    Serial.println("PD: Set up new rcvpacket.");
     
     if (!this->validatePacket()) {
-      //Serial.print("PD: Packet failed validity check: ");
+      Serial.print("PD: Packet failed validity check: ");
       for (int i = 0; i < this->rcvlen; i++) {
-        //Serial.print(" 0x");
-        //Serial.print(this->rcvbuf[i], HEX);
+        Serial.print(" 0x");
+        Serial.print(this->rcvbuf[i], HEX);
       }
-      //Serial.println();
+      Serial.println();
       return -2;
     }
     
     switch (this->rcvpacket->getMode()) {
       case 0x11: {
         // Reply is an error message
-        //Serial.println("PD: Rcv packet is an error");
+        Serial.println("PD: Rcv packet is an error");
         response = -3;
         // TODO actual error handling?
         break;
       }
       case 0x04: {
         // Reply is a data packet
-        //Serial.println("PD: This is a data packet");
+        Serial.println("PD: This is a data packet");
         response = this->rcvpacket->getDataLen();
 
         
-        //Serial.print("PD: The data is: ");
+        Serial.print("PD: The data is: ");
         for (int i = 0; i < response; i++) {
-          //Serial.print(" 0x");
-          //Serial.print(this->rcvpacket->getData()[i], HEX);
+          Serial.print(" 0x");
+          Serial.print(this->rcvpacket->getData()[i], HEX);
         }
-        //Serial.println();
+        Serial.println();
         
 
         int dataindex = 0;
@@ -290,8 +290,8 @@ int PrestonDuino::parseRcv() {
           this->iris = this->rcvpacket->getData()[dataindex++] << 8;
           this->iris += this->rcvpacket->getData()[dataindex++];
           
-          //Serial.print("iris: ");
-          //Serial.println(this->iris);
+          Serial.print("iris: ");
+          Serial.println(this->iris);
         }
         if (datadescriptor & 2) {
           // has focus
@@ -299,9 +299,9 @@ int PrestonDuino::parseRcv() {
           this->focus = this->rcvpacket->getData()[dataindex++] << 8;
           this->focus += this->rcvpacket->getData()[dataindex++];
 
-          //Serial.print(" focus: ");
-          //Serial.print(this->focus);
-          //Serial.print("mm");
+          Serial.print(" focus: ");
+          Serial.print(this->focus);
+          Serial.print("mm");
         
         }
         if (datadescriptor & 4) {
@@ -309,15 +309,15 @@ int PrestonDuino::parseRcv() {
           this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
           this->zoom += this->rcvpacket->getData()[dataindex++];
 
-          //Serial.print(" zoom: ");
-          //Serial.println(this->zoom);          
+          Serial.print(" zoom: ");
+          Serial.println(this->zoom);          
         }
         if (datadescriptor & 8) {
           // has AUX
           this->aux = this->rcvpacket->getData()[dataindex++] << 8;
           this->aux += this->rcvpacket->getData()[dataindex++];  
-          //Serial.print(" aux: ");
-          //Serial.print(this->aux);
+          Serial.print(" aux: ");
+          Serial.print(this->aux);
         }
         if (datadescriptor & 16) {
           // describes resolution of data (unused)
@@ -326,8 +326,8 @@ int PrestonDuino::parseRcv() {
           // has rangefinder distance
           this->distance = this->rcvpacket->getData()[dataindex++] << 8;
           this->distance += this->rcvpacket->getData()[dataindex++];   
-          //Serial.print(" distance: ");
-          //Serial.print(this->distance);
+          Serial.print(" distance: ");
+          Serial.print(this->distance);
         }
         if (datadescriptor & 64) {
           // describes datatype of data (position vs metadata) (unused)
@@ -336,7 +336,7 @@ int PrestonDuino::parseRcv() {
           // describes status of MDR (unused, and I'm not even sure what this means tbh)
         }
 
-        //Serial.println();
+        Serial.println();
         break;
       }
 
@@ -346,15 +346,15 @@ int PrestonDuino::parseRcv() {
         }
         this->mdrtype[4] = 0;
 
-        //Serial.print("PD: new MDR type: ");
+        Serial.print("PD: new MDR type: ");
         for (int i = 0; i < 5; i++) {
-          //Serial.print(" 0x");
-          //Serial.print(this->mdrtype[i], HEX);
-          //Serial.print("(");
-          //Serial.print(this->mdrtype[i]);
-          //Serial.print(")");
+          Serial.print(" 0x");
+          Serial.print(this->mdrtype[i], HEX);
+          Serial.print("(");
+          Serial.print(this->mdrtype[i]);
+          Serial.print(")");
         }
-        //Serial.println();
+        Serial.println();
 
         break;
       }
@@ -378,47 +378,47 @@ int PrestonDuino::parseRcv() {
           this->mdrtype[4] = 0;
 
         } else {
-          //Serial.println("PD: unknown info type received:");
+          Serial.println("PD: unknown info type received:");
           for (int i = 1; i < this->rcvlen; i++) {
-            //Serial.print(" 0x");
-            //Serial.print(this->rcvpacket->getData()[i], HEX);
+            Serial.print(" 0x");
+            Serial.print(this->rcvpacket->getData()[i], HEX);
           }
-          //Serial.println();
+          Serial.println();
           break;
 
         }
 
-        //Serial.print("PD: new info: ");
+        Serial.print("PD: new info: ");
         for (int i = 0; i < this->rcvpacket->getDataLen() - 1; i++) {
-          //Serial.print(" 0x");
-          //Serial.print(this->rcvpacket->getData()[i+2], HEX);
-          //Serial.print("(");
-          //Serial.print(this->rcvpacket->getData()[i+2]);
-          //Serial.print(")");
+          Serial.print(" 0x");
+          Serial.print(this->rcvpacket->getData()[i+2], HEX);
+          Serial.print("(");
+          Serial.print(this->rcvpacket->getData()[i+2]);
+          Serial.print(")");
         }
 
-        //Serial.println();
+        Serial.println();
         break;
       }
 
       default: {
-        //Serial.print("PD: packet is of mode 0x");
-        //Serial.println(this->rcvpacket->getMode());
+        Serial.print("PD: packet is of mode 0x");
+        Serial.println(this->rcvpacket->getMode());
         break;
       }
     }
 
 
   } else { // This isn't a packet format I recognize
-    //Serial.print("PD: First byte of rcvbuf is 0x");
-    //Serial.print(this->rcvbuf[0], HEX);
-    //Serial.println(", and I don't know how to parse that.");
-    //Serial.print("PD: Second byte of rcvbuf is 0x");
-    //Serial.println(this->rcvbuf[1], HEX);
+    Serial.print("PD: First byte of rcvbuf is 0x");
+    Serial.print(this->rcvbuf[0], HEX);
+    Serial.println(", and I don't know how to parse that.");
+    Serial.print("PD: Second byte of rcvbuf is 0x");
+    Serial.println(this->rcvbuf[1], HEX);
   }
 
   // Done processing
-  //Serial.println("PD: Done processing rcvbuf");
+  Serial.println("PD: Done processing rcvbuf");
 
   return response;
 }
@@ -429,27 +429,22 @@ bool PrestonDuino::validatePacket() {
 
   if (this->rcvpacket->getPacketLen() < 9) {
     // stx, 2x mode, 2x len, 1x data, 2x checksum, etx
-    //Serial.println("PD: this packet is too short to be valid.");
+    Serial.println("PD: this packet is too short to be valid.");
     return false;
-  } else {
-    //Serial.print("PD: this packet is ");
-    //Serial.print(this->rcvpacket->getPacketLen());
-    //Serial.println(" characters long.");
   }
 
   if (this->rcvpacket->getMode() == 0x1F) return true; // "info" messages with MDR version number are always malformed...
 
   int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
-  //Serial.print("PD: tosumlen is ");
-  //Serial.println(tosumlen);
-
   int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
-  //Serial.print("PD: checksum of incoming message is ");
-  //Serial.print(this->rcvpacket->getSum());
-  //Serial.print(", calculated checksum is ");
-  //Serial.println(sum);
+  if (sum != this->rcvpacket->getSum()) {
+    Serial.print("PD: checksum of incoming message is ");
+    Serial.print(this->rcvpacket->getSum());
+    Serial.print(", calculated checksum is ");
+    Serial.println(sum);
+  }
 
   return (sum == this->rcvpacket->getSum());
 }
@@ -457,7 +452,7 @@ bool PrestonDuino::validatePacket() {
 
 void PrestonDuino::sendACK() {
   // Send ACK, don't wait for a reply (there shouldn't be one)
-  ////Serial.println("PD: Sending ACK to MDR");
+  //Serial.println("PD: Sending ACK to MDR");
   ser->write(ACK);
   ser->flush();
 }
@@ -468,9 +463,9 @@ void PrestonDuino::sendNAK() {
   // Only send NAK for non-data commands
   // (This is a hack to allow for NAKing while streaming data...data streams often send broken packets, and I don't want to NAK every one of them)
   if (this->rcvpacket->getMode() != 0x04) {
-    //Serial.println("PD: Sending NAK...");
+    Serial.println("PD: Sending NAK...");
   } else {
-    //Serial.println("PD: Not sending NAK for data commands");
+    Serial.println("PD: Not sending NAK for data commands");
   }
   //ser->write(NAK);
   //this->lastsend = millis();
@@ -482,18 +477,18 @@ void PrestonDuino::sendBytesToMDR(byte* bytestosend, int sendlen) {
 
   // Check if down period has passed yet
   if (millis() < this->lastsend + PDPERIOD) {
-    //Serial.println("PD: Warning: messages sending too fast for MDR to keep up");
+    Serial.println("PD: Warning: messages sending too fast for MDR to keep up");
   }
 
-  //Serial.print("PD: Sending to MDR:");
+  Serial.print("PD: Sending to MDR:");
   for (int i = 0; i < sendlen; i++) {
-    //Serial.print(" 0x");
-    //Serial.print(bytestosend[i], HEX);
+    Serial.print(" 0x");
+    Serial.print(bytestosend[i], HEX);
 
     ser->write(bytestosend[i]);
     ser->flush(); // wait for byte to finish sending
   }
-  //Serial.println();
+  Serial.println();
   this->lastsend = millis();
 
 }
@@ -585,7 +580,8 @@ void PrestonDuino::mstat(byte motor) {
 }
 
 void PrestonDuino::r_s(bool rs) {
-  return this->sendCommandWithData(0x0A, (byte*)rs, 1);
+  byte data = rs;
+  return this->sendCommandWithData(0x0A, &data, 1);
 }
 
 void PrestonDuino::tcstat() {
