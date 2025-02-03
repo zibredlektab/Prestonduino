@@ -29,15 +29,20 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial) {
   ser->setTimeout(this->timeout);
 
   delay(PDPERIOD);
+
+  //Serial.print("PD: rcvbuf is from 0x");
+  //Serial.println((int)this->rcvbuf, HEX);
 }
 
 bool PrestonDuino::isMDRReady() {
   // Check for stored MDR firmware number
   if (this->mdrtype[0] != 0) {
     // If we have that, return true
+    //Serial.println("PD: MDR is ready");
     return true;
   } else {
     // If not, send an "info" command to the MDR, requesting firmware number
+    //Serial.println("PD: MDR is not ready...");
     this->info(0x0);
     delay(PDPERIOD);
     return false;
@@ -124,23 +129,61 @@ bool PrestonDuino::rcv() {
           //Serial.print(this->rcvlen);
           //Serial.println(" characters:");
 
-          //Serial.print("PD: Checking packet for errant ACKs...");
-          char* errantack = strchr((char*)this->rcvbuf, 0x6);
-          if (errantack != NULL) {
-            //Serial.print("Found one, at 0x");
-            //Serial.print((int)errantack, HEX);
-            //Serial.println(". Shuffling packet down by one to get rid of it.");
-            memmove(errantack, errantack + 1, errantack - (char*)this->rcvbuf);
-            this->rcvlen--;
-          } else {
-            //Serial.println("None found.");
-          }
+          this->rcvbuf[this->rcvlen] = 0x0; // null terminate that thang
 
           for (int i = 0; i < this->rcvlen; i++) {
             //Serial.print(" 0x");
             //Serial.print(this->rcvbuf[i], HEX);
           }
           //Serial.println();
+
+          // -- Packet collision checking --
+          //Serial.print("PD: Checking for packet collision...");
+          for (int i = this->rcvlen - 1; i > 0; i--) {
+            // iterate from the end of the buffer, because we only care about the latest packet (the older packet is garbage anyway)
+            if (this->rcvbuf[i] == 0x6) {
+              char* errantack = (char*)&this->rcvbuf[i];
+              //Serial.print("found ACK, at position ");
+              //Serial.print(errantack - (char*)this->rcvbuf);
+              //Serial.println(". Shuffling packet up by one to get rid of it.");
+              memmove(errantack, errantack + 1, this->rcvlen - (errantack - (char*)this->rcvbuf)); // move the rest packet up by one, starting from the errant ack position 
+              this->rcvlen--;
+              
+              //Serial.print("PD: buffer is now ");
+              //Serial.print(this->rcvlen);
+              //Serial.println(" characters long");
+
+              //Serial.print("New packet:");
+              for (int j = 0; j < this->rcvlen; j++) {
+                //Serial.print(" 0x");
+                //Serial.print(this->rcvbuf[j], HEX);
+              }
+              //Serial.println();
+              i = this->rcvlen - 1; // restart loop
+            } else if (this->rcvbuf[i] == 0x2) {
+              char* errantstx = (char*)&this->rcvbuf[i];
+              //Serial.print("found STX, at position ");
+              //Serial.print(errantstx - (char*)this->rcvbuf);
+              //Serial.println(". Moving packet up from that index.");
+              this->rcvlen -= errantstx - (char*)this->rcvbuf; // new packet length is reduced by length of string leading up to the errant stx
+
+              //Serial.print("PD: buffer is now ");
+              //Serial.print(this->rcvlen);
+              //Serial.println(" characters long");
+
+              memmove((char*)this->rcvbuf, errantstx, this->rcvlen);
+
+              //Serial.print("New packet:");
+              for (int j = 0; j < this->rcvlen; j++) {
+                //Serial.print(" 0x");
+                //Serial.print(this->rcvbuf[j], HEX);
+              }
+              //Serial.println();
+              i = this->rcvlen - 1; // restart loop
+            }
+          }
+          //Serial.println("PD: packet collision detection complete");
+          
 
           if (this->rcvlen < 99) {
             this->rcvbuf[rcvlen++] = ETX;
@@ -408,10 +451,15 @@ void PrestonDuino::sendACK() {
 
 
 void PrestonDuino::sendNAK() {
-  // Send NAK
-  //Serial.println("PD: Sending NAK to MDR");
-  ser->write(NAK);
-  this->lastsend = millis();
+  // Only send NAK for non-data commands
+  // (This is a hack to allow for NAKing while streaming data...data streams often send broken packets, and I don't want to NAK every one of them)
+  if (this->rcvpacket->getMode() != 0x04) {
+    //Serial.println("PD: Sending NAK...");
+  } else {
+    //Serial.println("PD: Not sending NAK for data commands");
+  }
+  //ser->write(NAK);
+  //this->lastsend = millis();
 }
 
 
