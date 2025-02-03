@@ -11,7 +11,7 @@ PrestonPacket::PrestonPacket() {
 
 }
 
-void PrestonPacket::packetFromCommand(byte cmd_mode) {
+bool PrestonPacket::packetFromCommand(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
   this->mode = cmd_mode;
 
@@ -19,11 +19,13 @@ void PrestonPacket::packetFromCommand(byte cmd_mode) {
   this->datalen = 0;
 
   this->compilePacket();
+
+  return true;
 }
 
 
 
-void PrestonPacket::packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
+bool PrestonPacket::packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   ////Serial.println("PP: Making a packet");
   this->mode = cmd_mode;
@@ -35,12 +37,20 @@ void PrestonPacket::packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int
   
   this->datalen = cmd_datalen;
   this->compilePacket();
+
+  return true;
 }
 
 
 
-void PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
+bool PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
+  
+  if (len < 9) {
+    //Serial.println("PP: warning: buffer is too short to be valid!");
+    return false; // minimum length for a valid packet
+  }
+
   this->packetlen = len;
   //Serial.print("PP: Setting up a packet from a buffer ");
   //Serial.print(this->packetlen);
@@ -63,6 +73,8 @@ void PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
     //Serial.print(this->packet_ascii[i], HEX);
   }
   //Serial.println();
+
+  return true;
 }
 
 

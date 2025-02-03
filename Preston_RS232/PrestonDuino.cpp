@@ -243,7 +243,10 @@ int PrestonDuino::parseRcv() {
     //Serial.println("PD: Rcvbuf is a packet");
     // Reply is a packet
     
-    this->rcvpacket->packetFromBuffer(this->rcvbuf, this->rcvlen);
+    if (!this->rcvpacket->packetFromBuffer(this->rcvbuf, this->rcvlen)) {
+      //Serial.println("PD: PP failed to make a new packet from this buffer");  
+      return -2;
+    }
 
     //Serial.println("PD: Set up new rcvpacket.");
     
@@ -424,18 +427,29 @@ int PrestonDuino::parseRcv() {
 bool PrestonDuino::validatePacket() {
   // Check validity of incoming packet, using its checksum
 
+  if (this->rcvpacket->getPacketLen() < 9) {
+    // stx, 2x mode, 2x len, 1x data, 2x checksum, etx
+    //Serial.println("PD: this packet is too short to be valid.");
+    return false;
+  } else {
+    //Serial.print("PD: this packet is ");
+    //Serial.print(this->rcvpacket->getPacketLen());
+    //Serial.println(" characters long.");
+  }
+
   if (this->rcvpacket->getMode() == 0x1F) return true; // "info" messages with MDR version number are always malformed...
 
   int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
+  //Serial.print("PD: tosumlen is ");
+  //Serial.println(tosumlen);
+
   int sum = this->rcvpacket->computeSum(this->rcvpacket->getPacket(), tosumlen);
 
-  if (0 && sum != this->rcvpacket->getSum()) {
-    //Serial.print("PD: checksum of incoming message is ");
-    //Serial.print(this->rcvpacket->getSum());
-    //Serial.print(", calculated checksum is ");
-    //Serial.println(sum);
-  }
+  //Serial.print("PD: checksum of incoming message is ");
+  //Serial.print(this->rcvpacket->getSum());
+  //Serial.print(", calculated checksum is ");
+  //Serial.println(sum);
 
   return (sum == this->rcvpacket->getSum());
 }

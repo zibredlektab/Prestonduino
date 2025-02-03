@@ -42,9 +42,9 @@ class PrestonPacket {
   public:
     PrestonPacket();
 
-    void packetFromCommand(byte cmd_mode); // For commands that don't take arguments
-    void packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int datalen); // For commands that do take arguments
-    void packetFromBuffer(byte* inputbuffer, int len); // For parsing incoming bytes into a PrestonPacket
+    bool packetFromCommand(byte cmd_mode); // For commands that don't take arguments - returns true if successfully created the packet
+    bool packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int datalen); // For commands that do take arguments
+    bool packetFromBuffer(byte* inputbuffer, int len); // For parsing incoming bytes into a PrestonPacket
 
     int computeSum(byte* input, int len);
     void zeroOut();

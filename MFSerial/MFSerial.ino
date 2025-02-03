@@ -127,6 +127,14 @@ void setup() {
   pinMode(MFPIN, INPUT);
   pinMode(LEDPIN, OUTPUT);
   pinMode(SOFTBUTTONPIN, INPUT_PULLUP);
+  pinMode(RUN, INPUT_PULLUP);
+
+  Serial.print("Run pin is currently ");
+  if (digitalRead(RUN)) {
+    Serial.println("up");
+  } else {
+    Serial.println("down");
+  }
 
   mdr->shutUp();
   delay(MESSAGE_DELAY);
@@ -258,7 +266,7 @@ void metaLoop() {
 }
 
 void loop() {
-  //Serial.println("----- Loop Start -----");
+  Serial.println("----- Loop Start -----");
   mdr->onLoop(); // receive any incoming messages from mdr
 
   if (firstrun && timelastsent + 1000 > millis()) { // give the mdr a little time to get caught up at the beginning
@@ -362,7 +370,7 @@ void loop() {
         curzoom = newzoom;
       } else {
         if (millis() > timelastupdatedname + 100) {
-          Serial.println("Requesting lens name during zoom downtime"); 
+          //Serial.println("Requesting lens name during zoom downtime"); 
           // if it has been a while since the last zoom command was sent, use the downtime to update lens name
           mdr->info(0x1);
           timelastsent = millis();
