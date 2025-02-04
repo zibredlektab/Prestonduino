@@ -23,14 +23,15 @@
 
 class PrestonPacket {
   private:
-    byte mode = 0;
+    byte command = 0;
     byte data[100]; // not encoded, 100 for now as arbitrary limit
     int checksum = 0;
     byte packet_ascii[100]; // ascii-encoded packet, currently limited to 100 bytes (arbitrary "big" limit)
     void asciiEncode(byte* input, int len, byte* output);
-    void asciiDecode(byte* input, int len, byte* output);
+    bool asciiDecode(byte* input, int len, byte* output); // returns true if succesfully decoded, false if something bad happens
     void compilePacket();
-    void parseInput(byte* inputbuffer, int len);
+    bool parseInput(byte* inputbuffer, int len); // returns true if buffer is fully parsed, false if something bad happens
+    bool isCommandValid(int cmd); // check if the specified command is an actual mdr command
     
     int datalen; // length of data portion of core
     int corelen; // length of core of packet
@@ -49,7 +50,7 @@ class PrestonPacket {
     int computeSum(byte* input, int len);
     void zeroOut();
 
-    byte getMode();
+    byte getCommand();
     byte* getData();
     int getDataLen();
     byte* getPacket();

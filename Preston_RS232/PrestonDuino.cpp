@@ -275,7 +275,7 @@ int PrestonDuino::parseRcv() {
       return -2;
     }
     
-    switch (this->rcvpacket->getMode()) {
+    switch (this->rcvpacket->getCommand()) {
       case 0x02: {
         // Reply is a stat message
         Serial.println("PD: This is a stat packet");
@@ -456,8 +456,8 @@ int PrestonDuino::parseRcv() {
       }
 
       default: {
-        Serial.print("PD: packet is of mode 0x");
-        Serial.println(this->rcvpacket->getMode());
+        Serial.print("PD: packet is of command 0x");
+        Serial.println(this->rcvpacket->getCommand());
         break;
       }
     }
@@ -482,12 +482,12 @@ bool PrestonDuino::validatePacket() {
   // Check validity of incoming packet, using its checksum
 
   if (this->rcvpacket->getPacketLen() < 9) {
-    // stx, 2x mode, 2x len, 1x data, 2x checksum, etx
+    // stx, 2x command, 2x len, 1x data, 2x checksum, etx
     Serial.println("PD: this packet is too short to be valid.");
     return false;
   }
 
-  if (this->rcvpacket->getMode() == 0x1F) return true; // "info" messages with MDR version number are always malformed...
+  if (this->rcvpacket->getCommand() == 0x1F) return true; // "info" messages with MDR version number are always malformed...
 
   int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
@@ -516,7 +516,7 @@ void PrestonDuino::sendACK() {
 void PrestonDuino::sendNAK() {
   // Only send NAK for non-data commands
   // (This is a hack to allow for NAKing while streaming data...data streams often send broken packets, and I don't want to NAK every one of them)
-  if (this->rcvpacket->getMode() != 0x04) {
+  if (this->rcvpacket->getCommand() != 0x04) {
     Serial.println("PD: Sending NAK...");
   } else {
     Serial.println("PD: Not sending NAK for data commands");

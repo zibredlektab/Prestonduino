@@ -13,7 +13,7 @@ PrestonPacket::PrestonPacket() {
 
 bool PrestonPacket::packetFromCommand(byte cmd_mode) {
   // Initializer for creating a new packet for a command with no arguments
-  this->mode = cmd_mode;
+  this->command = cmd_mode;
 
   this->zeroOut();
   this->datalen = 0;
@@ -28,7 +28,7 @@ bool PrestonPacket::packetFromCommand(byte cmd_mode) {
 bool PrestonPacket::packetFromCommandWithData(byte cmd_mode, byte* cmd_data, int cmd_datalen) {
   // Initializer for creating a new packet from component parts
   ////Serial.println("PP: Making a packet");
-  this->mode = cmd_mode;
+  this->command = cmd_mode;
 
 
   for (int i = 0; i < cmd_datalen; i++) {
@@ -47,7 +47,7 @@ bool PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
   // Initializer for creating a packet from a recieved set of bytes
   
   if (len < 9) {
-    //Serial.println("PP: warning: buffer is too short to be valid!");
+    Serial.println("PP: warning: buffer is too short to be valid!");
     return false; // minimum length for a valid packet
   }
 
@@ -57,13 +57,14 @@ bool PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
   //Serial.println(" bytes long");
 
   if (len > 100) {
-    //Serial.println("PP: WARNING: incoming buffer is too long!");
+    Serial.println("PP: WARNING: incoming buffer is too long!");
   }
 
   for (int i = 0; i < len; i++) {
     this->packet_ascii[i] = inputbuffer[i];
   }
-  this->parseInput(inputbuffer, len);
+
+  if (!this->parseInput(inputbuffer, len)) return false;
   
   //this->compilePacket();
 
@@ -82,11 +83,11 @@ bool PrestonPacket::packetFromBuffer(byte* inputbuffer, int len) {
 
 
 
-void PrestonPacket::parseInput(byte* inputbuffer, int len) {
+bool PrestonPacket::parseInput(byte* inputbuffer, int len) {
   if (inputbuffer[0] != STX) {
-    ////Serial.print("PP: Packet to parse doesn't start with STX, instead starts with ");
-    ////Serial.println(inputbuffer[0]);
-    return;
+    Serial.print("PP: Buffer doesn't start with STX, instead starts with 0x");
+    Serial.println(inputbuffer[0], HEX);
+    return false;
   } else {
     /*
     //Serial.print("PP: Bytes to parse:");
@@ -99,7 +100,7 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
 
     // Ascii decode the packet header
     byte decodedheader[2];
-    this->asciiDecode(&inputbuffer[1], 4, decodedheader);
+    if (!this->asciiDecode(&inputbuffer[1], 4, decodedheader)) return false;
 
     /*
     //Serial.print("PP: Decoded header:");
@@ -110,28 +111,45 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     //Serial.println();
     */
     
-    // set mode
-    this->mode = decodedheader[0];
+    // set command
+    if (!this->isCommandValid(decodedheader[0])) {
+      Serial.print("PP: Packet features an illegal command: 0x");
+      Serial.println(decodedheader[0]);
+      return false;
+    }
 
-    //Serial.print("PP: Mode of reply is 0x");
-    //Serial.println(this->mode, HEX);
+    this->command = decodedheader[0];
+
+    //Serial.print("PP: Command of reply is 0x");
+    //Serial.println(this->command, HEX);
 
     // set datalen, corelen
     this->datalen = decodedheader[1];
+
+    if (this->datalen > len - 7) {
+      // Data length is longer than will fit in this packet, something has gone wrong.
+      Serial.print("PP: Data length of packet is longer than allowed (");
+      Serial.print(this->datalen);
+      Serial.print(" chars out of ");
+      Serial.print(len);
+      Serial.println(")!");
+      return false;
+    }
+
     this->corelen = this->datalen + 2;
 
     int decodeddatalen = this->datalen;
     
 
-    if (this->mode == 0x0E || this->mode == 0x1F) {
-      // Data should be treated as literal ascii, not encoded ascii
+    if (this->command == 0x0E || this->command == 0x1F) {
+      // Info (MDR and lens names) should be treated as literal ascii, not encoded ascii
       for (int i = 0; i < this->datalen; i++) {
         this->data[i] = inputbuffer[i+5]; // data starts at index 5
       }
     } else {
-      // Data needs to be decoded from encoded ascii
+      // Everything else needs to be decoded from encoded ascii
       byte decodedcore[this->datalen];
-      this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore);
+      if (!this->asciiDecode(&inputbuffer[5], this->datalen*2, decodedcore)) return false;
       // set data
       
       //Serial.print("PP: Decoded core is as follows:");
@@ -154,18 +172,19 @@ void PrestonPacket::parseInput(byte* inputbuffer, int len) {
     
     // set sum
     byte decodedsum[1];
-    this->asciiDecode(&inputbuffer[5+(decodeddatalen)], 2, decodedsum);
+    if (!this->asciiDecode(&inputbuffer[5+(decodeddatalen)], 2, decodedsum)) return false;
     this->checksum = decodedsum[0];
     //Serial.print("PP: Checksum is 0x");
     //Serial.println(this->checksum, HEX);
   }
+  return true;
 }
 
 
 
 
 void PrestonPacket::compilePacket() {
-  /*  1) build core (mode + size + data)
+  /*  1) build core (command + size + data)
    *    core pre-encoding should be hex numbers, no padding
    *  2) ascii encode core
    *    ascii encoding first adds padding, then encodes each character
@@ -178,19 +197,19 @@ void PrestonPacket::compilePacket() {
    */
 
 
-  this->corelen = this->datalen + 2; // mode, size, data
+  this->corelen = this->datalen + 2; // command, size, data
   this->packetlen = (this->corelen * 2) + 4; // STX, ETX, 2 sum bytes
 
 
   // Build the core
   byte core[this->corelen];
-  core[0] = this->mode; // Mode is first
+  core[0] = this->command; // Command is first
   core[1] = this->datalen; // Size of data
 
 
   for (int i = 0; i < this->datalen; i++) {
     // Iterate through the data array
-    core[2+i] = this->data[i]; // Make sure not to overwrite the mode & size
+    core[2+i] = this->data[i]; // Make sure not to overwrite the command & size
   }
   // Finished building core
 
@@ -285,7 +304,14 @@ void PrestonPacket::asciiEncode(byte* input, int len, byte* output) {
 
 
 
-void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
+bool PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
+  if (inputlen % 2) {
+    Serial.print("PP: ASCII decode failed, odd number of bytes given (");
+    Serial.print(inputlen);
+    Serial.println(" bytes)");
+    return false;
+  }
+
   int outputlen = inputlen/2;
   
   //Serial.print("PP: Length of decoded byte array is ");
@@ -306,6 +332,12 @@ void PrestonPacket::asciiDecode(byte* input, int inputlen, byte* output) {
 
     output[i] = strtol(holder, NULL, 16);
   }
+  return true;
+}
+
+bool PrestonPacket::isCommandValid(int cmd) {
+  if ((cmd > 0 && cmd < 0xD) || cmd == 0xE || cmd == 0x10 || cmd == 0x11 || cmd == 0x1F) return true;
+  return false;
 }
 
 void PrestonPacket::zeroOut(){
@@ -322,8 +354,8 @@ void PrestonPacket::zeroOut(){
 
 
 
-byte PrestonPacket::getMode() {
-  return this->mode;
+byte PrestonPacket::getCommand() {
+  return this->command;
 }
 
 
