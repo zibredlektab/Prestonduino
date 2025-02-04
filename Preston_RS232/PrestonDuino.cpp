@@ -60,6 +60,22 @@ void PrestonDuino::shutUp() {
   }
 }
 
+bool PrestonDuino::waitForAck(int timeout = 1000) {
+  Serial.println("PD: Waiting for ACK...");
+
+  uint32_t timestartedwaiting = millis();
+
+  while (millis() < timestartedwaiting + timeout) {
+    if (waitForRcv() && this->rcvbuf[0] == ACK) {
+      Serial.println("PD: got ACK while waiting.");
+      return true;
+    }
+  }
+
+  Serial.println("PD: timed out waiting for ACK.");
+  return false;
+
+}
 
 void PrestonDuino::onLoop () {
   if (this->rcv()) {
@@ -77,20 +93,20 @@ void PrestonDuino::onLoop () {
 // Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
   unsigned long long int time_now = millis();
-  Serial.println("PD: Waiting for response.");
+  //Serial.println("PD: Waiting for response.");
   
   while(millis() <= time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
-      Serial.println("PD: Got a response");
+      //Serial.println("PD: Got a response");
       return true;
     } else if (millis() % 1000 == 0){
-      Serial.print(".");
+      //Serial.print(".");
     }
   }
 
   // If it gets this far, there was a timeout
 
-  Serial.println("PD: Timeout");
+  //Serial.println("PD: Timeout");
   return false;
 }
 
@@ -220,7 +236,7 @@ int PrestonDuino::parseRcv() {
    */
   int response = 0;
   
-  Serial.println("PD: Starting to process rcvbuf");
+  //Serial.println("PD: Starting to process rcvbuf");
 
   Serial.print("PD: rcvbuf is");
   for (int i = 0; i < this->rcvlen; i++) {
@@ -248,7 +264,6 @@ int PrestonDuino::parseRcv() {
       return -2;
     }
 
-    Serial.println("PD: Set up new rcvpacket.");
     
     if (!this->validatePacket()) {
       Serial.print("PD: Packet failed validity check: ");
@@ -432,7 +447,7 @@ int PrestonDuino::parseRcv() {
           Serial.print(" 0x");
           Serial.print(this->rcvpacket->getData()[i+2], HEX);
           Serial.print("(");
-          Serial.print(this->rcvpacket->getData()[i+2]);
+          Serial.print((char)this->rcvpacket->getData()[i+2]);
           Serial.print(")");
         }
 

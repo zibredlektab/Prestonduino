@@ -28,13 +28,14 @@
 #define OLED_RST 4
 #endif
 
-#define MESSAGE_DELAY 6 // delay in sending messages to MDR, to not overwhelm it
+#define MESSAGE_DELAY 10 // delay in sending messages to MDR, to not overwhelm it
 #define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 679  // value of "zero" point on zoom
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
 
 #define DATA_SETTING 0x14 //zoom position data (we don't care about focus or iris)
+#define MODE_SETTING 0x99, 0x4 //current mode
 
 bool firstrun = true; // this is set to false after the first time the program is run
 PrestonDuino *mdr; // object for communicating with the MDR
@@ -136,7 +137,10 @@ void setup() {
   mdr->info(0x1); // Get starting lens name
   delay(MESSAGE_DELAY);
   mdr->onLoop();
-  mdr->mode(0x19, 0x4); // Request "commanded" motor positions (not actual position), streaming zoom position (not velocity), and controlling zoom axis
+  mdr->stat(); // Get current camera status (is running or not)
+  delay(MESSAGE_DELAY);
+  mdr->onLoop();
+  mdr->mode(MODE_SETTING); // Request "commanded" motor positions (not actual position), streaming zoom position (not velocity), and controlling zoom axis + RS
   delay(MESSAGE_DELAY);
   mdr->onLoop();
   mdr->data(DATA_SETTING); // request only zoom position data (we don't care about focus or iris)
@@ -253,9 +257,12 @@ void metaLoop() {
   oled.setCursor(80,60);
   oled.print(millis());
   
-  if(!digitalRead(RUN)) {
-    oled.setCursor(110,10);
+
+  oled.setCursor(105,10);
+  if(mdr->getRunning()) {
     oled.print("run");
+  } else {
+    oled.print("stop");
   }
 
   oled.display();
@@ -361,23 +368,37 @@ void loop() {
       byte zoomdata[3] = {0x4, highByte(newzoom), lowByte(newzoom)}; // build the mdr command
 
       if (newzoom != curzoom) { // only send new data if the data is new!
-        mdr->data(zoomdata, 3); // send to mdr
-        //delay(MESSAGE_DELAY);
-        //mdr->data(DATA_SETTING);
-        timelastsent = millis();
-        curzoom = newzoom;
+        if (millis() > timelastsent + MESSAGE_DELAY) {
+          mdr->data(zoomdata, 3); // send to mdr
+          //delay(MESSAGE_DELAY);
+          //mdr->data(DATA_SETTING);
+          timelastsent = millis();
+          curzoom = newzoom;
+        }
       } else {
         if (millis() > timelastupdatedname + 100) {
-          //Serial.println("Requesting lens name during zoom downtime"); 
           // if it has been a while since the last zoom command was sent, use the downtime to update lens name
+          Serial.println("Requesting lens name during zoom downtime"); 
+          mdr->mode(0x98,0x4);
+          delay(MESSAGE_DELAY);
+          mdr->waitForAck(1000);
+          mdr->onLoop();
           mdr->info(0x1);
+          delay(MESSAGE_DELAY);
+          mdr->onLoop();
+          mdr->stat();
+          delay(MESSAGE_DELAY);
+          mdr->onLoop();
+          mdr->mode(MODE_SETTING);
+          delay(MESSAGE_DELAY);
+          mdr->onLoop();
+          mdr->data(DATA_SETTING);
+          delay(MESSAGE_DELAY);
+          mdr->onLoop();
+
           timelastsent = millis();
           timelastupdatedname = millis();
-        } else if (millis() > timelastsent + MESSAGE_DELAY) {
-          mdr->data(DATA_SETTING);
-          timelastsent = millis();
         }
-
       }
 
       mfoutput = 0;

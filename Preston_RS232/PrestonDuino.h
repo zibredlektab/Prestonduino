@@ -72,6 +72,7 @@ class PrestonDuino {
     bool isMDRReady(); // returns false until we get our first response from MDR
     void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
     void shutUp(); // hard-coded packet to get the MDR to stop streaming data
+    bool waitForAck(int timeout); // discards all serial input until an ack is received (or timeout elapses)
 
     /* All of the following are according to the Preston protocol.
      * reply_status is a signed int identifying the type of the response:
@@ -90,7 +91,7 @@ class PrestonDuino {
     void ct(byte cameratype); // MDR2 only
     void mset(byte mseth, byte msetl); //MDR3/4 only
     void mstat(byte motor);
-    void r_s(bool rs);
+    void r_s(bool rs); // run the camera
     void tcstat();
     void ld(); // MDR3/4 only
     void info(byte type); // MDR3/4 only, first element of array is size of payload
