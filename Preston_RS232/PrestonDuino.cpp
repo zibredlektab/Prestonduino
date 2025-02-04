@@ -261,6 +261,45 @@ int PrestonDuino::parseRcv() {
     }
     
     switch (this->rcvpacket->getMode()) {
+      case 0x02: {
+        // Reply is a stat message
+        Serial.println("PD: This is a stat packet");
+
+        byte statdescriptor = this->rcvpacket->getData()[1]; // for now, I don't care about the high byte
+
+        if (statdescriptor & 1) {
+          // iris motor is connected & calibrated
+        }
+        if (statdescriptor & 2) {
+          // focus motor is connected & calibrated
+        }
+        if (statdescriptor & 4) {
+          // zoom motor is connected & calibrated
+        }
+        if (statdescriptor & 8) {
+          // camera is set (not sure what this means)
+        }
+        if (statdescriptor & 16) {
+          // camera is running
+          this->running = true;
+          Serial.println("PD: Camera is running.");
+        } else {
+          // camera is not running
+          this->running = false;
+          Serial.println("PD: Camera is stopped.");
+        }
+        if (statdescriptor & 32) {
+          // autofocus is on
+        }
+        if (statdescriptor & 64) {
+          // DXL camera is in use
+        }
+        if (statdescriptor & 128) {
+          // focus map in use
+        }
+        // there are more but I'm not using them yet (in the high byte)
+        break;
+      }
       case 0x11: {
         // Reply is an error message
         Serial.println("PD: Rcv packet is an error");

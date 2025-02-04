@@ -40,6 +40,7 @@ class PrestonDuino {
     int16_t zoom = 0;
     uint16_t aux = 0;
     uint16_t distance = 0; // rangefinder distance
+    bool running = false;
     
     // Advanced data, not updated automatically
     char lensname[50];
@@ -109,6 +110,7 @@ class PrestonDuino {
     char* getLensName(); // Lens name, as assigned in hand unit. 0-terminated string
     uint8_t getLensNameLen(); // Length of lens name
     char* getMDRType(); // MDR name and version number. First four chars will be "MDRx" (x = 2 - 5) for easy model recognition
+    bool getRunning(); // Is the camera running?
 
 
     // Setters
