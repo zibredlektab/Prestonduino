@@ -701,3 +701,7 @@ void PrestonDuino::setMDRTimeout(int newtimeout) {
   this->ser->setTimeout(this->timeout);
 }
 
+bool PrestonDuino::getRunning() {
+  return this->running;
+}
+
