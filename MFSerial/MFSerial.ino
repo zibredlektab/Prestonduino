@@ -43,12 +43,14 @@ int mfoutput = 0; // current velocity specified by MicroForce
 uint16_t curzoom; // current zoom position, as reported by MDR
 bool setpressed = false; // is the "Set" button depressed?
 bool softpressed = false;
+bool runpressed = false;
 uint32_t timesetpressed; // when was the "Set" button depressed?
 uint32_t timesoftpressed; // when was the "Soft" button depressed?
 uint32_t timelastsent = 0; // when was the last mdr message sent?
 uint32_t timelastupdatedname = 0; // when was the lens name last updated?
 int samplecount; // number of microforce samples taken in this averaging
 int16_t adcval = 0; // current value of ADC
+
 
 
 
@@ -132,7 +134,7 @@ void setup() {
 
 
   mdr->shutUp();
-  delay(MESSAGE_DELAY);
+  mdr->waitForAck(1000);
   mdr->onLoop();
   mdr->info(0x1); // Get starting lens name
   delay(MESSAGE_DELAY);
@@ -381,6 +383,8 @@ void loop() {
           Serial.println("Requesting lens name during zoom downtime"); 
           mdr->mode(0x98,0x4);
           delay(MESSAGE_DELAY);
+          mdr->mode(0x98,0x4); // send twice for safety
+          delay(MESSAGE_DELAY);
           mdr->waitForAck(1000);
           mdr->onLoop();
           mdr->info(0x1);
@@ -399,6 +403,25 @@ void loop() {
           timelastsent = millis();
           timelastupdatedname = millis();
         }
+
+        // Run/Stop
+        if (!digitalRead(RUN)) { // run switch is pressed
+          if (!runpressed) { // ...and it was not pressed on the last loop, so it was just pressed
+            runpressed = true;
+            if (!mdr->getRunning()) {
+              mdr->r_s(true);
+              delay(MESSAGE_DELAY);
+            } else {
+              mdr->r_s(false);
+              delay(MESSAGE_DELAY);
+            }
+          }
+        } else { // switch is not pressed
+          if (runpressed) { // ...but it was pressed on the last loop, so it was just released
+            runpressed = false;
+          }
+        }
+
       }
 
       mfoutput = 0;
