@@ -322,7 +322,7 @@ void loop() {
         bool zoomingout = stepsize < 0; // negative step size means zooming out
 
         // Scale stepsize exponentially (high step values should move motor further than low step values)
-        stepsize = (1000 + (abs(stepsize) * abs(stepsize) * 9)) / 500; // hard coded values based on my experimentation
+        stepsize = (1000 + (abs(stepsize) * abs(stepsize) * 9)) / 250; // hard coded values based on my experimentation
         if (zoomingout) stepsize *= -1;
 
         //Serial.print(", scaled step size is ");
