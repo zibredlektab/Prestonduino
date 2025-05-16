@@ -16,7 +16,7 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-// This file applies to Production v1.1
+// This file applies to Production v1.2
 
 #ifndef _VARIANT_ARDUINO_ZERO_
 #define _VARIANT_ARDUINO_ZERO_
@@ -79,7 +79,7 @@ extern "C"
 // #define digitalPinToTimer(P)
 
 // LEDs
-#define PIN_LED_13           (25ul)
+#define PIN_LED_13           (22ul)
 #define PIN_LED_RXL          PIN_LED_13
 #define PIN_LED_TXL          PIN_LED_13
 #define PIN_LED              PIN_LED_13
@@ -89,14 +89,14 @@ extern "C"
 
 
 // MFSerial Stuff
-#define SOFTBTN              (3ul)
-#define OLED_DC              (15ul)
+#define SOFTBTN              (4ul)
+#define OLED_DC              (3ul)
 #define SETLED               LED_BUILTIN
-#define SETBTN               (14ul)
-#define OLED_RST             (16ul)
-#define OLED_CS              (17ul)
+#define SETBTN               (13ul)
+#define OLED_RST             (7ul)
+#define OLED_CS              (6ul)
 #define ZSIG                 (19ul)
-#define RUN	                 (12ul)
+#define RUN	                 (25ul)
 
 /*
  * Analog pins
