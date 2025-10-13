@@ -29,7 +29,7 @@
 #endif
 
 #define MESSAGE_DELAY 10 // delay in sending messages to MDR, to not overwhelm it
-#define DEADZONE 3 // any step size +- this value is ignored, to avoid drift
+#define DEADZONE 5 // any step size +- this value is ignored, to avoid drift
 #define DEFAULTZERO 679  // value of "zero" point on zoom
 #define DEFAULTSOFT 0x5000
 #define MAXSOFT 0x7FFF
@@ -50,6 +50,7 @@ uint32_t timelastsent = 0; // when was the last mdr message sent?
 uint32_t timelastupdatedname = 0; // when was the lens name last updated?
 int samplecount; // number of microforce samples taken in this averaging
 int16_t adcval = 0; // current value of ADC
+int stepsize = 0;
 
 
 
@@ -97,7 +98,7 @@ void setup() {
   // OLED setup
   oled.begin(0x3C, true);
   oled.setTextWrap(true);
-  oled.setRotation(0);
+  oled.setRotation(2);
   oled.clearDisplay();
   oled.setTextColor(SH110X_WHITE);
   oled.setCursor(0, 10);
@@ -111,6 +112,8 @@ void setup() {
   oled.println(__TIME__);
   oled.println("Connecting to MDR...");
   oled.display();
+
+  analogReference(AR_EXTERNAL); // Use external analog voltage reference
 
   mdr = new PrestonDuino(Serial1);
   while(!mdr->isMDRReady()) {
@@ -251,10 +254,12 @@ void metaLoop() {
 
   
   // debug info
-  oled.setCursor(40, 60);
+  oled.setCursor(30, 60);
   oled.print(adcval);
   oled.print("/");
   oled.print(zeropoint - adcval);
+  oled.print("/");
+  oled.print(stepsize);
 
   oled.setCursor(80,60);
   oled.print(millis());
@@ -262,9 +267,7 @@ void metaLoop() {
 
   oled.setCursor(105,10);
   if(mdr->getRunning()) {
-    oled.print("run");
-  } else {
-    oled.print("stop");
+    oled.fillCircle(120,8,4,SH110X_WHITE);
   }
 
   oled.display();
@@ -274,6 +277,7 @@ void metaLoop() {
 
 void loop() {
   //Serial.println("----- Loop Start -----");
+  //Serial.println(analogRead(MFPIN));
   mdr->onLoop(); // receive any incoming messages from mdr
 
   if (firstrun && timelastsent + 1000 > millis()) { // give the mdr a little time to get caught up at the beginning
@@ -313,7 +317,7 @@ void loop() {
       //Serial.print("\nCurrent zoom position is 0x");
       //Serial.print(curzoom, HEX);
 
-      int stepsize = mfoutput; // get current output from microforce, this is the step size (amount to increment zoom position)
+      stepsize = mfoutput; // get current output from microforce, this is the step size (amount to increment zoom position)
 
       //Serial.print(", step size is ");
       //Serial.print(stepsize);
@@ -518,7 +522,7 @@ int getMFOutput() {
   //Serial.print("Reading ADC...");
 
   int signal = analogRead(MFPIN); // 10-bit, so 0-1024
-  adcval = signal;
+  adcval = signal * 2; // Initial value is half of actual reading, to match analog reference voltage
 
   //Serial.print("ADC value is ");
   //Serial.print(adcval);
