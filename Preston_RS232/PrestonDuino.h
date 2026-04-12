@@ -11,6 +11,7 @@
 #define PDDEFAULTTIMEOUT 20
 #define PDPERIOD 6
 #define PDNORMALDATAMODE 0x17 // high resolution focus, iris, and zoom position data
+#define DEFAULT_DEBUG_LVL 0
 
 struct command_reply {
   int8_t replystatus;
@@ -23,6 +24,8 @@ class PrestonDuino {
   
   
   private:
+    int debuglvl = DEFAULT_DEBUG_LVL;
+    
     // variables
     HardwareSerial *ser; // serial port connected to MDR
     byte rcvbuf[100]; // buffer for incoming data from MDR (100 is arbitrary but should be large enough)
@@ -64,11 +67,14 @@ class PrestonDuino {
 
     void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name
 
+    void debugPrint(char* toprint);
+    void debugPrintln(char* toprint);
+
   public:
 
     void onLoop();
 
-    PrestonDuino(HardwareSerial& serial);
+    PrestonDuino(HardwareSerial& serial, int debuglvl = DEFAULT_DEBUG_LVL);
     bool isMDRReady(); // returns false until we get our first response from MDR
     void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
     void shutUp(); // hard-coded packet to get the MDR to stop streaming data

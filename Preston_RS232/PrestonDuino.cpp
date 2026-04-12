@@ -6,12 +6,16 @@
 #include "PrestonDuino.h"
 #include "wiring_private.h" // pinPeripheral() function
 
-PrestonDuino::PrestonDuino(HardwareSerial& serial) {
+
+PrestonDuino::PrestonDuino(HardwareSerial& serial, int debuglvl) {
   // Open a connection to the MDR on Serial port 'serial'
+
+  this->debuglvl = debuglvl;
 
   ser = &serial;
   ser->begin(115200);
   delay(1000);
+
 
   this->sendpacket = new PrestonPacket();
   this->rcvpacket = new PrestonPacket();
@@ -47,6 +51,16 @@ bool PrestonDuino::isMDRReady() {
     delay(PDPERIOD);
     return false;
   }
+}
+
+
+
+void PrestonDuino::debugPrint(char* toprint) {
+  if (debuglvl) Serial.print(toprint);
+}
+
+void PrestonDuino::debugPrintln(char* toprint) {
+  if (debuglvl) Serial.println(toprint);
 }
 
 void PrestonDuino::shutUp() {
@@ -93,20 +107,20 @@ void PrestonDuino::onLoop () {
 // Return true if we got a response, false if we timed out
 bool PrestonDuino::waitForRcv() {
   unsigned long long int time_now = millis();
-  //Serial.println("PD: Waiting for response.");
+  this->debugPrintln("PD: Waiting for response.");
   
   while(millis() <= time_now + this->timeout) { // continue checking for recieved data as long as the timeout period hasn't elapsed
     if (this->rcv()) {
-      //Serial.println("PD: Got a response");
+      this->debugPrintln("PD: Got a response");
       return true;
     } else if (millis() % 1000 == 0){
-      //Serial.print(".");
+      this->debugPrint(".");
     }
   }
 
   // If it gets this far, there was a timeout
 
-  //Serial.println("PD: Timeout");
+  this->debugPrintln("PD: Timeout");
   return false;
 }
 
@@ -236,7 +250,7 @@ int PrestonDuino::parseRcv() {
    */
   int response = 0;
   
-  //Serial.println("PD: Starting to process rcvbuf");
+  this->debugPrintln("PD: Starting to process rcvbuf");
 
   Serial.print("PD: rcvbuf is");
   for (int i = 0; i < this->rcvlen; i++) {
@@ -506,7 +520,7 @@ bool PrestonDuino::validatePacket() {
 
 void PrestonDuino::sendACK() {
   // Send ACK, don't wait for a reply (there shouldn't be one)
-  //Serial.println("PD: Sending ACK to MDR");
+  this->debugPrintln("PD: Sending ACK to MDR");
   ser->write(ACK);
   ser->flush();
 }
