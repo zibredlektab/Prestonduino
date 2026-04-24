@@ -104,6 +104,7 @@ class PrestonDuino {
     void dist(byte type, uint32_t dist);
     void err(); // Here for completeness but unused as a client command
 
+    void raw(byte* packet, int packetlen); // send raw data to mdr
 
     // The following are helper methods, simplifying common tasks
     // Lens data requires lens to be calibrated (mapped) from the hand unit
@@ -122,6 +123,7 @@ class PrestonDuino {
 
     // Setters
     void setIris(uint16_t newiris);  // experimental, Iris must be configured for control with mode() first
+    void setAux(uint16_t newaux);
 };
 
 #endif

@@ -1,4 +1,13 @@
 #include "PrestonDuino.h"
+#include <Arduino.h>   // required before wiring_private.h
+#include "wiring_private.h" // pinPeripheral() function
+
+Uart Serial2 (&sercom1, 11, 10, SERCOM_RX_PAD_0, UART_TX_PAD_2); // RX 11, TX 10
+
+void SERCOM1_Handler()
+{
+  Serial2.IrqHandler();
+}
 
 PrestonDuino *mdr;
 
@@ -12,43 +21,29 @@ bool runswitch = false;
 
 void setup() {
 
-  pinMode(RUN, INPUT_PULLUP);
-
-  Serial.begin(9600);
+  Serial.begin(115200);
   while(!Serial);
 
-  mdr = new PrestonDuino(Serial1);
+
+  Serial2.begin(115200, SERIAL_8N1);
+
+
+  // Assign pins 10 & 11 SERCOM functionality
+  pinPeripheral(10, PIO_SERCOM);
+  pinPeripheral(11, PIO_SERCOM);
+
+  mdr = new PrestonDuino(Serial1, 1);
+
   delay(100);
-  while(!mdr->isMDRReady()) {
-    delay(10);
-    mdr->onLoop();
-  }
-  mdr->shutUp();
-  delay(6);
-  mdr->mode(0x80,0x0);
-  Serial.println("Done with mdr setup");
 }
 
+uint16_t aux = 0;
+
 void loop() {
+  mdr->setAux(aux);
+
+  aux ++;
+
   mdr->onLoop();
-  mdr->stat();
-  delay(6);
-  if (!digitalRead(RUN)) { // switch is pressed
-    if (!runswitch) { // ...and it was not pressed on the last loop, so it was just pressed
-      runswitch = true;
-      if (!running) {
-        mdr->r_s(true);
-        running = true;
-        delay(6);
-      } else {
-        mdr->r_s(false);
-        running = false;
-        delay(6);
-      }
-    }
-  } else { // switch is not pressed
-    if (runswitch) { // ...but it was pressed on the last loop, so it was just released
-      runswitch = false;
-    }
-  }
+  //mdr->data(dataset, sizeof(dataset));
 }

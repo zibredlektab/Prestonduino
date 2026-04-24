@@ -28,7 +28,7 @@ PrestonDuino::PrestonDuino(HardwareSerial& serial, int debuglvl) {
     if (i < 5) this->mdrtype[i] = 0;
   }
 
-  this->shutUp();
+  //this->shutUp();
 
   ser->setTimeout(this->timeout);
 
@@ -53,6 +53,10 @@ bool PrestonDuino::isMDRReady() {
   }
 }
 
+
+void PrestonDuino::raw(byte* packet, int packetlen) {
+  this->sendBytesToMDR(packet, packetlen);
+}
 
 
 void PrestonDuino::debugPrint(char* toprint) {
@@ -92,13 +96,14 @@ bool PrestonDuino::waitForAck(int timeout = 1000) {
 }
 
 void PrestonDuino::onLoop () {
-  if (this->rcv()) {
-    if (this->parseRcv() == -2) {
-      // Got an error when we tried to parse the message, probably a malformed message...
-      this->sendNAK();
+  if (ser->available()) {
+    if (this->rcv()) {
+      if (this->parseRcv() == -2) {
+        // Got an error when we tried to parse the message, probably a malformed message...
+        this->sendNAK();
+      }
     }
   }
-
 }
 
 
@@ -234,7 +239,6 @@ bool PrestonDuino::rcv() {
         }
       }
     }
-
   }
   Serial.println("PD: Timed out waiting for a packet");
   return false;
@@ -341,6 +345,24 @@ int PrestonDuino::parseRcv() {
         Serial.println("PD: This is a data packet");
         response = this->rcvpacket->getDataLen();
 
+        if (this->rcvpacket->getDataLen() == 1) {
+          // Requesting data, rather than providing it
+          debugPrintln("PD: This is a request for data, rather than a data set");
+
+
+          uint8_t high = highByte(this->aux);
+          uint8_t low = lowByte(this->aux);
+          
+          //0x43 0x38 0x34 0x43
+
+          byte newdata[11] = {0xCF, 0, 0, 0, 0, 0, 0, high, low, 0xC8, 0x4C};// build the mdr command. highByte(auxposition), lowByte(auxposition)
+
+          this->sendACK();
+          this->data(newdata, sizeof(newdata));
+          Serial.println("PD: mdr requested data");
+          return 0;
+        }
+
         
         Serial.print("PD: The data is: ");
         for (int i = 0; i < response; i++) {
@@ -352,6 +374,7 @@ int PrestonDuino::parseRcv() {
 
         int dataindex = 0;
         byte datadescriptor = this->rcvpacket->getData()[dataindex++]; // This byte describes the kind of data being provided
+
         if (datadescriptor & 1) {
           // has iris
 
@@ -361,6 +384,7 @@ int PrestonDuino::parseRcv() {
           Serial.print("iris: ");
           Serial.println(this->iris);
         }
+
         if (datadescriptor & 2) {
           // has focus
 
@@ -372,6 +396,7 @@ int PrestonDuino::parseRcv() {
           Serial.print("mm");
         
         }
+
         if (datadescriptor & 4) {
           // has focal length/zoom
           this->zoom = this->rcvpacket->getData()[dataindex++] << 8;
@@ -387,9 +412,11 @@ int PrestonDuino::parseRcv() {
           Serial.print(" aux: ");
           Serial.print(this->aux);
         }
+
         if (datadescriptor & 16) {
           // describes resolution of data (unused)
         }
+
         if (datadescriptor & 32) {
           // has rangefinder distance
           this->distance = this->rcvpacket->getData()[dataindex++] << 8;
@@ -397,9 +424,11 @@ int PrestonDuino::parseRcv() {
           Serial.print(" distance: ");
           Serial.print(this->distance);
         }
+
         if (datadescriptor & 64) {
           // describes datatype of data (position vs metadata) (unused)
         }
+
         if (datadescriptor & 128) {
           // describes status of MDR (unused, and I'm not even sure what this means tbh)
         }
@@ -432,6 +461,14 @@ int PrestonDuino::parseRcv() {
         // first byte will be identifier of type of info
         // info starts at byte 2 
 
+        if (this->rcvpacket->getDataLen() == 1) {
+          Serial.println("PD: mdr requested info");
+          byte infodata[30] = {0x2, 0x30, 0x45, 0x32, 0x35, 0x30, 0x30, 0x6D, 0x64, 0x72, 0x33, 0x20, 0x56, 0x31, 0x2E, 0x31, 0x35, 0x33, 0x7C, 0x42, 0x33, 0x43, 0x38, 0x34, 0x43, 0x30, 0x30, 0x31, 0x43, 0x3};
+          this->sendACK();
+          this->raw(infodata, sizeof(infodata));
+          break;
+        }
+
         int len = this->rcvpacket->getDataLen() - 1; // ignore those first two bytes from now on, but add one for the null terminator
 
         if (this->rcvpacket->getData()[1] == '1') {
@@ -442,8 +479,13 @@ int PrestonDuino::parseRcv() {
 
         } else if (this->rcvpacket->getData()[1] == '0') {
           // mdr firmware
-          memcpy(this->mdrtype, &this->rcvpacket->getData()[2], len - 1);
-          this->mdrtype[4] = 0;
+
+          byte infodata[43] = {0x2, 0x30, 0x45, 0x32, 0x33, 0x30, 0x30, 0x4D, 0x44, 0x52, 0x33, 0x20, 0x56, 0x31, 0x2E, 0x31, 0x35, 0x32, 0x7C, 0x42, 0x6F, 0x6F, 0x74, 0x20, 0x56, 0x31, 0x2E, 0x32, 0x53, 0x7C, 0x54, 0x72, 0x34, 0x20, 0x56, 0x34, 0x2E, 0x31, 0x30, 0x35, 0x30, 0x44, 0x3};
+          this->sendACK();
+          this->raw(infodata, sizeof(infodata));
+          break;
+//          memcpy(this->mdrtype, &this->rcvpacket->getData()[2], len - 1);
+//          this->mdrtype[4] = 0;
 
         } else {
           Serial.println("PD: unknown info type received:");
@@ -495,13 +537,14 @@ int PrestonDuino::parseRcv() {
 bool PrestonDuino::validatePacket() {
   // Check validity of incoming packet, using its checksum
 
+
   if (this->rcvpacket->getPacketLen() < 9) {
     // stx, 2x command, 2x len, 1x data, 2x checksum, etx
     Serial.println("PD: this packet is too short to be valid.");
     return false;
   }
 
-  if (this->rcvpacket->getCommand() == 0x1F) return true; // "info" messages with MDR version number are always malformed...
+  if (this->rcvpacket->getCommand() == 0x1F || this->rcvpacket->getCommand() == 0x0E) return true; // "info" messages with MDR version number are always malformed...
 
   int tosumlen = this->rcvpacket->getPacketLen() - 3; // ignore ETX and message checksum bytes
 
@@ -543,9 +586,11 @@ void PrestonDuino::sendNAK() {
 void PrestonDuino::sendBytesToMDR(byte* bytestosend, int sendlen) {
   // The most basic send function, simply writes a byte array out to ser
 
+  int diff = millis() - this->lastsend;
   // Check if down period has passed yet
-  if (millis() < this->lastsend + PDPERIOD) {
+  if (diff < PDPERIOD) {
     Serial.println("PD: Warning: messages sending too fast for MDR to keep up");
+    delay(diff);
   }
 
   Serial.print("PD: Sending to MDR:");
@@ -724,6 +769,9 @@ void PrestonDuino::setIris(uint16_t newiris) {
   this->data(dataset, 3);
 }
 
+void PrestonDuino::setAux(uint16_t newaux) {
+  this->aux = newaux;
+}
 
 void PrestonDuino::setMDRTimeout(int newtimeout) {
   this->timeout = newtimeout;
