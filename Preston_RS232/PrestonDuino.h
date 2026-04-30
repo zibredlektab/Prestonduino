@@ -13,16 +13,9 @@
 #define PDNORMALDATAMODE 0x17 // high resolution focus, iris, and zoom position data
 #define DEFAULT_DEBUG_LVL 0
 
-struct command_reply {
-  int8_t replystatus;
-  byte* data;
-};
-
 
 class PrestonDuino {
 
-  
-  
   private:
     int debuglvl = DEFAULT_DEBUG_LVL;
     
@@ -32,9 +25,9 @@ class PrestonDuino {
     int rcvlen = 0; // length of incoming packet info
     PrestonPacket* sendpacket = NULL; // most recent outgoing packet to MDR
     PrestonPacket* rcvpacket = NULL; // most recent incoming packet from MDR
-    command_reply reply; // most recent received reply from MDR (not currently used)
     int timeout = PDDEFAULTTIMEOUT; // milliseconds to wait for a response
     uint32_t lastsend = 0; // last time a message was sent to MDR
+    bool shouldwaitforACK = true; // do we wait for ACK after sending messages or no?
 
     // MDR Data
     // Basic lens data - can be assumed to be up to date
@@ -54,16 +47,18 @@ class PrestonDuino {
     // methods
     void sendACK();
     void sendNAK();
+    bool waitForAck(int timeout); // discards all serial input until an ack is received (or timeout elapses)
+
 
     bool waitForRcv(); // returns true if response was recieved
     bool rcv(); // true if usable data received, false if not 
     int parseRcv(); // >=0 result is length of data received, -1 if ACK, -2 if NAK, -3 if error
     bool validatePacket(); // true if packet validates with checksum
 
-    void sendCommand(byte cmd); // create a preston packet for the selected command and send it
-    void sendCommandWithData(byte cmd, byte* data, int len); // same as above, but with a data payload
+    int sendCommand(byte cmd); // create a preston packet for the selected command and send it
+    int sendCommandWithData(byte cmd, byte* data, int len); // same as above, but with a data payload
     void sendBytesToMDR(byte* bytestosend, int sendlen); // sends raw bytes to MDR
-    void sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
+    int sendPacketToMDR(PrestonPacket* packet, bool retry = false); // sends a constructed PrestonPacket to MDR
 
     void zoomFromLensName(); // in the case of a prime lens, need to extract zoom data from lens name
 
@@ -78,7 +73,8 @@ class PrestonDuino {
     bool isMDRReady(); // returns false until we get our first response from MDR
     void setMDRTimeout(int newtimeout); // sets the timeout on waiting for incoming data from the mdr
     void shutUp(); // hard-coded packet to get the MDR to stop streaming data
-    bool waitForAck(int timeout); // discards all serial input until an ack is received (or timeout elapses)
+
+    void shouldWaitForACK(bool wait); // in general, should we wait for ACK after sending a message or just continue?
 
     /* All of the following are according to the Preston protocol.
      * reply_status is a signed int identifying the type of the response:
@@ -86,23 +82,23 @@ class PrestonDuino {
      * data is a byte array representing the data section of the MDR reply
      */
 
-    void mode(byte datah, byte datal);
-    void stat();
-    void who();
-    void data(byte datadescription);
-    void data(byte* dataset, int datalen);
-    void rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
-    void setl(byte motors);
-    void ct(); // MDR2 only
-    void ct(byte cameratype); // MDR2 only
-    void mset(byte mseth, byte msetl); //MDR3/4 only
-    void mstat(byte motor);
-    void r_s(bool rs); // run the camera
-    void tcstat();
-    void ld(); // MDR3/4 only
-    void info(byte type); // MDR3/4 only, first element of array is size of payload
-    void dist(byte type, uint32_t dist);
-    void err(); // Here for completeness but unused as a client command
+    int mode(byte datah, byte datal);
+    int stat();
+    int who();
+    int data(byte datadescription);
+    int data(byte* dataset, int datalen);
+    int rtc(byte select, byte* data); // this is called "Time" in the protocol. time is a reserved name, hence rtc instead.
+    int setl(byte motors);
+    int ct(); // MDR2 only
+    int ct(byte cameratype); // MDR2 only
+    int mset(byte mseth, byte msetl); //MDR3/4 only
+    int mstat(byte motor);
+    int r_s(bool rs); // run the camera
+    int tcstat();
+    int ld(); // MDR3/4 only
+    int info(byte type); // MDR3/4 only, first element of array is size of payload
+    int dist(byte type, uint32_t dist);
+    int err(); // Here for completeness but unused as a client command
 
     void raw(byte* packet, int packetlen); // send raw data to mdr
 
@@ -122,7 +118,7 @@ class PrestonDuino {
 
 
     // Setters
-    void setIris(uint16_t newiris);  // experimental, Iris must be configured for control with mode() first
+    void setIris(uint16_t newiris, bool meta = true);  // experimental, Iris must be configured for control with mode() first
     void setAux(uint16_t newaux);
 };
 

@@ -4,3 +4,4 @@
 *.bin
 *.elf
 /MFSerial/build
+LCNDController/

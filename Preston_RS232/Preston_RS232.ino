@@ -45,5 +45,6 @@ void loop() {
   aux ++;
 
   mdr->onLoop();
-  //mdr->data(dataset, sizeof(dataset));
+  uint8_t dataset[3] = {0x01, 0x00, 0x00};
+  mdr->data(dataset, sizeof(dataset));
 }
