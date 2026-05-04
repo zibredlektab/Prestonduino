@@ -60,11 +60,15 @@ void PrestonDuino::raw(byte* packet, int packetlen) {
 
 
 void PrestonDuino::debugPrint(char* toprint) {
-  if (debuglvl) Serial.print(toprint);
+  if (debuglvl) {
+    //Serial.print(toprint);
+  }
 }
 
 void PrestonDuino::debugPrintln(char* toprint) {
-  if (debuglvl) Serial.println(toprint);
+  if (debuglvl) {
+    //Serial.println(toprint);
+  }
 }
 
 void PrestonDuino::shutUp() {
@@ -100,10 +104,15 @@ bool PrestonDuino::waitForAck(int timeout = 1000) {
 
 void PrestonDuino::onLoop () {
   if (ser->available()) {
+    Serial.println("PD: Message available");
     if (this->rcv()) {
+      Serial.println("PD: Message recieved");
       if (this->parseRcv() == -2) {
         // Got an error when we tried to parse the message, probably a malformed message...
-        this->sendNAK();
+        //this->sendNAK();
+        Serial.println("PD: Message was bad.");
+      } else {
+        Serial.println("PD: Message was okay");
       }
     }
   }
@@ -227,7 +236,7 @@ bool PrestonDuino::rcv() {
           if (this->rcvlen < 99) {
             this->rcvbuf[rcvlen++] = ETX;
           } else {
-            //Serial.println("PD: Read a suspiciously large amount of data...");
+            Serial.println("PD: Read a suspiciously large amount of data...");
           }
           
           return true;
@@ -790,11 +799,9 @@ char* PrestonDuino::getMDRType() {
 }
 
 void PrestonDuino::setIris(uint16_t newiris, bool meta) {
-  byte irish = newiris >> 8;
-  byte irisl = newiris && 0xFF;
-  byte datamode = 0x01;
-  if (meta) datamode = 0x41;
-  byte dataset[3] = {datamode, irish, irisl};
+  byte datamode = 0x51;
+  if (!meta) datamode = 0x11;
+  byte dataset[3] = {datamode, highByte(newiris), lowByte(newiris)};
   this->data(dataset, 3);
 }
 
