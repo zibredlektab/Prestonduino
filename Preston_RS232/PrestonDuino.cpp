@@ -104,15 +104,11 @@ bool PrestonDuino::waitForAck(int timeout = 1000) {
 
 void PrestonDuino::onLoop () {
   if (ser->available()) {
-    Serial.println("PD: Message available");
     if (this->rcv()) {
-      Serial.println("PD: Message recieved");
       if (this->parseRcv() == -2) {
         // Got an error when we tried to parse the message, probably a malformed message...
         //this->sendNAK();
-        Serial.println("PD: Message was bad.");
       } else {
-        Serial.println("PD: Message was okay");
       }
     }
   }
