@@ -36,6 +36,7 @@ class PrestonDuino {
     int16_t zoom = 0;
     uint16_t aux = 0;
     uint16_t distance = 0; // rangefinder distance
+    uint16_t mdrstatus = 0; // MDR status - still decoding this
     bool running = false;
     
     // Advanced data, not updated automatically
