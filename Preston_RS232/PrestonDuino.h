@@ -120,7 +120,7 @@ class PrestonDuino {
 
     // Setters
     void setIris(uint16_t newiris, bool meta = true);  // experimental, Iris must be configured for control with mode() first
-    void setAux(uint16_t newaux);
+    void setAux(uint16_t newaux); // Currently only sets the internal value of AUX, does not actually command MDR.
 };
 
 #endif
